@@ -1,0 +1,198 @@
+
+# Configuration file for logcausality
+# If some options does not given in this file,
+# logcausality will use defaults defined in config.conf.default
+
+
+[general]
+
+# Source log data path
+# Less priority than command option of log_db
+src_path = test.temp
+
+# Search source path recursively
+# If false, only search right under the given directory
+src_recur = false
+
+# Processing log output path (not dataset but log of this system)
+# If empty, output log on stderr
+info_log = auto.log
+
+# Another configparser filename, to add any options without warnings
+# Use this to define new options for private use
+# In imported configparser file, existing options in defaults will be ignored
+import = 
+
+
+[database]
+
+# Database management system to use
+# [sqlite3, mysql] is available
+# mysql : Require MySQL for PYTHON (MySQLdb) package
+database = sqlite3
+
+# Classified log database for sqlite3
+sqlite3_filename = log.db
+
+# Database hostname for mysql
+mysql_host = localhost
+
+# Database name for mysql
+mysql_dbname = logcausality
+
+# Mysql username
+mysql_user = test
+
+# Mysql user password
+mysql_passwd = test
+
+# Store log data with following splitter symbol string
+# If log_template.sym_ignore is False,
+# use symbol that will not appear in raw log messages
+split_symbol = @@
+
+# Network area groups of host names
+# For exapmle:
+# area_filename = area_def.txt
+# If empty, no group defined
+area_filename = 
+
+# Hostname alias definition file
+# Description example:
+#   host 192.168.0.1 host.domain    <- host will be recorded in DB
+# If empty, no host will be replaced
+host_alias_filename = 
+
+# Discard logs from undefined hosts in host_alias definition file
+undefined_host = false
+
+## A sequence of areas that cover all needed hosts.
+## If a host does not belong to any hosts here,
+## messages from the host is ignored.
+#areas_to_register = 
+
+# If no year string in log message, add following year
+# (Use this year of localtime with empty value)
+# For example:
+# default_year = 2112
+default_year = 
+
+# Remove log messages with given message headers in following files
+# For example to remove messages with free-write options
+# remove_header_filename = freewrite_header.txt, hoge.txt
+remove_header_filename = 
+
+
+[log_template]
+
+# 1st step algorithms / methods to generate log templates
+# [shiso, va, import] are available
+lt_alg = shiso
+
+# 2nd step algorithms / methods
+# especially for classifying log templates with different length
+# [shiso, none] are available
+# (none : with no grouping)
+ltgroup_alg = shiso
+
+# Post process algorithms / methods
+# [host, dummy] are available
+# Note : If you use postprocess to split variables,
+#   it is not recommended to use ltgroup (ltgroup_alg = none)
+post_alg = host, dummy
+
+# Output filename of internal data for log template generation
+# Do NOT share among multiple log template generation algorithms
+indata_filename = lt.dump
+
+# Output lines that fails to classify with existing log templates
+# This can appear only if method "import" used
+fail_output = lt_fail.log
+
+# Definition file of symbol strings to split log messages
+# If empty, use default rule (symdef.txt.sample)
+sym_filename = 
+
+# Ignore splitting symbol strings in log template generation
+# In many cases this option enables speeding up in exchange for precision
+sym_ignore = true
+
+# Symbol string to abstract variable strings in log templates
+# that must not appear in raw log messages
+variable_symbol = **
+labeled_variable_symbol_header = *
+labeled_variable_symbol_footer = *
+
+
+[log_template_import]
+
+# Log template definition file path
+def_path = 
+
+# Log template definition file style
+# [plain] is available
+# plain : without headers(datetime and host)
+mode = plain
+
+
+[log_template_va]
+
+# Source data of frequency dictionary
+# Aiming to use past log data (before source of DB) as training data
+# If empty, use source data of DB (defined in config, not command line option!)
+src_path = 
+
+# Incremental update of frequency dictionary
+# If source data of frequency dictionary is equal to that of DB construction,
+# Avoid double count of frequency with this option being false
+incre_update = false
+
+# Algorithm to decide frequency threshold
+# [median, ] is available
+threshold_mode = median
+
+# Threshold value
+# If mode is median, threshold means ratio of description words to all words
+threshold = 0.6
+
+
+[log_template_shiso]
+
+# Threshold for SeqRatio in Search Phase
+ltgen_threshold = 0.9
+
+# Max child size of 1 node of tree in Search Phase
+ltgen_max_child = 4
+
+# Size of Ngram in Adjustment Phase
+# If not ignoring splitter symbols, recommended to set more than 5
+ltgroup_ngram_length = 3
+
+# Lookup threshold for Ngram in Adjustment Phase
+ltgroup_th_lookup = 0.3
+
+# Threshold for edit distance in Adjustment Phase
+ltgroup_th_distance = 0.85
+
+# Keep found ngram database on memory
+ltgroup_mem_ngram = true
+
+
+#[log_template_crf]
+#
+#train_filename = crf_train
+#feature_template =
+#model_filename = crf_model
+#middle_label = re
+
+
+[lt_label]
+
+# Log template label definition
+# If empty, use default configuration (lt_label.conf.sample)
+ltlabel =
+
+ltlabel_default_label = None
+ltlabel_default_group = None
+
+

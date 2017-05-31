@@ -1,0 +1,55 @@
+[group_mgmt]
+members = user, remote, syslog
+
+[group_l7]
+members = dns, dhcp, snmp, ntp, smtp, syslog
+
+
+# c: case-sensitive, i : ignorecase
+[label_boot]
+rules = i_shutdown, i_reboot
+i_shutdown = ^.*shutdown.*$
+i_reboot = ^.*reboot.*$
+
+[label_user]
+rules = c_su, c_sudo, c_login
+c_su = ^su$
+c_sudo = ^sudo$
+c_login = ^login$
+
+[label_remote]
+rules = c_sshd
+c_sshd = ^sshd$
+
+[label_cron]
+rules = c_cmd, c_cron, c_anacron
+c_cmd = ^CMD$
+c_cron = ^CRON$
+c_anacron = ^anacron$
+
+[label_dns]
+rules = c_named, i_dns
+c_named = ^named$
+i_dns = ^.*dns.*$
+
+[label_snmp]
+rules = c_snmpd
+c_snmpd = ^snmpd$
+
+[label_ntp]
+rules = c_ntpd, c_ntpdate
+c_ntpd = ^ntpd$
+c_ntpdate = ^ntpdate$
+
+[label_smtp]
+rules = i_postfix, c_smtpd
+i_postfix = ^.*postfix.*$
+c_smtpd = ^smtpd$
+
+[label_syslog]
+rules = c_syslogd, c_rsyslogd, c_newsyslog, c_rotate
+c_syslogd = ^syslogd$
+c_rsyslogd = ^rsyslogd$
+c_newsyslog = ^newsyslog$
+c_rotate = ^last$, ^message$, ^repeated$
+
