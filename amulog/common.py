@@ -326,3 +326,14 @@ def cli_table(table, spl = " ", fill = " ", align = "left"):
 
     return "\n".join(l_buf)
 
+
+# compatibility
+
+def pickle_comp_args(comp):
+    if comp:
+        d = {"encoding": "bytes"}
+    else:
+        d = {}
+    return d
+
+

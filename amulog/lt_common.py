@@ -32,6 +32,7 @@ class LTManager(object):
         self.sym = conf.get("log_template", "variable_symbol")
         self.filename = conf.get("log_template", "indata_filename")
         self._fail_fn = conf.get("log_template", "fail_output")
+        self.pickle_comp = conf.get("general", "pickle_compatible")
 
         self._db = db
         self._lttable = lttable
@@ -173,20 +174,22 @@ class LTManager(object):
             f.write(line + "\n")
 
     def load(self):
+        kwargs = common.pickle_comp_args(self.pickle_comp)
         with open(self.filename, 'rb') as f:
-            obj = pickle.load(f)
+            obj = pickle.load(f, **kwargs)
         table_data, ltgen_data, ltgroup_data = obj
         self._table.load(table_data)
         self.ltgen.load(ltgen_data)
         self.ltgroup.load(ltgroup_data)
 
     def dump(self):
+        kwargs = common.pickle_comp_args(self.pickle_comp)
         table_data = self._table.dumpobj()
         ltgen_data = self.ltgen.dumpobj()
         ltgroup_data = self.ltgroup.dumpobj()
         obj = (table_data, ltgen_data, ltgroup_data)
         with open(self.filename, 'wb') as f:
-            pickle.dump(obj, f)
+            pickle.dump(obj, f, **kwargs)
 
 
 class LTTable():

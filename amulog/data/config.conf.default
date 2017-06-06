@@ -18,6 +18,9 @@ src_recur = false
 # If empty, output log on stderr
 info_log = auto.log
 
+# Compatible mode with logcausality (python2) on pickle io
+pickle_compatible = false
+
 # Another configparser filename, to add any options without warnings
 # Use this to define new options for private use
 # In imported configparser file, existing options in defaults will be ignored
