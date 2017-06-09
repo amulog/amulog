@@ -181,12 +181,13 @@ ltgroup_th_distance = 0.85
 ltgroup_mem_ngram = true
 
 
-#[log_template_crf]
-#
-#train_filename = crf_train
-#feature_template =
-#model_filename = crf_model
-#middle_label = re
+[log_template_crf]
+
+train_filename = crf_train
+feature_template =
+model_filename = crf_model
+middle_label = re
+verbose = false
 
 
 [lt_label]

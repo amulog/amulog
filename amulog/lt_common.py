@@ -5,6 +5,7 @@ import os
 import pickle
 from collections import defaultdict
 
+from . import common
 from . import config
 from . import strutil
 
