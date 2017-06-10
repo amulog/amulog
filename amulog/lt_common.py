@@ -184,13 +184,14 @@ class LTManager(object):
         self.ltgroup.load(ltgroup_data)
 
     def dump(self):
-        kwargs = common.pickle_comp_args(self.pickle_comp)
+        #kwargs = common.pickle_comp_args(self.pickle_comp)
         table_data = self._table.dumpobj()
         ltgen_data = self.ltgen.dumpobj()
         ltgroup_data = self.ltgroup.dumpobj()
         obj = (table_data, ltgen_data, ltgroup_data)
         with open(self.filename, 'wb') as f:
-            pickle.dump(obj, f, **kwargs)
+            pickle.dump(obj, f)
+            #pickle.dump(obj, f, **kwargs)
 
 
 class LTTable():
