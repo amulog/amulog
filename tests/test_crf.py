@@ -52,7 +52,7 @@ class TestCRF(unittest.TestCase):
         tid, state = ltgen.process_line(self.data_test, None)
         tpl = ltgen._table.get_template(tid)
         self.assertTrue("ssh" in tpl)
-        self.assertTrue("**" in tpl)
+        self.assertTrue(sym in tpl)
         common.rm(ltgen.model)
 
 
