@@ -71,14 +71,17 @@ class LTGenCRF(lt_common.LTGen):
         if not self.tagger is None:
             self.tagger.close()
 
-    def process_line(self, l_w, l_s):
-        if not self.tagger:
+    def label_line(self, l_w, l_s):
+        if not self.tagger():
             self.init_tagger()
         lineitems = items.line2items(l_w, midlabel_func = self._middle_label,
                                       dummy_label = self.LABEL_DUMMY)
         fset = self.converter.feature(lineitems)
         l_label = self.tagger.tag(fset)        
+        return l_label
 
+    def process_line(self, l_w, l_s):
+        l_label = self.label_line(l_w, l_s)
         tpl = []
         for w, label in zip(l_w, l_label):
             if label == self.LABEL_DESC:
@@ -140,6 +143,41 @@ class LabelWord():
                         str(ret)))
         except ValueError:
             return None
+
+
+#class MeasureAccuracy():
+#
+#    def __init__(self, conf, conf2 = None):
+#        # sample_from: inner-common, inner-diff, extern
+#        # sample_method: random, cross, va, ideal
+#        sample_from = conf.get("log_template_crf", "measure_sample_from")
+#        sample_method = conf.get("log_template_crf", "measure_sample_method")
+#
+#        if sample_from == "const":
+#            #rules = config.gettuple("log_template_crf", "measure_rules_train")
+#            pass
+#        elif sample_from == "cross":
+#            pass
+#        elif sample_from == "extern":
+#            pass
+#        else:
+#            raise NotImplementedError
+#        pass
+#
+#    
+
+
+
+# make train
+
+
+# randpick cross-validation
+
+
+# diff conf
+
+
+
 
 
 #def test_label():
