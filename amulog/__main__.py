@@ -36,7 +36,12 @@ def get_targets_opt(ns, conf):
 
 
 def generate_testdata(ns):
-    pass
+    from . import testlog
+    if ns.conf_path is None:
+        conf_path = testlog.DEFAULT_CONFIG
+    else:
+        conf_path = ns.conf_path
+    testlog.generate_testdata(conf_path, ns.file, ns.seed)
 
 
 def db_make(ns):
@@ -44,7 +49,7 @@ def db_make(ns):
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
     targets = get_targets_opt(ns, conf)
-    import log_db
+    from . import log_db
 
     timer = common.Timer("db-make", output = _logger)
     timer.start()
@@ -57,7 +62,7 @@ def db_make_init(ns):
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
     targets = get_targets_opt(ns, conf)
-    import log_db
+    from . import log_db
 
     timer = common.Timer("db-make-init", output = _logger)
     timer.start()
@@ -70,7 +75,7 @@ def db_add(ns):
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
     targets = get_targets(ns, conf)
-    import log_db
+    from . import log_db
 
     timer = common.Timer("db-add", output = _logger)
     timer.start()
@@ -83,7 +88,7 @@ def db_update(ns):
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
     targets = get_targets(ns, conf)
-    import log_db
+    from . import log_db
 
     timer = common.Timer("db-update", output = _logger)
     timer.start()
@@ -95,7 +100,7 @@ def db_anonymize(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
-    import log_db
+    from . import log_db
     
     timer = common.Timer("db-anonymize", output = _logger)
     timer.start()
@@ -107,7 +112,7 @@ def show_db_info(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
-    import log_db
+    from . import log_db
 
     log_db.info(conf)
 
@@ -116,7 +121,7 @@ def show_lt(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
-    import log_db
+    from . import log_db
 
     log_db.dump_lt(conf)
 
@@ -125,7 +130,7 @@ def show_ltg(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
-    import log_db
+    from . import log_db
 
     log_db.show_lt(conf)
 
@@ -134,7 +139,7 @@ def show_lt_import(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
-    import log_db
+    from . import log_db
 
     log_db.show_lt_import(conf)
 
@@ -143,7 +148,7 @@ def show_host(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
-    import log_db
+    from . import log_db
 
     log_db.show_all_host(conf)
 
@@ -152,7 +157,7 @@ def show_log(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
-    import log_db
+    from . import log_db
 
     ltid = None; gid = None; top_dt = None; end_dt = None;
     host = None; area = None
@@ -189,7 +194,7 @@ OPT_DEBUG = [["--debug"],
              {"dest": "debug", "action": "store_true",
               "help": "set logging level to debug (default: info)"}]
 OPT_CONFIG = [["-c", "--config"],
-              {"dest": "conf_path", "metavar": "CONFIG", "nargs": 1,
+              {"dest": "conf_path", "metavar": "CONFIG", "action": "store",
                "default": config.DEFAULT_CONFIG,
                "help": "configuration file path for amulog"}]
 OPT_RECUR = [["-r", "--recur"],
@@ -201,7 +206,7 @@ OPT_TERM = [["-t", "--term"],
              "help": ("datetime range, start and end in %Y-%M-%d style."
                       "(optional; defaultly use all data in database)")}]
 ARG_FILE = [["file"],
-             {"metavar": "PATH", "nargs": 1,
+             {"metavar": "PATH", "action": "store",
               "help": "filepath to output"}]
 ARG_FILES = [["files"],
              {"metavar": "PATH", "nargs": "+",
@@ -216,9 +221,14 @@ ARG_FILES_OPT = [["files"],
 # defined after functions because these settings use functions
 DICT_ARGSET = {
     "testdata": ["Generate test log data.",
-                 [OPT_CONFIG, OPT_DEBUG, ARG_FILE,
+                 [OPT_DEBUG, ARG_FILE,
+                  [["-c", "--config"],
+                   {"dest": "conf_path", "metavar": "CONFIG", "action": "store",
+                    "default": None,
+                    "help": ("configuration file path for testlog "
+                             "(different from that for amulog)")}],
                   [["-s", "--seed"],
-                   {"dest": "seed", "metavar": "INT", "nargs": 1,
+                   {"dest": "seed", "metavar": "INT", "action": "store",
                     "default": 0,
                     "help": "seed value to generate random values"}]],
                  generate_testdata],
@@ -290,6 +300,6 @@ if __name__ == "__main__":
                                  description = desc)
     for args, kwargs in l_argset:
         ap.add_argument(*args, **kwargs)
-    ns = ap.parse_args()
+    ns = ap.parse_args(commandline)
     func(ns)
 

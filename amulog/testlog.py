@@ -215,23 +215,30 @@ class TestLogGenerator():
                         line[1], line[2])) + "\n")
 
 
-def test_make(fn = None, output = None):
+def generate_testdata(fn = None, output = None, seed = None):
     if fn is None:
         fn = DEFAULT_CONFIG
-    tlg = TestLogGenerator(fn)
+    tlg = TestLogGenerator(fn, seed)
     tlg.dump_log(output)
 
 
-if __name__ == "__main__":
-    usage = "usage: {0} [options]".format(sys.argv[0])
-    import optparse
-    op = optparse.OptionParser(usage)
-    op.add_option("-c", "--config", action="store",
-            dest="conf", type="string", default=DEFAULT_CONFIG,
-            help="configuration file path")
-    (options, args) = op.parse_args()
-    if len(args) > 0:
-        sys.exit("use -c for config file")
-    test_make(fn = options.conf)
+#def test_make(fn = None, output = None):
+#    if fn is None:
+#        fn = DEFAULT_CONFIG
+#    tlg = TestLogGenerator(fn)
+#    tlg.dump_log(output)
+#
+#
+#if __name__ == "__main__":
+#    usage = "usage: {0} [options]".format(sys.argv[0])
+#    import optparse
+#    op = optparse.OptionParser(usage)
+#    op.add_option("-c", "--config", action="store",
+#            dest="conf", type="string", default=DEFAULT_CONFIG,
+#            help="configuration file path")
+#    (options, args) = op.parse_args()
+#    if len(args) > 0:
+#        sys.exit("use -c for config file")
+#    generate_testdata(fn = options.conf)
 
 
