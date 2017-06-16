@@ -78,7 +78,7 @@ class GroupDef():
             return []
 
     def iter_def(self):
-        for group, l_val in self.gdict.iteritems():
+        for group, l_val in self.gdict.items():
             for val in l_val:
                 yield group, val
 
