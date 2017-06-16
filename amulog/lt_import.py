@@ -58,6 +58,14 @@ class LTGenImport(lt_common.LTGen):
                 return tid, self.state_added
 
 
+def init_ltgen_import(conf, table, sym):
+    fn = conf.get("log_template_import", "def_path")
+    mode = conf.get("log_template_import", "mode")
+    from . import logparser
+    lp = logparser.LogParser(conf, sep_variable = True)
+    return LTGenImport(table, sym, fn, mode, lp)
+
+
 def search_exception(conf, targets):
     
     from . import logparser

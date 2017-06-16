@@ -31,51 +31,6 @@ class singleton(object):
         return tmpInstance
 
 
-class SequenceKeyDict(UserDict):
-    """
-    A dictionary object that requires keys of sequencial data.
-    The given key is automatically translated as tuple,
-    with its components sorted.
-    Here, the order of sequence component is ignored.
-
-    """
-
-    def _key(self, key):
-        return tuple(sorted(list(key)))
-
-    def __contains__(self, key):
-        k = self._key(key)
-        return UserDict.__contains__(self, k)
-
-    def __getitem__(self, key):
-        k = self._key(key)
-        return UserDict.__getitem__(self, k)
-
-    def __delitem__(self, key):
-        k = self._key(key)
-        return UserDict.__delitem__(self, k, item)
-
-    def __setitem__(self, key, item):
-        k = self._key(key)
-        return UserDict.__setitem__(self, k, item)
-
-    def get(self, key, failobj=None):
-        k = self._key(key)
-        return UserDict.get(self, k, failobj)
-
-    def has_key(self, key):
-        k = self._key(key)
-        return UserDict.has_key(self, k)
-
-    def pop(self, key, *args):
-        k = self._key(key)
-        return UserDict.pop(self, k, *args)
-
-    def setdefault(self, key, *args, **kwargs):
-        k = self._key(key)
-        return UserDict.setdefault(self, k, *args, **kwargs)
-
-
 class IDDict():
 
     def __init__(self, keyfunc = None):
@@ -88,7 +43,7 @@ class IDDict():
 
     def _next_id(self):
         next_id = len(self._d_obj)
-        assert not self._d_obj.has_key(next_id)
+        assert not next_id in self._d_obj
         return next_id
 
     def add(self, obj):
@@ -101,7 +56,7 @@ class IDDict():
             return keyid
 
     def exists(self, obj):
-        return self._d_id.has_key(self.keyfunc(obj))
+        return self.keyfunc(obj) in self._d_id
 
     def get(self, keyid):
         return self._d_obj[keyid]

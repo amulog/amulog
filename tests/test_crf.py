@@ -39,7 +39,7 @@ class TestCRF(unittest.TestCase):
         conf = config.open_config()
         sym = conf.get("log_template", "variable_symbol")
         table = lt_common.TemplateTable()
-        converter = convert.FeatureExtracter()
+        #converter = convert.FeatureExtracter()
         ltgen = lt_crf.LTGenCRF(table, sym, conf)
 
         l_items = []

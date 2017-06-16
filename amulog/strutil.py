@@ -26,16 +26,16 @@ def split_igesc(string, spl):
     return ret
 
 
-def add_esc(string):
+def add_esc(buf):
     for w in "\\" + ESC_LETTER:
-        string = string.replace(w, "\\" + w)
-    return string
+        buf = buf.replace(w, "\\" + w)
+    return buf
 
 
-def restore_esc(string):
+def restore_esc(buf):
     for w in ESC_LETTER + "\\":
-        string = string.replace("\\" + w, w)
-    return string
+        buf = buf.replace("\\" + w, w)
+    return buf
 
 
 def fmatch(string, match):

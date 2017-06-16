@@ -10,6 +10,7 @@ import logging
 import argparse
 from collections import namedtuple
 
+from . import common
 from . import config
 
 _logger = logging.getLogger(__package__)
@@ -25,8 +26,8 @@ def get_targets(ns, conf):
 
 def get_targets_opt(ns, conf):
     if len(ns.files) == 0:
-        l_path = config.getlist(conf, "database", "src_path")
-        if conf.getboolean("database", "src_recur"):
+        l_path = config.getlist(conf, "general", "src_path")
+        if conf.getboolean("general", "src_recur"):
             targets = common.recur_dir(l_path)
         else:
             targets = common.rep_dir(l_path)
@@ -189,6 +190,19 @@ def show_log(ns):
         print(e.restore__line())
 
 
+def measure_crf(ns):
+    conf = config.open_config(ns.conf_path,
+                              ex_defaults = ["data/measure_crf.conf"])
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import lt_crf
+
+    ma = lt_crf.MeasureAccuracy(conf)
+    ma.print_info()
+    print()
+    ma.print_result()
+
+
 # common argument settings
 OPT_DEBUG = [["--debug"],
              {"dest": "debug", "action": "store_true",
@@ -223,8 +237,8 @@ DICT_ARGSET = {
     "testdata": ["Generate test log data.",
                  [OPT_DEBUG, ARG_FILE,
                   [["-c", "--config"],
-                   {"dest": "conf_path", "metavar": "CONFIG", "action": "store",
-                    "default": None,
+                   {"dest": "conf_path", "metavar": "CONFIG",
+                    "action": "store", "default": None,
                     "help": ("configuration file path for testlog "
                              "(different from that for amulog)")}],
                   [["-s", "--seed"],
@@ -278,6 +292,13 @@ DICT_ARGSET = {
                              "Keys: ltid, gid, date, top_date, end_date, "
                              "host, area")}]],
                  show_log],
+    "measure-crf": ["Measure accuracy of CRF-based log template estimation.",
+                    [OPT_DEBUG,
+                     [["-c", "--config"],
+                      {"dest": "conf_path", "metavar": "CONFIG",
+                       "action": "store", "default": None,
+                       "help": "Extended config file for measure-lt"}],],
+                    measure_crf],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

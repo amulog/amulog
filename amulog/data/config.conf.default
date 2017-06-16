@@ -16,7 +16,7 @@ src_recur = false
 
 # Processing log output path (not dataset but log of this system)
 # If empty, output log on stderr
-info_log = auto.log
+logging = auto.log
 
 # Compatible mode with logcausality (python2) on pickle io
 pickle_compatible = false

@@ -1,0 +1,50 @@
+
+[general]
+import = config.conf.sample
+
+
+[measure_lt]
+# Important: It is not allowed to use classified data with
+# log_template.post_alg for measure_crf, because tplid and ltid is not consistent.
+
+# Log template generation method to measure
+# you can use same settings as log_template.lt_alg
+lt_method = crf
+
+# sample_method: in (cross, diff, file)
+#   cross: sample data from sample_rules, and process cross valudation
+#   diff: sampled training data from sample_train_rules,
+#         and test all testing data from sample_rules
+#   file: sampled training data from external file,
+#         and test all testing data from sample_rules
+sample_from = cross
+
+# filename for training data if sample_method is file
+sample_from_file = 
+
+# range of testing data (if cross, training data has common range)
+# if empty, all data is used
+# keys: top_date, end_date, top_dt, end_dt, host, area
+# example: area=tokyo, top_date=2010-01-01, end_dt=2010-01-08 00:00:00
+# date is written in %Y-%m-%d format
+# end_date itself is included, end_dt itself is not included
+sample_rules = top_date=2112-09-01, end_date = 2112-09-30
+
+# range of training data
+# notice: only used if sample_method is diff
+sample_train_rules = 
+
+# train_sample_method: in (all, random, random-va)
+# notice: cross.all will be rejected
+train_sample_method = random
+
+# if sample_method in (random, random-va)
+# size of train data, ignored if larger than the data satisfying given condition
+train_size = 1000
+train_trials = 10
+
+# if sample_from is cross, data will divided into k groups,
+# and 1 is used for training, the other is used for testing
+# this will be repeated for train_random_trials times.
+cross_k = 10
+

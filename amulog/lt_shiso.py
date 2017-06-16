@@ -248,6 +248,12 @@ class LTGroupSHISO(lt_common.LTGroup):
         return None
 
 
+def init_ltgen_shiso(conf, table, sym):
+    threshold = conf.getfloat("log_template_shiso", "ltgen_threshold")
+    max_child = conf.getint("log_template_shiso", "ltgen_max_child")
+    return LTGenSHISO(table, sym, threshold, max_child)
+
+
 def edit_distance(m1, m2, sym):
     # return levenshtein distance that allows wildcard
 

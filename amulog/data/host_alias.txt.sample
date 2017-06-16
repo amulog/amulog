@@ -1,0 +1,26 @@
+
+[rt]
+<rt0> rt0.test.domain
+<rt1> rt1.test.domain
+<rt2> rt2.test.domain
+
+[sw]
+sw0
+sw1
+sw2
+sw3
+sw4
+sw5
+
+[sv]
+<sv0> sv0.test.domain
+<sv1> sv1.test.domain
+<sv2> sv2.test.domain
+<sv3> sv3.test.domain
+<sv4> sv4.test.domain
+<sv5> sv5.test.domain
+<sv6> sv6.test.domain
+<sv7> sv7.test.domain
+<sv8> sv8.test.domain
+
+

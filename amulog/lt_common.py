@@ -531,6 +531,34 @@ class VariableLabelHost(VariableLabelRule):
         return self.ha.get_group(w)
 
 
+def init_ltgen(conf, table, method = None):
+    if method is None:
+        lt_alg = conf.get("log_template", "lt_alg")
+    else:
+        lt_alg = method
+    sym = conf.get("log_template", "variable_symbol")
+    args = [conf, table, sym]
+
+    if lt_alg == "shiso":
+        from . import lt_shiso
+        ltgen = lt_shiso.init_ltgen_shiso(*args)
+        pass
+    elif lt_alg == "import":
+        from . import lt_import
+        ltgen = lt_import.init_ltgen_import(*args)
+    elif lt_alg == "crf":
+        from . import lt_crf
+        ltgen = lt_crf.init_ltgen_crf(*args)
+    elif lt_alg == "va":
+    #    from . import lt_va
+    #    ltm = lt_va.LTManager(conf, self.db, self.table,
+    #            self._reset_db, ltg_alg)
+        raise NotImplementedError
+    else:
+        raise ValueError("lt_alg({0}) invalid".format(lt_alg))
+    return ltgen
+
+
 def init_ltmanager(conf, db, table, reset_db):
     """Initializing ltmanager by loading argument parameters."""
     lt_alg = conf.get("log_template", "lt_alg")
@@ -540,31 +568,7 @@ def init_ltmanager(conf, db, table, reset_db):
     ltm = LTManager(conf, db, table, reset_db,
             lt_alg, ltg_alg, post_alg)
 
-    if lt_alg == "shiso":
-        from . import lt_shiso
-        ltgen = lt_shiso.LTGenSHISO(ltm._table, sym,
-                threshold = conf.getfloat(
-                    "log_template_shiso", "ltgen_threshold"),
-                max_child = conf.getint(
-                    "log_template_shiso", "ltgen_max_child")
-                )
-    elif lt_alg == "import":
-        fn = conf.get("log_template_import", "def_path")
-        mode = conf.get("log_template_import", "mode")
-        from . import logparser
-        lp = logparser.LogParser(conf, sep_variable = True)
-        from . import lt_import
-        ltgen = lt_import.LTGenImport(ltm._table, sym, fn, mode, lp)
-    elif lt_alg == "crf":
-        raise NotImplementedError("lt_crf is not available in this version...")
-        #from . import lt_crf
-        #ltgen = lt_crf.LTGenCRF(ltm._table, sym, conf)
-    #elif lt_alg == "va":
-    #    from . import lt_va
-    #    ltm = lt_va.LTManager(conf, self.db, self.table,
-    #            self._reset_db, ltg_alg)
-    else:
-        raise ValueError("lt_alg({0}) invalid".format(lt_alg))
+    ltgen = init_ltgen(conf, ltm._table)
     ltm._set_ltgen(ltgen)
 
     if ltg_alg == "shiso":
