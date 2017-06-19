@@ -550,10 +550,8 @@ def init_ltgen(conf, table, method = None):
         from . import lt_crf
         ltgen = lt_crf.init_ltgen_crf(*args)
     elif lt_alg == "va":
-    #    from . import lt_va
-    #    ltm = lt_va.LTManager(conf, self.db, self.table,
-    #            self._reset_db, ltg_alg)
-        raise NotImplementedError
+        from . import lt_va
+        ltgen = lt_va.init_ltgen_va(*args)
     else:
         raise ValueError("lt_alg({0}) invalid".format(lt_alg))
     return ltgen

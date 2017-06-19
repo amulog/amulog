@@ -89,7 +89,7 @@ remove_header_filename =
 [log_template]
 
 # 1st step algorithms / methods to generate log templates
-# [shiso, va, import] are available
+# [shiso, va, crf, import] are available
 lt_alg = shiso
 
 # 2nd step algorithms / methods
@@ -101,8 +101,8 @@ ltgroup_alg = shiso
 # Post process algorithms / methods
 # [host, dummy] are available
 # Note : If you use postprocess to split variables,
-#   it is not recommended to use ltgroup (ltgroup_alg = none)
-post_alg = host, dummy
+#   it is not recommended to use ltgroup (=> ltgroup_alg = none)
+post_alg = dummy
 
 # Output filename of internal data for log template generation
 # Do NOT share among multiple log template generation algorithms
@@ -140,23 +140,15 @@ mode = plain
 
 [log_template_va]
 
-# Source data of frequency dictionary
-# Aiming to use past log data (before source of DB) as training data
-# If empty, use source data of DB (defined in config, not command line option!)
-src_path = 
-
-# Incremental update of frequency dictionary
-# If source data of frequency dictionary is equal to that of DB construction,
-# Avoid double count of frequency with this option being false
-incre_update = false
-
-# Algorithm to decide frequency threshold
-# [median, ] is available
-threshold_mode = median
+# Algorithm to devide frequency threshold
+# [static, relative-line, relative-variable] is available
+method = static
 
 # Threshold value
-# If mode is median, threshold means ratio of description words to all words
-threshold = 0.6
+# If method is static, give counts of words for descriptions
+# If relative-line, give the ratio of word counts and total messages
+# If relative-variable, give the ratio of variable words in every line
+threshold = 1000
 
 
 [log_template_shiso]

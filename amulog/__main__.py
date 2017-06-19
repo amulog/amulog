@@ -67,7 +67,7 @@ def db_make_init(ns):
 
     timer = common.Timer("db-make-init", output = _logger)
     timer.start()
-    log_db.process_files(conf, targets, True)
+    log_db.process_init_data(conf, targets)
     timer.stop()
 
 
