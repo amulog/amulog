@@ -1,16 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-
-import sys
-import math
 from collections import defaultdict
 
-from . import common
-from . import config
 from . import lt_common
-from . import lt_misc
-from . import logparser
 
 
 class LTGenVA(lt_common.LTGen):

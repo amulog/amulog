@@ -142,13 +142,13 @@ mode = plain
 
 # Algorithm to devide frequency threshold
 # [static, relative-line, relative-variable] is available
-method = static
+method = relative-variable
 
 # Threshold value
 # If method is static, give counts of words for descriptions
 # If relative-line, give the ratio of word counts and total messages
 # If relative-variable, give the ratio of variable words in every line
-threshold = 1000
+threshold = 0.4
 
 
 [log_template_shiso]

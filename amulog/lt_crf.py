@@ -212,6 +212,13 @@ class MeasureAccuracy():
                 raise NotImplementedError
         return ret
 
+    @staticmethod
+    def _make_ltidmap(l_ltid):
+        ltidmap = defaultdict(int)
+        for ltid in l_ltid:
+            ltidmap[ltid] += 1
+        return ltidmap
+
     def _eval_cross(self):
 
         def divide_size(size, groups):
@@ -245,10 +252,7 @@ class MeasureAccuracy():
         for size in divide_size(len(l_labeled), self.cross_k):
             l_ltid, l_lm = zip(*l_labeled[basenum:basenum+size])
             l_group.append(l_lm)
-            d = defaultdict(int)
-            for ltid in l_ltid:
-                d[ltid] += 1
-            l_group_ltidmap.append(d)
+            l_group_ltidmap.append(self._make_ltidmap(l_ltid))
             basenum += size
         assert sum([len(g) for g in l_group]) == len(l_labeled)
         del l_labeled
@@ -281,31 +285,66 @@ class MeasureAccuracy():
 
         l_train_all = [] # (ltid, lineitems)
         for line in self.ld.iter_lines(**self.sample_train_rules):
-            l_labeled.append((line.lt.ltid, items.line2train(line)))
+            l_train_all.append(line)
 
-        if self.train_sample_rules == "all":
-            if self.train_size > 1:
-                raise UserWarning(("measure_lt.train_size is ignored "
+        if self.train_sample_method == "all":
+            if self.trials > 1:
+                raise UserWarning(("measure_lt.trials is ignored "
                                    "because the results must be static"))
-            l_ltid, l_train = zip(*l_train_all)
-            train_ltidmap = defaultdict(int)
-            for ltid in l_ltid:
-                train_ltidmap[ltid] += 1
+            l_ltid = [lm.lt.ltid for lm in l_train_all]
+            train_ltidmap = self._make_ltidmap(l_ltid)
+            l_train = [items.line2train(lm) for lm in l_train_all]
             d_result = self._trial(l_train, l_test,
                                    train_ltidmap, test_ltidmap)
             self.results.append(d_result)
-        elif self.train_sample_rules == "random":
+        elif self.train_sample_method == "random":
             for i in range(self.trials):
                 l_sampled = random.sample(l_train_all, self.train_size)
-                l_ltid, l_train = zip(*l_sampled)
-                train_ltidmap = defaultdict(int)
-                for ltid in l_ltid:
-                    train_ltidmap[ltid] += 1
+                l_ltid = [lm.lt.ltid for lm in l_sampled]
+                train_ltidmap = self._make_ltidmap(l_ltid)
+                l_train = [items.line2train(lm) for lm in l_sampled]
                 d_result = self._trial(l_train, l_test,
                                        train_ltidmap, test_ltidmap)
                 self.results.append(d_result)
-            pass
-        elif self.train_sample_rules == "random-va":
+        elif self.train_sample_method == "random-va":
+            table = lt_common.TemplateTable()
+            ltgen_va = lt_common.init_ltgen(self.conf, table, method = "va")
+            d = ltgen_va.process_init_data([(lm.l_w, lm.lt.lts)
+                                            for lm in l_train_all])
+
+            for i in range(self.trials):
+                d_group = defaultdict(list)
+                for mid, lm in enumerate(l_train_all):
+                    tid = d[mid]
+                    d_group[tid].append(lm)
+                for group in d_group.values():
+                    random.shuffle(group)
+
+                l_sampled = []
+                while len(l_sampled) < self.train_size:
+                    temp = self.train_size - len(l_sampled)
+                    if temp >= len(d_group):
+                        for group in d_group.values():
+                            assert len(group) > 0
+                            l_sampled.append(group.pop())
+                    else:
+                        iterobj.sort(key = lambda x: len(x), reverse = True)
+                        for group in sorted(d_group.values(),
+                                            key = lambda x: len(x),
+                                            reverse = True):
+                            assert len(group) > 0
+                            l_sampled.append(group.pop())
+                    for key in [key for key, val
+                                in d_group.items() if len(val) == 0]:
+                        d_group.pop(key)
+
+                l_ltid = [lm.lt.ltid for lm in l_sampled]
+                train_ltidmap = self._make_ltidmap(l_ltid)
+                l_train = [items.line2train(lm) for lm in l_sampled]
+                d_result = self._trial(l_train, l_test,
+                                       train_ltidmap, test_ltidmap)
+                self.results.append(d_result)
+        else:
             raise NotImplementedError
 
     def _load_test_diff(self):
@@ -313,7 +352,7 @@ class MeasureAccuracy():
         test_ltidmap = defaultdict(int)
         for line in self.ld.iter_lines(**self.sample_train_rules):
             l_test.append(items.line2train(line))
-            test_ltidmap[ltid] += 1
+            test_ltidmap[line.lt.ltid] += 1
         return l_test, test_ltidmap
 
     def _load_test_file(self):

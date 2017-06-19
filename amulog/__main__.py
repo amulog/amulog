@@ -198,6 +198,8 @@ def measure_crf(ns):
     from . import lt_crf
 
     ma = lt_crf.MeasureAccuracy(conf)
+    if len(ma.results) == 0:
+        raise ValueError("No measure results found")
     ma.print_info()
     print()
     ma.print_result()
