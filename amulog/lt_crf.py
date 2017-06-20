@@ -350,7 +350,7 @@ class MeasureAccuracy():
     def _load_test_diff(self):
         l_test = []
         test_ltidmap = defaultdict(int)
-        for line in self.ld.iter_lines(**self.sample_train_rules):
+        for line in self.ld.iter_lines(**self.sample_rules):
             l_test.append(items.line2train(line))
             test_ltidmap[line.lt.ltid] += 1
         return l_test, test_ltidmap
