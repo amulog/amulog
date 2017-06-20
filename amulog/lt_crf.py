@@ -422,6 +422,7 @@ class MeasureAccuracy():
         print("# Experiment for measuring log template generation accuracy")
         if self.sample_from == "cross":
             print("# type: Cross-validation (k = {0})".format(self.cross_k))
+            print("# data-source: db({0})".format(self.sample_rules))
         elif self.sample_from in ("diff", "file"):
             print("# type: Experiment with different data range / domain")
             if self.sample_from == "diff":
@@ -460,6 +461,7 @@ class MeasureAccuracy():
 def init_ltgen_crf(conf, table, sym):
     model = conf.get("log_template_crf", "model_filename")
     verbose = conf.getboolean("log_template_crf", "verbose")
+    template = conf.get("log_template_crf", "feature_template")
     middle = conf.get("log_template_crf", "middle_label")
     if middle == "re":
         lwobj = LabelWord(conf)
@@ -467,7 +469,6 @@ def init_ltgen_crf(conf, table, sym):
         raise NotImplementedError
     else:
         lwobj = None
-    template = conf.get("log_template_crf", "feature_template")
     return LTGenCRF(table, sym, model, verbose, template, lwobj)
 
 
