@@ -11,6 +11,7 @@ import os
 import datetime
 import sqlite3
 import logging
+from collections import defaultdict
 
 from . import common
 from . import config
@@ -514,7 +515,7 @@ class LogDB():
         
 
     def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
-            end_dt = None, host = None, area = None):
+                   end_dt = None, host = None, area = None):
         d_cond = {}
         if lid is not None: d_cond["lid"] = lid
         if ltid is not None: d_cond["ltid"] = ltid
@@ -544,7 +545,7 @@ class LogDB():
             yield LogMessage(lid, self.lttable[ltid], dt, host, l_w)
 
     def iter_words(self, lid = None, ltid = None, ltgid = None, top_dt = None,
-            end_dt = None, host = None, area = None):
+                   end_dt = None, host = None, area = None):
         d_cond = {}
         if lid is not None: d_cond["lid"] = lid
         if ltid is not None: d_cond["ltid"] = ltid
@@ -1030,6 +1031,51 @@ def show_all_host(conf, top_dt = None, end_dt = None):
     ld = LogData(conf)
     for host in ld.whole_host():
         print(host)
+
+
+def agg_words(conf, target = "all"):
+    """Return dict of words in all log messages and their counts. 
+
+    Args:
+        conf
+        target (str): (all, description, variable) is available
+
+    Returns:
+        dict: key = word, val = counts
+    """
+
+    def getall(d, lm):
+        for w in lm.l_w:
+            d[w] += 1
+
+    def getdesc(d, lm):
+        for w in lm.lt.ltw:
+            if w == lm.lt.sym:
+                pass
+            else:
+                d[w] += 1
+
+    def getvar(d, lm):
+        for w in lm.var():
+            d[w] += 1
+
+    assert target in ("all", "description", "variable")
+    if target == "all":
+        func = getall
+    elif target == "description":
+        func = getdesc
+    elif target == "variable":
+        func = getvar
+    else:
+        raise NotImplementedError
+
+    ld = LogData(conf)
+    top_dt, end_dt = ld.dt_term()
+    d = defaultdict(int)
+    for lm in ld.iter_lines(top_dt = top_dt, end_dt = end_dt):
+        func(d, lm)
+
+    return d
 
 
 def migrate(conf):

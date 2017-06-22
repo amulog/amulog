@@ -145,6 +145,54 @@ def show_lt_import(ns):
     log_db.show_lt_import(conf)
 
 
+def show_lt_words(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+
+    d = log_db.agg_words(conf, target = "all")
+    print(common.cli_table(sorted(d.items(), key = lambda x: x[1],
+                                  reverse = True)))
+
+
+def show_lt_descriptions(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+
+    d = log_db.agg_words(conf, target = "description")
+    print(common.cli_table(sorted(d.items(), key = lambda x: x[1],
+                                  reverse = True)))
+
+
+def show_lt_variables(ns):
+    import re
+
+    def repl_var(d):
+        reobj = re.compile(r"[0-9]+")
+        keys = list(d.keys())
+        for k in keys:
+            new_k = reobj.sub("\d", k)
+            if k == new_k:
+                pass
+            else:
+                d[new_k] += d.pop(k)
+
+
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+
+    d = log_db.agg_words(conf, target = "variable")
+    if ns.repld:
+        repl_var(d)
+    print(common.cli_table(sorted(d.items(), key = lambda x: x[1],
+                                  reverse = True)))
+
+
 def show_host(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -285,6 +333,18 @@ DICT_ARGSET = {
     "show-host": ["Show all hostnames in database.",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_host],
+    "show-lt-word": ["Show words and their counts in all messages",
+                     [OPT_CONFIG, OPT_DEBUG],
+                     show_lt_words],
+    "show-lt-description": ["Show description words and their counts",
+                            [OPT_CONFIG, OPT_DEBUG],
+                            show_lt_descriptions],
+    "show-lt-variable": ["Show variable words and their counts",
+                         [OPT_CONFIG, OPT_DEBUG,
+                          [["-d", "--digit"],
+                           {"dest": "repld", "action": "store_true",
+                            "help": "replace digit to \d"}]],
+                         show_lt_variables],
     "show-log": ["Show log messages that satisfy given conditions in args.",
                  [OPT_CONFIG, OPT_DEBUG,
                   [["conditions"],
