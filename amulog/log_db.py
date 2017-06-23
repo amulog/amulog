@@ -374,6 +374,7 @@ class LogData():
         return LogMessage(ltid, self.lttable[ltid], dt, host, l_w)
 
     def update_area(self):
+        self.db._remove_area()
         self.db._init_area()
 
     def commit_db(self):
@@ -815,6 +816,11 @@ class LogDB():
             }
             self.db.execute(sql, args)
         self.commit()
+
+    def _remove_area(self):
+        table_name = "area"
+        sql = self.db.delete_sql(table_name)
+        self.db.execute(sql)
 
     def host_area(self, host):
         table_name = area
