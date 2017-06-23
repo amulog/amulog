@@ -7,6 +7,7 @@ import ipaddress
 import logging
 import random
 import datetime
+import configparser
 from collections import defaultdict
 
 import pycrfsuite
@@ -36,17 +37,14 @@ class LTGenCRF(lt_common.LTGen):
         self.trainer = None
         self.tagger = None
         self.converter = convert.FeatureExtracter(self._template)
-        self._lwobj = lwobj
+        self.lwobj = lwobj
         #if self._middle == "re":
         #    self._lwobj = LabelWord(conf)
         #elif len(self._middle) > 0 :
         #    raise NotImplementedError
 
     def _middle_label(self, w):
-        if self._middle == "re":
-            return self._lwobj.label(w)
-        else:
-            return w
+        return self.lwobj.label(w)
 
     def init_trainer(self, alg = "lbfgs", verbose = False):
         self.trainer = pycrfsuite.Trainer(verbose = verbose)
@@ -84,7 +82,7 @@ class LTGenCRF(lt_common.LTGen):
 
     def process_line(self, l_w, l_s):
         lineitems = items.line2items(l_w, midlabel_func = self._middle_label,
-                                      dummy_label = self.LABEL_DUMMY)
+                                     dummy_label = self.LABEL_DUMMY)
         l_label = self.label_line(lineitems)
         tpl = []
         for w, label in zip(l_w, l_label):
@@ -107,35 +105,50 @@ class LTGenCRF(lt_common.LTGen):
 
 class LabelWord():
 
-    def __init__(self, conf):
-        self._d_re = {}
-
-        self._d_re["DIGIT"] = [re.compile(r"^\d+$")]
-        self._d_re["DATE"] = [re.compile(r"^\d{2}/\d{2}$"),
-                              re.compile(r"^\d{4}-\d{2}-\d{2}")]
-        self._d_re["TIME"] = [re.compile(r"^\d{2}:\d{2}:\d{2}$")]
-
-        self._other = "OTHER"
+    def __init__(self, conf, fn = None):
+        self._ext = {}
+        self._re = {}
+        
+        self.conf = conf
         self._ha = host_alias.HostAlias(conf)
-        self._host = "HOST"
+        if fn is not None:
+            self._load_rule(fn)
+
+    def _load_rule(self, fn):
+
+        def gettuple(conf, sec, opt):
+            s = conf[sec][opt]
+            return tuple([w.strip() for w in s.split(",")])
+
+        conf = configparser.ConfigParser()
+        conf.read(fn)
+
+        t_ext = gettuple(conf, "ext", "rules")
+        for rule in t_ext:
+            self._ext[rule] = getattr(self, conf["ext"][rule].strip())
+
+        t_re_rules = gettuple(conf, "re", "rules")
+        for rule in t_re_rules:
+            temp = []
+            t_re = gettuple(conf, "re", rule)
+            for restr in t_re:
+                temp.append(re.compile(restr))
+            self._re[rule] = temp
 
     def label(self, word):
-        ret = self.isipaddr(word)
-        if ret is not None:
-            return ret
+        for key, func in self._ext.items():
+            if func(word):
+                return key
 
-        if self._ha.isknown(word):
-            return self._host
-        
-        for k, l_reobj in self._d_re.items():
+        for key, l_reobj in self._re.items():
             for reobj in l_reobj:
                 if reobj.match(word):
-                    return k
-        
-        return self._other
+                    return key
 
-    @staticmethod
-    def isipaddr(word):
+        return "unknown"
+
+
+    def label_ipaddr(self, word):
         try:
             ret = ipaddress.ip_address(str(word))
             if isinstance(ret, ipaddress.IPv4Address):
@@ -147,6 +160,57 @@ class LabelWord():
                         str(ret)))
         except ValueError:
             return None
+
+
+    def label_host(self, word):
+        if self._ha.isknown(word):
+            return self._host
+        else:
+            return None
+
+
+#class LabelWord():
+#
+#    def __init__(self, conf):
+#        self._d_re = {}
+#
+#        self._d_re["DIGIT"] = [re.compile(r"^\d+$")]
+#        self._d_re["DATE"] = [re.compile(r"^\d{2}/\d{2}$"),
+#                              re.compile(r"^\d{4}-\d{2}-\d{2}")]
+#        self._d_re["TIME"] = [re.compile(r"^\d{2}:\d{2}:\d{2}$")]
+#
+#        self._other = "OTHER"
+#        self._ha = host_alias.HostAlias(conf)
+#        self._host = "HOST"
+#
+#    def label(self, word):
+#        ret = self.isipaddr(word)
+#        if ret is not None:
+#            return ret
+#
+#        if self._ha.isknown(word):
+#            return self._host
+#        
+#        for k, l_reobj in self._d_re.items():
+#            for reobj in l_reobj:
+#                if reobj.match(word):
+#                    return k
+#        
+#        return self._other
+#
+#    @staticmethod
+#    def isipaddr(word):
+#        try:
+#            ret = ipaddress.ip_address(str(word))
+#            if isinstance(ret, ipaddress.IPv4Address):
+#                return "IPv4ADDR"
+#            elif isinstance(ret, ipaddress.IPv6Address):
+#                return "IPv6ADDR"
+#            else:
+#                raise TypeError("ip_address returns unknown type? {0}".format(
+#                        str(ret)))
+#        except ValueError:
+#            return None
 
 
 class MeasureAccuracy():
@@ -462,13 +526,20 @@ def init_ltgen_crf(conf, table, sym):
     model = conf.get("log_template_crf", "model_filename")
     verbose = conf.getboolean("log_template_crf", "verbose")
     template = conf.get("log_template_crf", "feature_template")
-    middle = conf.get("log_template_crf", "middle_label")
-    if middle == "re":
-        lwobj = LabelWord(conf)
-    elif len(middle) > 0:
-        raise NotImplementedError
+    middle = conf.get("log_template_crf", "middle_label_rule")
+    if len(middle) > 0:
+        lwobj = LabelWord(conf, middle)
     else:
         lwobj = None
     return LTGenCRF(table, sym, model, verbose, template, lwobj)
 
+
+def make_crf_train(conf, iterobj):
+    buf = []
+    table = lt_common.TemplateTable()
+    ltgen = lt_common.init_ltgen(conf, table, method = "crf")
+    for lm in iterobj:
+        item = items.line2train(lm, midlabel_func = ltgen._middle_label)
+        buf.append(items.items2str(item))
+    return "\n\n".join(buf)
 

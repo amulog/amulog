@@ -208,34 +208,50 @@ def show_log(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
     from . import log_db
 
-    ltid = None; gid = None; top_dt = None; end_dt = None;
-    host = None; area = None
+    d = _parse_condition(ns.conditions)
+    ld = log_db.LogData(conf)
+    for e in ld.iter_lines(**d):
+        print(e.restore__line())
+
+
+def dump_crf_train(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+    from . import lt_crf
+
+    d = _parse_condition(ns.conditions)
+    ld = log_db.LogData(conf)
+    iterobj = ld.iter_lines(**d)
+    print(lt_crf.make_crf_train(conf, iterobj))
+
+
+def _parse_condition(condition):
+    d = {}
     for arg in ns.conditions:
-        if not "=" in key:
+        if not "=" in arg:
             raise SyntaxError
         key = arg.partition("=")[0]
         if key == "ltid":
-            ltid = int(arg.partition("=")[-1])
+            d["ltid"] = int(arg.partition("=")[-1])
         elif key == "gid":
-            gid = int(arg.partition("=")[-1])
+            d["ltgid"] = int(arg.partition("=")[-1])
         elif key == "top_date":
             date_string = arg.partition("=")[-1]
-            top_dt = datetime.datetime.strptime(date_string, "%Y-%m-%d")
+            d["top_dt"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
         elif key == "end_date":
             date_string = arg.partition("=")[-1]
-            end_dt = datetime.datetime.strptime(date_string, "%Y-%m-%d")
+            d["end_dt"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
         elif key == "date":
             date_string = arg.partition("=")[-1]
-            top_dt = datetime.datetime.strptime(date_string, "%Y-%m-%d")
-            end_dt = top_dt + datetime.timedelta(days = 1)
+            d["top_dt"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
+            d["end_dt"] = top_dt + datetime.timedelta(days = 1)
         elif key == "host":
-            host = arg.partition("=")[-1]
+            d["host"] = arg.partition("=")[-1]
         elif key == "area":
-            area = arg.partition("=")[-1]
-    ld = log_db.LogData(conf)
-    for e in ld.iter_lines(ltid = ltid, ltgid = gid, top_dt = top_dt,
-                           end_dt = end_dt, host = host, area = area):
-        print(e.restore__line())
+            d["area"] = arg.partition("=")[-1]
+    return d
 
 
 def measure_crf(ns):
@@ -279,6 +295,13 @@ ARG_FILES_OPT = [["files"],
                  {"metavar": "PATH", "nargs": "*",
                   "help": ("files or directories as input "
                            "(optional; defaultly read from config")}]
+ARG_DBSEARCH = [["conditions"],
+                {"metavar": "CONDITION", "nargs": "+",
+                 "help": ("Conditions to search log messages. "
+                          "Example: show-log gid=24 date=2012-10-10 ..., "
+                          "Keys: ltid, gid, date, top_date, end_date, "
+                          "host, area")}]
+
 
 # argument settings for each modes
 # description, List[args, kwargs], func
@@ -346,14 +369,11 @@ DICT_ARGSET = {
                             "help": "replace digit to \d"}]],
                          show_lt_variables],
     "show-log": ["Show log messages that satisfy given conditions in args.",
-                 [OPT_CONFIG, OPT_DEBUG,
-                  [["conditions"],
-                   {"metavar": "CONDITION", "nargs": "+",
-                    "help": ("Conditions to search log messages. "
-                             "Example: show-log gid=24 date=2012-10-10 ..., "
-                             "Keys: ltid, gid, date, top_date, end_date, "
-                             "host, area")}]],
+                 [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
                  show_log],
+    "dump-crf-train": ["Output CRF training file for given conditions.",
+                       [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
+                       dump_crf_train],
     "measure-crf": ["Measure accuracy of CRF-based log template estimation.",
                     [OPT_DEBUG,
                      [["-c", "--config"],

@@ -48,9 +48,13 @@ def line2train(line, midlabel_func = None):
         ret.append((line_w, midlabel_func(line_w), label))
     return ret
 
+
 def items2label(lineitems):
     return [item[-1] for item in lineitems]
 
+
+def items2str(l_item):
+    return "\n".join([" ".join(item) for item in l_item])
 
 
 

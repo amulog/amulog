@@ -178,7 +178,7 @@ ltgroup_mem_ngram = true
 model_filename = crf_model
 verbose = false
 feature_template = 
-middle_label = re
+middle_label_rule = 
 
 
 [lt_label]
