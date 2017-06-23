@@ -109,6 +109,14 @@ def db_anonymize(ns):
     timer.stop()
 
 
+def reload_area(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+    log_db.reload_area(conf)
+
+
 def show_db_info(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -341,6 +349,9 @@ DICT_ARGSET = {
                       "(Not anonymize hostnames; to be added)"),
                      [OPT_CONFIG, OPT_DEBUG],
                      db_anonymize],
+    "reload-area": ["Reload area definition file from config.",
+                    [OPT_CONFIG, OPT_DEBUG],
+                    reload_area],
     "show-db-info": ["Show abstruction of database status.",
                      [OPT_CONFIG, OPT_DEBUG, OPT_TERM],
                      show_db_info],

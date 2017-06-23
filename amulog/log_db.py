@@ -1092,7 +1092,7 @@ def remake_ltgroup(conf):
     ld.commit_db()
 
 
-def remake_area(conf):
+def reload_area(conf):
     ld = LogData(conf, edit = True)
     ld.init_ltmanager()
     ld.update_area()

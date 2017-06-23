@@ -392,7 +392,6 @@ class MeasureAccuracy():
                             assert len(group) > 0
                             l_sampled.append(group.pop())
                     else:
-                        iterobj.sort(key = lambda x: len(x), reverse = True)
                         for group in sorted(d_group.values(),
                                             key = lambda x: len(x),
                                             reverse = True):
