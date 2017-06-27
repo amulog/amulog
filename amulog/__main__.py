@@ -277,13 +277,41 @@ def measure_crf(ns):
     ma.print_result()
 
 
+def conf_defaults(ns):
+    config.show_default_config()
+
+
+def conf_diff(ns):
+    conf1, conf2 = ns.files
+    config.show_config_diff(conf1, conf2)
+
+
+def conf_minimum(ns):
+    config.config_minimum(ns.conf_path)
+
+
+def conf_shadow(ns):
+    cond = {}
+    incr = []
+    for rule in ns.rules:
+        if "=" in rule:
+            key, val = rule.split("=")
+            cond[key] = val
+        else:
+            incr.append(rule)
+    config.config_shadow(n = ns.number, cond = cond, incr = incr,
+                         fn = ns.conf_path, output = ns.output,
+                         ignore_overwrite = ns.force)
+
+
 # common argument settings
 OPT_DEBUG = [["--debug"],
              {"dest": "debug", "action": "store_true",
               "help": "set logging level to debug (default: info)"}]
 OPT_CONFIG = [["-c", "--config"],
               {"dest": "conf_path", "metavar": "CONFIG", "action": "store",
-               "default": config.DEFAULT_CONFIG,
+               #"default": config.DEFAULT_CONFIG,
+               "default": None,
                "help": "configuration file path for amulog"}]
 OPT_RECUR = [["-r", "--recur"],
              {"dest": "recur", "action": "store_true",
@@ -392,6 +420,38 @@ DICT_ARGSET = {
                        "action": "store", "default": None,
                        "help": "Extended config file for measure-lt"}],],
                     measure_crf],
+    "conf-defaults": ["Show default configurations.",
+                     [],
+                     conf_defaults],
+    "conf-diff": ["Show differences of 2 configuration files.",
+                  [[["files"],
+                    {"metavar": "FILENAME", "nargs": 2,
+                     "help": "configuration file"}]],
+                   conf_diff],
+    "conf-minimum": ["Remove default options and comments.",
+                     [OPT_CONFIG],
+                     conf_minimum],
+    "conf-shadow": ["Copy configuration files.",
+                    [OPT_CONFIG,
+                     [["-f", "--force"],
+                      {"dest": "force", "action": "store_true",
+                       "help": "Ignore overwrite of output file"}],
+                     [["-n", "--number"],
+                      {"dest": "number", "metavar": "INT",
+                       "action": "store", "type": int, "default": 1,
+                       "help": "number of files to generate"}],
+                     [["-o", "--output"],
+                      {"dest": "output", "metavar": "FILENAME",
+                       "action": "store", "type": str, "default": None,
+                       "help": "basic output filename"}],
+                     [["rules"],
+                      {"metavar": "RULES", "nargs": "*",
+                       "help": ("Rules to replace options. You can indicate "
+                                "option, or option and its value with =. "
+                                "You can use both of them together. "
+                                "For example: \"general.import=hoge.conf "
+                                "general.logging\"")}]],
+                    conf_shadow],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

@@ -179,6 +179,102 @@ def open_config(fn = None, ex_defaults = None):
     return conf
 
 
+def show_default_config(ex_defaults = None):
+    conf = load_defaults(ex_defaults)
+    for section in conf.sections():
+        print("[{0}]".format(section))
+        for option in conf.options(section):
+            print("{0} = {1}".format(option, conf[section][option]))
+        print()
+
+
+def show_config_diff(conf_path1, conf_path2):
+
+    def iter_secopt(conf):
+        for sec in conf.sections():
+            for opt in conf.options(sec):
+                yield (sec, opt) 
+
+    conf1 = open_config(conf_path1)
+    conf2 = open_config(conf_path2)
+
+    keys = set(iter_secopt(conf1)) | set(iter_secopt(conf2))
+    sections = {k[0] for k in keys}
+    for sec in sections:
+        print("[{0}]".format(sec))
+        options = {k[1] for k in keys if k[0] == sec}
+        for opt in options:
+            if conf1.has_option(sec, opt) and conf2.has_option(sec, opt):
+                if conf1[sec][opt] == conf2[sec][opt]:
+                    pass
+                else:
+                    print("< {0} = {1}".format(opt, conf1[sec][opt]))
+                    print("> {0} = {1}".format(opt, conf2[sec][opt]))
+            else:
+                if conf1.has_option(sec, opt):
+                    print("< {0} = {1}".format(opt, conf1[sec][opt]))
+                else:
+                    print("> {0} = {1}".format(opt, conf2[sec][opt]))
+        print()
+
+
+def config_minimum(fn, ex_defaults = None):
+    conf = open_config(fn, ex_defaults)
+    default_conf = open_config(None)
+
+    for sec in conf.sections():
+        l_diff = []
+        for opt in conf.options(sec):
+            if not default_conf.has_option(sec, opt):
+                l_diff.append((opt, conf[sec][opt]))
+            elif conf[sec][opt] == default_conf[sec][opt]:
+                pass
+            else:
+                l_diff.append((opt, conf[sec][opt]))
+        if len(l_diff) > 0:
+            print("[{0}]".format(sec))
+            for opt, val in l_diff:
+                print("{0} = {1}".format(opt, val))
+            print()
+
+
+def config_shadow(n = 1, cond = None, incr = None, fn = None, output = None,
+                  ignore_overwrite = False, ex_defaults = None):
+    if cond is None:
+        cond = {}
+    if incr is None:
+        incr = []
+
+    for i in range(n):
+        conf = open_config(fn, ex_defaults)
+        for key, val in cond.items():
+            sec, opt = key.split(".")
+            conf[sec][opt] = val
+        for key in incr:
+            sec, opt = key.split(".")
+            conf[sec][opt] = conf[sec][opt] + str(i)
+
+        if n == 1:
+            footer = ""
+        else:
+            footer = str(i)
+        if output is None:
+            if fn is None:
+                temp_output = "copy.conf" + footer
+            else:
+                temp_output = fn + str(i)
+        else:
+            temp_output = output + footer
+
+        if os.path.exists(temp_output) and not ignore_overwrite:
+            raise IOError("{0} already exists, use -f to ignore".format(
+                temp_output))
+
+        with open(temp_output, "w") as f:
+            conf.write(f)
+            print("{0}".format(temp_output))
+
+
 # common objects for logging
 def set_common_logging(conf, logger = None, logger_name = None,
         lv = logging.INFO):
