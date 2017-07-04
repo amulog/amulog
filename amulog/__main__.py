@@ -272,9 +272,56 @@ def measure_crf(ns):
     ma = lt_crf.MeasureAccuracy(conf)
     if len(ma.results) == 0:
         raise ValueError("No measure results found")
-    ma.print_info()
+    print(ma.info())
     print()
-    ma.print_result()
+    print(ma.result())
+
+
+def measure_crf_multi(ns):
+    from . import lt_crf
+
+    def process_measure_crf(conf, conf_name):
+        _logger.info("process {0} start".format(conf_name))
+        output = "result_" + conf_name
+        ma = lt_crf.MeasureAccuracy(conf)
+        if len(ma.results) == 0:
+            raise ValueError("No measure results found")
+        buf = []
+        buf.append(ma.info())
+        buf.append("")
+        buf.append(ma.result())
+        with open(output, "w") as f:
+            f.write("\n".join(buf))
+        print("> {0}".format(output))
+        _logger.info("process {0} finished".format(conf_name))
+
+
+    ex_defaults = ["data/measure_crf.conf"]
+    l_conf = [config.open_config(conf_path,
+                                 ex_defaults = ["data/measure_crf.conf"])
+              for conf_path in ns.confs]
+    l_conf_name = ns.confs[:]
+    if ns.configset is not None:
+        l_conf += config.load_config_group(ns.configset, ex_defaults)
+        l_conf_name += ns.configset
+    if len(l_conf) == 0:
+        sys.exit("No configuration file is given")
+    diff_keys = ns.diff
+    diff_keys.append(("log_template_crf.model_filename"))
+    config.check_all_diff(ns.confs, diff_keys, l_conf)
+
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(l_conf[0], logger = _logger, lv = lv)
+
+    import multiprocessing
+    timer = common.Timer("measure_crf_multi task", output = _logger)
+    timer.start()
+    l_process = [multiprocessing.Process(name = args[1],
+                                         target = process_measure_crf,
+                                         args = args)
+                 for args in zip(l_conf, l_conf_name)]
+    common.mprocess_queueing(l_process, ns.pal)
+    timer.stop()
 
 
 def conf_defaults(ns):
@@ -299,9 +346,12 @@ def conf_shadow(ns):
             cond[key] = val
         else:
             incr.append(rule)
-    config.config_shadow(n = ns.number, cond = cond, incr = incr,
-                         fn = ns.conf_path, output = ns.output,
-                         ignore_overwrite = ns.force)
+    l_conf_name = config.config_shadow(n = ns.number, cond = cond, incr = incr,
+                                       fn = ns.conf_path, output = ns.output,
+                                       ignore_overwrite = ns.force)
+
+    if ns.configset is not None:
+        config.dump_config_group(l_conf_name, ns.configset)
 
 
 # common argument settings
@@ -313,6 +363,10 @@ OPT_CONFIG = [["-c", "--config"],
                #"default": config.DEFAULT_CONFIG,
                "default": None,
                "help": "configuration file path for amulog"}]
+OPT_CONFIG_SET = [["-s", "--configset"],
+                  {"dest": "configset", "metavar": "CONFIG_SET",
+                   "default": None,
+                   "help": "use config group definition file"}]
 OPT_RECUR = [["-r", "--recur"],
              {"dest": "recur", "action": "store_true",
               "help": "recursively search files to process"}]
@@ -377,9 +431,9 @@ DICT_ARGSET = {
                       "(Not anonymize hostnames; to be added)"),
                      [OPT_CONFIG, OPT_DEBUG],
                      db_anonymize],
-    "reload-area": ["Reload area definition file from config.",
-                    [OPT_CONFIG, OPT_DEBUG],
-                    reload_area],
+    "db-reload-area": ["Reload area definition file from config.",
+                       [OPT_CONFIG, OPT_DEBUG],
+                       reload_area],
     "show-db-info": ["Show abstruction of database status.",
                      [OPT_CONFIG, OPT_DEBUG, OPT_TERM],
                      show_db_info],
@@ -420,6 +474,23 @@ DICT_ARGSET = {
                        "action": "store", "default": None,
                        "help": "Extended config file for measure-lt"}],],
                     measure_crf],
+    "measure-crf-multi": ["Multiprocessing of measure-crf.",
+                          [OPT_DEBUG, OPT_CONFIG_SET,
+                           [["-p", "--pal"],
+                            {"dest": "pal", "action": "store",
+                             "type": int, "default": 1,
+                             "help": "number of processes"}],
+                           [["-d", "--diff"],
+                            {"dest": "diff", "action": "append",
+                             "default": [],
+                             "help": ("check configs that given option values "
+                                      "are all different. This option can "
+                                      "be specified multiple times. "
+                                      "Example: -d general.import -d ...")}],
+                           [["confs"],
+                            {"metavar": "CONFIG", "nargs": "*",
+                             "help": "configuration files"}]],
+                          measure_crf_multi],
     "conf-defaults": ["Show default configurations.",
                      [],
                      conf_defaults],
@@ -432,7 +503,7 @@ DICT_ARGSET = {
                      [OPT_CONFIG],
                      conf_minimum],
     "conf-shadow": ["Copy configuration files.",
-                    [OPT_CONFIG,
+                    [OPT_CONFIG, OPT_CONFIG_SET,
                      [["-f", "--force"],
                       {"dest": "force", "action": "store_true",
                        "help": "Ignore overwrite of output file"}],
@@ -444,6 +515,11 @@ DICT_ARGSET = {
                       {"dest": "output", "metavar": "FILENAME",
                        "action": "store", "type": str, "default": None,
                        "help": "basic output filename"}],
+                     [["-s", "--configset"],
+                      {"dest": "confset", "metavar": "CONFIG_SET",
+                       "default": None,
+                       "help": ("define config group ",
+                                "and dump it in given filename")}],
                      [["rules"],
                       {"metavar": "RULES", "nargs": "*",
                        "help": ("Rules to replace options. You can indicate "

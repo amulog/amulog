@@ -481,44 +481,52 @@ class MeasureAccuracy():
                     "test_tpl_size": len(d_ltid_test)}
         return d_result
 
-    def print_info(self):
-        print("# Experiment for measuring log template generation accuracy")
+    def info(self):
+        buf = []
+        buf.append(("# Experiment for measuring "
+                    "log template generation accuracy"))
         if self.sample_from == "cross":
-            print("# type: Cross-validation (k = {0})".format(self.cross_k))
-            print("# data-source: db({0})".format(self.sample_rules))
+            buf.append("# type: Cross-validation (k = {0})".format(
+                self.cross_k))
+            buf.append("# data-source: db({0})".format(self.sample_rules))
         elif self.sample_from in ("diff", "file"):
-            print("# type: Experiment with different data range / domain")
+            buf.append("# type: Experiment with different data range / domain")
             if self.sample_from == "diff":
-                print("# train-source: db({0})".format(
+                buf.append("# train-source: db({0})".format(
                     self.sample_train_rules))
             elif self.sample_from == "file":
-                print("# train-source: file({0})".format(self.fn))
-            print("# test-source: db({0})".format(self.sample_rules))
-        print("# trials: {0}".format(self.trials))
+                buf.append("# train-source: file({0})".format(self.fn))
+            buf.append("# test-source: db({0})".format(self.sample_rules))
+        buf.append("# trials: {0}".format(self.trials))
+        return "\n".join(buf)
 
-    def print_result(self):
+    def result(self):
         import numpy as np
+        buf = []
         for rid, result in enumerate(self.results):
-            print("Experiment {0}".format(rid))
+            buf.append("Experiment {0}".format(rid))
             for key, val in result.items():
-                print(key, val)
-            print()
+                buf.append("{0} {1}".format(key, val))
+            buf.append("")
 
-        print("# General result")
+        buf.append("# General result")
         arr_wa = np.array([d["word_acc"] for d in self.results])
         wa = np.average(arr_wa)
         wa_err = np.std(arr_wa) / np.sqrt(arr_wa.size)
-        print("Average word accuracy: {0} (err: {1})".format(wa, wa_err))
+        buf.append("Average word accuracy: {0} (err: {1})".format(wa, wa_err))
 
         arr_la = np.array([d["line_acc"] for d in self.results])
         la = np.average(arr_la)
         la_err = np.std(arr_la) / np.sqrt(arr_la.size)
-        print("Average line accuracy: {0} (err: {1})".format(la, la_err))
+        buf.append("Average line accuracy: {0} (err: {1})".format(la, la_err))
 
         arr_ta = np.array([d["tpl_acc"] for d in self.results])
         ta = np.average(arr_ta)
         ta_err = np.std(arr_ta) / np.sqrt(arr_ta.size)
-        print("Average template accuracy: {0} (err: {1})".format(ta, ta_err))
+        buf.append("Average template accuracy: {0} (err: {1})".format(
+            ta, ta_err))
+
+        return "\n".join(buf)
 
 
 def init_ltgen_crf(conf, table, sym):

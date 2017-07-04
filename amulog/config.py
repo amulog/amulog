@@ -245,6 +245,7 @@ def config_shadow(n = 1, cond = None, incr = None, fn = None, output = None,
     if incr is None:
         incr = []
 
+    l_ret = []
     for i in range(n):
         conf = open_config(fn, ex_defaults)
         for key, val in cond.items():
@@ -272,7 +273,53 @@ def config_shadow(n = 1, cond = None, incr = None, fn = None, output = None,
 
         with open(temp_output, "w") as f:
             conf.write(f)
+            l_ret.append(temp_output)
             print("{0}".format(temp_output))
+    return ret
+
+
+def check_all_diff(l_conf_name, keys, l_conf = None):
+    """Return True if all configs have different values in given keys."""
+    if l_conf is None:
+        l_conf = [open_config(conf_name) for conf_name in l_conf_name]
+    ret = True
+    for key in keys:
+        if isinstance(key, tuple) or isinstance(key, list):
+            sec, opt = key
+        else:
+            sec, opt = key.split(".")
+        values = [conf[sec][opt] for conf in l_conf]
+        if len(values) == len(set(values)):
+            pass
+        else:
+            print("Notice: Same {0} settings found")
+            for name, conf in zip(l_conf_name, l_conf):
+                print("{0} : {1}".format(name, conf[sec][opt]))
+            print()
+            ret = False
+    return ret
+
+
+def load_config_group(cgroup_path, ex_defaults = None):
+    with open(cgroup_path, "r") as f:
+        l_conf = []
+        for line in f:
+            fp = line.strip()
+            if fp == "":
+                pass
+            else:
+                if os.path.exists(fp):
+                    conf = open_config(fp, ex_defaults = ex_defaults)
+                    l_conf.append(conf)
+                else:
+                    sys.stderr.write(
+                        "Warning: Invalid config name {0}".format(fp))
+    return l_conf
+
+
+def dump_config_group(cgroup_name, l_conf_name):
+    with open(cgroup_name, "w") as f:
+        f.write("\n".join(l_conf_name))
 
 
 # common objects for logging
