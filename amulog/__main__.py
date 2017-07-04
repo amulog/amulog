@@ -9,6 +9,7 @@ import sys
 import logging
 import argparse
 from collections import namedtuple
+from collections import defaultdict
 
 from . import common
 from . import config
@@ -303,7 +304,7 @@ def measure_crf_multi(ns):
     l_conf_name = ns.confs[:]
     if ns.configset is not None:
         l_conf += config.load_config_group(ns.configset, ex_defaults)
-        l_conf_name += ns.configset
+        l_conf_name += config.read_config_group(ns.configset)
     if len(l_conf) == 0:
         sys.exit("No configuration file is given")
     diff_keys = ns.diff
@@ -329,8 +330,10 @@ def conf_defaults(ns):
 
 
 def conf_diff(ns):
-    conf1, conf2 = ns.files
-    config.show_config_diff(conf1, conf2)
+    files = ns.files[:]
+    if ns.configset:
+        files += config.read_config_group(ns.configset)
+    config.show_config_diff(files)
 
 
 def conf_minimum(ns):
@@ -351,7 +354,8 @@ def conf_shadow(ns):
                                        ignore_overwrite = ns.force)
 
     if ns.configset is not None:
-        config.dump_config_group(l_conf_name, ns.configset)
+        config.dump_config_group(ns.configset, l_conf_name)
+        print(ns.configset)
 
 
 # common argument settings
@@ -495,15 +499,16 @@ DICT_ARGSET = {
                      [],
                      conf_defaults],
     "conf-diff": ["Show differences of 2 configuration files.",
-                  [[["files"],
-                    {"metavar": "FILENAME", "nargs": 2,
+                  [OPT_CONFIG_SET,
+                   [["files"],
+                    {"metavar": "FILENAME", "nargs": "*",
                      "help": "configuration file"}]],
                    conf_diff],
     "conf-minimum": ["Remove default options and comments.",
                      [OPT_CONFIG],
                      conf_minimum],
     "conf-shadow": ["Copy configuration files.",
-                    [OPT_CONFIG, OPT_CONFIG_SET,
+                    [OPT_CONFIG,
                      [["-f", "--force"],
                       {"dest": "force", "action": "store_true",
                        "help": "Ignore overwrite of output file"}],
@@ -516,7 +521,7 @@ DICT_ARGSET = {
                        "action": "store", "type": str, "default": None,
                        "help": "basic output filename"}],
                      [["-s", "--configset"],
-                      {"dest": "confset", "metavar": "CONFIG_SET",
+                      {"dest": "configset", "metavar": "CONFIG_SET",
                        "default": None,
                        "help": ("define config group ",
                                 "and dump it in given filename")}],

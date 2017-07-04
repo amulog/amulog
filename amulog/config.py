@@ -5,6 +5,7 @@ import os
 import datetime
 import logging
 import configparser
+from collections import defaultdict
 
 DEFAULT_CONFIG = "/".join((os.path.dirname(__file__),
                            "data/config.conf.default"))
@@ -188,33 +189,42 @@ def show_default_config(ex_defaults = None):
         print()
 
 
-def show_config_diff(conf_path1, conf_path2):
+def show_config_diff(l_conf_name, l_conf = None, ex_defaults = None):
+    from . import common
+    if l_conf is None:
+        l_conf = [open_config(conf_path, ex_defaults)
+                  for conf_path in l_conf_name]
 
     def iter_secopt(conf):
         for sec in conf.sections():
             for opt in conf.options(sec):
                 yield (sec, opt) 
 
-    conf1 = open_config(conf_path1)
-    conf2 = open_config(conf_path2)
+    keys = set()
+    for conf in l_conf:
+        keys = keys | set(iter_secopt(conf))
 
-    keys = set(iter_secopt(conf1)) | set(iter_secopt(conf2))
-    sections = {k[0] for k in keys}
-    for sec in sections:
-        print("[{0}]".format(sec))
-        options = {k[1] for k in keys if k[0] == sec}
-        for opt in options:
-            if conf1.has_option(sec, opt) and conf2.has_option(sec, opt):
-                if conf1[sec][opt] == conf2[sec][opt]:
-                    pass
-                else:
-                    print("< {0} = {1}".format(opt, conf1[sec][opt]))
-                    print("> {0} = {1}".format(opt, conf2[sec][opt]))
-            else:
-                if conf1.has_option(sec, opt):
-                    print("< {0} = {1}".format(opt, conf1[sec][opt]))
-                else:
-                    print("> {0} = {1}".format(opt, conf2[sec][opt]))
+    d = defaultdict(lambda: defaultdict(set))
+    for conf in l_conf:
+        for key in keys:
+            sec, opt = key
+            if conf.has_option(sec, opt):
+                d[sec][opt].add(conf[sec][opt])
+
+    d_keys = defaultdict(list)
+    for sec in d:
+        for opt in d[sec]:
+            if len(d[sec][opt]) > 1:
+                d_keys[sec].append(opt)
+
+    for sec, l_opt in d_keys.items():
+        print("[{0}]".format(sec))      
+        for opt in l_opt:
+            print("{0} = ...".format(opt))
+            buf = []
+            for name, conf in zip(l_conf_name, l_conf):
+                buf.append([name, ":", conf[sec][opt]])
+            print(common.cli_table(buf))
         print()
 
 
@@ -275,7 +285,7 @@ def config_shadow(n = 1, cond = None, incr = None, fn = None, output = None,
             conf.write(f)
             l_ret.append(temp_output)
             print("{0}".format(temp_output))
-    return ret
+    return l_ret
 
 
 def check_all_diff(l_conf_name, keys, l_conf = None):
@@ -300,20 +310,26 @@ def check_all_diff(l_conf_name, keys, l_conf = None):
     return ret
 
 
-def load_config_group(cgroup_path, ex_defaults = None):
+def read_config_group(cgroup_path):
+    ret = []
     with open(cgroup_path, "r") as f:
-        l_conf = []
         for line in f:
             fp = line.strip()
             if fp == "":
                 pass
             else:
-                if os.path.exists(fp):
-                    conf = open_config(fp, ex_defaults = ex_defaults)
-                    l_conf.append(conf)
-                else:
-                    sys.stderr.write(
-                        "Warning: Invalid config name {0}".format(fp))
+                ret.append(fp)
+    return ret
+
+
+def load_config_group(cgroup_path, ex_defaults = None):
+    l_conf = []
+    for fp in read_config_group(cgroup_path):
+        if os.path.exists(fp):
+            l_conf.append(open_config(fp, ex_defaults))
+        else:
+            sys.stderr.write(
+                "Warning: Invalid config name {0}".format(fp))
     return l_conf
 
 
