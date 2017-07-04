@@ -305,11 +305,19 @@ def measure_crf_multi(ns):
     if ns.configset is not None:
         l_conf += config.load_config_group(ns.configset, ex_defaults)
         l_conf_name += config.read_config_group(ns.configset)
+
     if len(l_conf) == 0:
         sys.exit("No configuration file is given")
+    diff_keys = ["log_template_crf.model_filename"]
+    if not config.check_all_diff(ns.confs, diff_keys, l_conf):
+        print(("This experiment make no sense because model file "
+               "will be overwritten !"))
+        sys.exit()
     diff_keys = ns.diff
-    diff_keys.append(("log_template_crf.model_filename"))
-    config.check_all_diff(ns.confs, diff_keys, l_conf)
+    if not config.check_all_diff(ns.confs, diff_keys, l_conf):
+        print("Option value check failed, so exited")
+        sys.exit()
+
 
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(l_conf[0], logger = _logger, lv = lv)
@@ -337,7 +345,44 @@ def conf_diff(ns):
 
 
 def conf_minimum(ns):
-    config.config_minimum(ns.conf_path)
+    conf = open_config(ns.conf_path, nodefault = True, noimport = True)
+    conf = config.minimum(conf)
+    config.write(ns.conf_path)
+    print("rewrite {0}".format(ns.conf_path))
+
+
+def conf_set_edit(ns):
+    l_conf_name = config.read_config_group(ns.configset)
+    key = ns.key
+    rulestr = ns.rule
+
+    temp = rulestr.rstrip(")").split("(")
+    if not len(temp) == 2:
+        raise ValueError("bad format for value specification")
+    rulename, argstr = temp
+    args = argstr.split(",")
+
+    if rulename == "list":
+        assert len(args) == len(l_conf_name)
+        d = {key: args}
+    elif rulename == "range":
+        assert len(args) == 2
+        start, step = [int(v) for v in args]
+        l_val = [start + i * step for i in range(len(l_conf_name))]
+        d = {key: l_val}
+    elif rulename == "power":
+        assert len(args) == 2
+        start, step = [int(v) for v in args]
+        l_val = [start * (i ** step) for i in range(len(l_conf_name))]
+        d = {key: l_val}
+    elif rulename == "namerange":
+        assert len(args) == 1
+        l_val = [args[0] + str(i) for i in range(len(l_conf_name))]
+        d = {key: l_val}
+    else:
+        raise NotImplementedError("invalid rule name")
+
+    config.config_group_edit(l_conf_name, d)
 
 
 def conf_shadow(ns):
@@ -505,8 +550,32 @@ DICT_ARGSET = {
                      "help": "configuration file"}]],
                    conf_diff],
     "conf-minimum": ["Remove default options and comments.",
-                     [OPT_CONFIG],
-                     conf_minimum],
+                     [[["-o", "--overwrite"],
+                       {"dest": "overwrite", "action": "store_true",
+                        "help": "overwrite file instead of stdout dumping"}],
+                      [["conf_path"],
+                       {"metavar": "PATH",
+                        "help": "config filepath to load"}]],
+                      conf_minimum],
+    "conf-group-edit" : ["Edit configuration files in a config group.",
+                         [[["configset"],
+                           {"metavar": "CONFIG_SET",
+                            "help": "config group definition file to use"}],
+                          [["key"],
+                           {"metavar": "KEY",
+                            "help": "\"SECTION.OPTION\" to edit"}],
+                          [["rule"],
+                           {"metavar": "RULE",
+                            "help": ("Value specification rule "
+                                     "defined in function-like format. "
+                                     "Example: \"List(1,10,100,1000)\" "
+                                     "Available format: "
+                                     "list(values for each config), "
+                                     "range(START,STEP), "
+                                     "power(START,STEP), "
+                                     "namerange(NAME)."
+                                     "Note that 1 rule for 1 execution.")}]],
+                         conf_set_edit],
     "conf-shadow": ["Copy configuration files.",
                     [OPT_CONFIG,
                      [["-f", "--force"],

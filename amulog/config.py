@@ -161,7 +161,8 @@ def load_defaults(ex_conf = None):
     return temp_conf
 
 
-def open_config(fn = None, ex_defaults = None):
+def open_config(fn = None, ex_defaults = None,
+                nodefault = False, noimport = False):
     """
     Args:
         fn (str): Configuration file path.
@@ -170,13 +171,19 @@ def open_config(fn = None, ex_defaults = None):
                                  use this to add its configurations.
         
     """
-    conf = load_defaults(ex_defaults)
+    if nodefault:
+        conf = configparser.ConfigParser()
+    else:
+        conf = load_defaults(ex_defaults)
+
     if fn is not None:
         conf.read(fn)
-    while conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
-        import_fn = conf.get(IMPORT_SECTION, IMPORT_OPTION)
-        conf.remove_option(IMPORT_SECTION, IMPORT_OPTION)
-        conf.read(import_fn)
+
+    if not noimport:
+        while conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
+            import_fn = conf.get(IMPORT_SECTION, IMPORT_OPTION)
+            conf.remove_option(IMPORT_SECTION, IMPORT_OPTION)
+            conf.read(import_fn)
     return conf
 
 
@@ -223,9 +230,50 @@ def show_config_diff(l_conf_name, l_conf = None, ex_defaults = None):
             print("{0} = ...".format(opt))
             buf = []
             for name, conf in zip(l_conf_name, l_conf):
-                buf.append([name, ":", conf[sec][opt]])
-            print(common.cli_table(buf))
+                buf.append([name, conf[sec][opt]])
+            print(common.cli_table(buf, spl = ": "))
         print()
+
+
+def write(name, conf):
+    with open(name, "w") as f:
+        conf.write(f)
+
+
+def minimize(conf, ex_defaults = None):
+    
+    def add_opt(conf, sec, opt, val):
+        if not sec in conf:
+            conf[sec] = {}
+        conf[sec][opt] = val
+
+    new_conf = configparser.ConfigParser()
+    default_conf = open_config(None, ex_defaults)
+    import_conf = configparser.ConfigParser()
+    if conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
+        import_fn = conf[IMPORT_SECTION][IMPORT_OPTION]
+        try:
+            import_conf.read(import_fn)
+        except:
+            pass
+
+    for sec in conf.sections():
+        for opt in conf.options(sec):
+            if import_conf.has_option(sec, opt):
+                if import_conf[sec][opt] == conf[sec][opt]:
+                    continue
+
+            if not default_conf.has_option(sec, opt):
+                # undefine key in defaults
+                add_opt(new_conf, sec, opt, conf[sec][opt])
+            elif conf[sec][opt] == default_conf[sec][opt]:
+                # same value from defaults
+                pass
+            else:
+                # different value from defaults
+                add_opt(new_conf, sec, opt, conf[sec][opt])
+
+    return new_conf
 
 
 def config_minimum(fn, ex_defaults = None):
@@ -246,6 +294,27 @@ def config_minimum(fn, ex_defaults = None):
             for opt, val in l_diff:
                 print("{0} = {1}".format(opt, val))
             print()
+
+
+def config_group_edit(l_conf_name, d_rule, l_conf = None):
+    if l_conf is None:
+        l_conf = [open_config(conf_path, nodefault = True, noimport = True)
+                  for conf_path in l_conf_name]
+    for key, l_val in d_rule.items():
+        if isinstance(key, str):
+            sec, opt = key.split(".")
+        elif len(key) == 2:
+            sec, opt = key
+        else:
+            raise ValueError
+        assert len(l_val) == len(l_conf_name), "bad value length"
+        for conf, val in zip(l_conf, l_val):
+            if not conf.has_section(sec):
+                conf[sec] = {}
+            conf[sec][opt] = str(val)
+
+    for name, conf in zip(l_conf_name, l_conf):
+        write(name, conf)
 
 
 def config_shadow(n = 1, cond = None, incr = None, fn = None, output = None,
@@ -281,10 +350,9 @@ def config_shadow(n = 1, cond = None, incr = None, fn = None, output = None,
             raise IOError("{0} already exists, use -f to ignore".format(
                 temp_output))
 
-        with open(temp_output, "w") as f:
-            conf.write(f)
-            l_ret.append(temp_output)
-            print("{0}".format(temp_output))
+        write(temp_output, minimize(conf, ex_defaults))
+        l_ret.append(temp_output)
+        print("{0}".format(temp_output))
     return l_ret
 
 
@@ -302,7 +370,7 @@ def check_all_diff(l_conf_name, keys, l_conf = None):
         if len(values) == len(set(values)):
             pass
         else:
-            print("Notice: Same {0} settings found")
+            print("Notice: Same {0} settings found".format(key))
             for name, conf in zip(l_conf_name, l_conf):
                 print("{0} : {1}".format(name, conf[sec][opt]))
             print()
