@@ -345,9 +345,9 @@ def conf_diff(ns):
 
 
 def conf_minimum(ns):
-    conf = open_config(ns.conf_path, nodefault = True, noimport = True)
-    conf = config.minimum(conf)
-    config.write(ns.conf_path)
+    conf = config.open_config(ns.conf_path, nodefault = True, noimport = True)
+    conf = config.minimize(conf)
+    config.write(ns.conf_path, conf)
     print("rewrite {0}".format(ns.conf_path))
 
 
