@@ -194,7 +194,7 @@ def open_config(fn = None, ex_defaults = None,
         while conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
             import_fn = conf.get(IMPORT_SECTION, IMPORT_OPTION)
             conf.remove_option(IMPORT_SECTION, IMPORT_OPTION)
-            import_conf = config.parser.ConfigParser().read(import_fn)
+            import_conf = configparser.ConfigParser().read(import_fn)
             import_config(conf, import_conf)
 
     if not nodefault:
