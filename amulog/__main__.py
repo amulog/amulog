@@ -378,6 +378,10 @@ def conf_set_edit(ns):
         start, step = [int(v) for v in args]
         l_val = [start * (i ** step) for i in range(len(l_conf_name))]
         d = {key: l_val}
+    elif rulename == "withconf":
+        assert len(args) == 1
+        l_val = [args[0] + name for i, name in enumerate(l_conf_name)]
+        d = {key: l_val}
     elif rulename == "namerange":
         assert len(args) == 1
         l_val = [args[0] + str(i) for i in range(len(l_conf_name))]
@@ -576,6 +580,7 @@ DICT_ARGSET = {
                                      "list(values for each config), "
                                      "range(START,STEP), "
                                      "power(START,STEP), "
+                                     "withconf(NAME),"
                                      "namerange(NAME)."
                                      "Note that 1 rule for 1 execution.")}]],
                          conf_set_edit],
