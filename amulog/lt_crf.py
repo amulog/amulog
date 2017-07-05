@@ -240,13 +240,13 @@ class MeasureAccuracy():
             self.train_sample_method = conf.get("measure_lt",
                                                 "train_sample_method")
             self.train_size = conf.getint("measure_lt", "train_size")
-            self._eval_diff(self.sample_from)
+            self._eval_diff()
         elif self.sample_from == "file":
             self.fn = conf.get("measure_lt", "sample_from_file")
             self.train_sample_method = conf.get("measure_lt",
                                                 "train_sample_method")
             self.train_size = conf.getint("measure_lt", "train_size")
-            self._eval_diff(self.sample_from)
+            self._eval_file()
         else:
             raise NotImplementedError
 
@@ -343,12 +343,9 @@ class MeasureAccuracy():
                                    train_ltidmap, test_ltidmap)
             self.results.append(d_result)
 
-    def _eval_diff(self, method):
+    def _eval_diff(self):
 
-        if method == "diff":
-            l_test, test_ltidmap = self._load_test_diff()
-        elif method == "file":
-            l_test, test_ltidmap = self._load_test_file()
+        l_test, test_ltidmap = self._load_test_diff()
 
         l_train_all = [] # (ltid, lineitems)
         for line in self.ld.iter_lines(**self.sample_train_rules):
@@ -418,6 +415,13 @@ class MeasureAccuracy():
         else:
             raise NotImplementedError
 
+    def _eval_file(self):
+        l_train, train_ltidmap = self._load_train_file()
+        l_test, test_ltidmap = self._load_test_diff()
+        d_result = self._trial(l_train, l_test,
+                               train_ltidmap, test_ltidmap)
+        self.results.append(d_result)
+
     def _load_test_diff(self):
         l_test = []
         test_ltidmap = defaultdict(int)
@@ -426,7 +430,7 @@ class MeasureAccuracy():
             test_ltidmap[line.lt.ltid] += 1
         return l_test, test_ltidmap
 
-    def _load_test_file(self):
+    def _load_train_file(self):
         l_test = []
         for lineitems in items.iter_items_from_file(self.fn):
             l_test.append(lineitems)

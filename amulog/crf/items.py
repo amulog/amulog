@@ -8,7 +8,8 @@ def iter_items_from_file(fp):
     """Yields items of a line for training from a file of items format."""
 
     def buf2items(buf):
-        return [item.strip() for item in buf]
+        return buf
+        #return [item.strip() for item in buf]
 
     with open(fp, 'r') as f:
         buf = []
