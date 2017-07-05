@@ -171,19 +171,36 @@ def open_config(fn = None, ex_defaults = None,
                                  use this to add its configurations.
         
     """
-    if nodefault:
-        conf = configparser.ConfigParser()
-    else:
-        conf = load_defaults(ex_defaults)
 
+    def import_config(conf, import_conf):
+        for sec in import_conf.sections():
+            for opt in import_conf.options(sec):
+                if conf.has_option(sec, opt):
+                    pass
+                else:
+                    if not conf.has_section(sec):
+                        conf[sec] = {}
+                    conf.set(sec, opt, import_conf[sec][opt])
+        return conf
+
+    conf = configparser.ConfigParser()
     if fn is not None:
-        conf.read(fn)
+        ret = conf.read(fn)
+        if len(ret) == 0:
+            raise IOError(
+                "config loading error: invalid filename or empty config")
 
     if not noimport:
         while conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
             import_fn = conf.get(IMPORT_SECTION, IMPORT_OPTION)
             conf.remove_option(IMPORT_SECTION, IMPORT_OPTION)
-            conf.read(import_fn)
+            import_conf = config.parser.ConfigParser().read(import_fn)
+            import_config(conf, import_conf)
+
+    if not nodefault:
+        default_conf = load_defaults(ex_defaults)
+        import_config(conf, default_conf)
+
     return conf
 
 
