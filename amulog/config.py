@@ -157,7 +157,11 @@ def load_defaults(ex_conf = None):
     if not ex_conf is None and len(ex_conf) > 0:
         l_fn = [DEFAULT_CONFIG] + ex_conf
     temp_conf = configparser.ConfigParser()
-    temp_conf.read(l_fn)
+    for fn in l_fn:
+        ret = temp_conf.read(fn)
+        if len(ret) == 0:
+            raise IOError("config load error ({0})".format(fn))
+
     return temp_conf
 
 
@@ -187,18 +191,18 @@ def open_config(fn = None, ex_defaults = None,
     if fn is not None:
         ret = conf.read(fn)
         if len(ret) == 0:
-            raise IOError(
-                "config loading error: invalid filename or empty config")
+            raise IOError("config load error ({0})".format(fn))
 
     if not noimport:
         while conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
+            if conf[IMPORT_SECTION][IMPORT_OPTION] == "":
+                break
             import_fn = conf.get(IMPORT_SECTION, IMPORT_OPTION)
             conf.remove_option(IMPORT_SECTION, IMPORT_OPTION)
             import_conf = configparser.ConfigParser()
             ret = import_conf.read(import_fn)
             if len(ret) == 0:
-                raise IOError(
-                    "config importing error: invalid filename or empty config")
+                raise IOError("config load error ({0})".format(import_fn))
             import_config(conf, import_conf)
 
     if not nodefault:

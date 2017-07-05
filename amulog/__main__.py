@@ -6,6 +6,7 @@ Interface to use some functions about Log DB from CLI.
 """
 
 import sys
+import os
 import logging
 import argparse
 from collections import namedtuple
@@ -264,8 +265,9 @@ def _parse_condition(condition):
 
 
 def measure_crf(ns):
-    conf = config.open_config(ns.conf_path,
-                              ex_defaults = ["data/measure_crf.conf"])
+    ex_defaults = ["/".join((os.path.dirname(__file__), 
+                             "data/measure_crf.conf.default"))]
+    conf = config.open_config(ns.conf_path, ex_defaults)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
     from . import lt_crf
@@ -300,9 +302,9 @@ def measure_crf_multi(ns):
         _logger.info("process {0} finished".format(conf_name))
 
 
-    ex_defaults = ["data/measure_crf.conf"]
-    l_conf = [config.open_config(conf_path,
-                                 ex_defaults = ["data/measure_crf.conf"])
+    ex_defaults = ["/".join((os.path.dirname(__file__), 
+                             "data/measure_crf.conf.default"))]
+    l_conf = [config.open_config(conf_path, ex_defaults)
               for conf_path in ns.confs]
     l_conf_name = ns.confs[:]
     if ns.configset is not None:

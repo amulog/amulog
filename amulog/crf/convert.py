@@ -60,9 +60,9 @@ class FeatureExtracter():
                 d_feature[name] = fval
             ret.append(d_feature)
 
-        if bos:
+        if self.bos:
             ret[0]["F"] = "__BOS__"
-        if eos:
+        if self.eos:
             ret[-1]["F"] = "__EOS__"
 
         return pycrfsuite.ItemSequence(ret)
