@@ -230,7 +230,8 @@ def show_config_diff(l_conf_name, l_conf = None, ex_defaults = None):
             print("{0} = ...".format(opt))
             buf = []
             for name, conf in zip(l_conf_name, l_conf):
-                buf.append([name, conf[sec][opt]])
+                if conf.has_option(sec, opt):
+                    buf.append([name, conf[sec][opt]])
             print(common.cli_table(buf, spl = ": "))
         print()
 
