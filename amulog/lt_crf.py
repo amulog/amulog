@@ -27,7 +27,7 @@ class LTGenCRF(lt_common.LTGen):
     LABEL_VAR = "V"
     LABEL_DUMMY = "N"
 
-    def __init__(self, table, sym, model, verbose, template, lwobj):
+    def __init__(self, table, sym, model, verbose, template, bos, eos, lwobj):
         super(LTGenCRF, self).__init__(table, sym)
         self.model = model
         self.verbose = verbose
@@ -36,7 +36,8 @@ class LTGenCRF(lt_common.LTGen):
 
         self.trainer = None
         self.tagger = None
-        self.converter = convert.FeatureExtracter(self._template)
+        self.converter = convert.FeatureExtracter(self._template,
+                                                  bos = bos, eos = eos)
         self.lwobj = lwobj
         #if self._middle == "re":
         #    self._lwobj = LabelWord(conf)
@@ -121,7 +122,9 @@ class LabelWord():
             return tuple([w.strip() for w in s.split(",")])
 
         conf = configparser.ConfigParser()
-        conf.read(fn)
+        loaded = conf.read(fn)
+        if len(loaded) == 0:
+            sys.exit("opening config {0} failed".format(fn))
 
         t_ext = gettuple(conf, "ext", "rules")
         for rule in t_ext:
@@ -394,13 +397,18 @@ class MeasureAccuracy():
                     else:
                         for group in sorted(d_group.values(),
                                             key = lambda x: len(x),
-                                            reverse = True):
+                                            reverse = True)[:temp]:
                             assert len(group) > 0
                             l_sampled.append(group.pop())
                     for key in [key for key, val
                                 in d_group.items() if len(val) == 0]:
                         d_group.pop(key)
 
+                if not len(l_sampled) == self.train_size:
+                    _logger.warning(
+                        ("Train size is not equal to specified number, "
+                         "it seems there is some bug"))
+                    l_sampled = l_sampled[:self.train_size]
                 l_ltid = [lm.lt.ltid for lm in l_sampled]
                 train_ltidmap = self._make_ltidmap(l_ltid)
                 l_train = [items.line2train(lm) for lm in l_sampled]
@@ -534,11 +542,13 @@ def init_ltgen_crf(conf, table, sym):
     verbose = conf.getboolean("log_template_crf", "verbose")
     template = conf.get("log_template_crf", "feature_template")
     middle = conf.get("log_template_crf", "middle_label_rule")
+    bos = conf.getboolean("log_template_crf", "template_bos")
+    eos = conf.getboolean("log_template_crf", "template_eos")
     if len(middle) > 0:
         lwobj = LabelWord(conf, middle)
     else:
         lwobj = None
-    return LTGenCRF(table, sym, model, verbose, template, lwobj)
+    return LTGenCRF(table, sym, model, verbose, template, bos, eos, lwobj)
 
 
 def make_crf_train(conf, iterobj):

@@ -14,11 +14,13 @@ class FeatureExtracter():
                  "2": 2, "y": 2, "label": 2,
                  "F": None}
 
-    def __init__(self, template_fp = None):
+    def __init__(self, template_fp = None, bos = True, eos = True):
         if template_fp is None or template_fp == "":
             self.template = self.load_template(self.DEFAULT_TEMPLATE)
         else:
             self.template = self.load_template(template_fp)
+        self.bos = bos
+        self.eos = eos
 
     def load_template(self, fp):
         template = [] # (field (int), offset (int))
@@ -58,8 +60,10 @@ class FeatureExtracter():
                 d_feature[name] = fval
             ret.append(d_feature)
 
-        ret[0]["F"] = "__BOS__"
-        ret[-1]["F"] = "__EOS__"
+        if bos:
+            ret[0]["F"] = "__BOS__"
+        if eos:
+            ret[-1]["F"] = "__EOS__"
 
         return pycrfsuite.ItemSequence(ret)
 

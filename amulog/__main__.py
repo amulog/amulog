@@ -270,12 +270,15 @@ def measure_crf(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
     from . import lt_crf
 
+    timer = common.Timer("measure-crf", output = _logger)
+    timer.start()
     ma = lt_crf.MeasureAccuracy(conf)
     if len(ma.results) == 0:
         raise ValueError("No measure results found")
     print(ma.info())
     print()
     print(ma.result())
+    timer.stop()
 
 
 def measure_crf_multi(ns):
@@ -323,7 +326,7 @@ def measure_crf_multi(ns):
     config.set_common_logging(l_conf[0], logger = _logger, lv = lv)
 
     import multiprocessing
-    timer = common.Timer("measure_crf_multi task", output = _logger)
+    timer = common.Timer("measure-crf-multi task", output = _logger)
     timer.start()
     l_process = [multiprocessing.Process(name = args[1],
                                          target = process_measure_crf,
