@@ -12,15 +12,35 @@ class FeatureExtracter():
     TPL_FIELD = {"0": 0, "w": 0, "word": 0,
                  "1": 1, "pos": 1, "mid": 1,
                  "2": 2, "y": 2, "label": 2,
+                 "bos": None, "eos": None,
                  "F": None}
 
-    def __init__(self, template_fp = None, bos = True, eos = True):
+    def __init__(self, template_fp = None):
         if template_fp is None or template_fp == "":
             self.template = self.load_template(self.DEFAULT_TEMPLATE)
         else:
             self.template = self.load_template(template_fp)
-        self.bos = bos
-        self.eos = eos
+        self.bos = False
+        self.eos = False
+
+    @classmethod
+    def _tpl_field(cls, field, offset):
+        if field in cls.TPL_FIELD:
+            val = cls.TPL_FIELD[field]
+            if val is None:
+                if field == "bos":
+                    self.bos = True
+                elif field == "eos":
+                    self.eos = True
+                else:
+                    raise NotImplementedError(
+                       "Invalid syntax of crf feature template")
+                return None
+            else:
+                return val
+        else:
+            raise NotImplementedError(
+                "Invalid syntax of crf feature template")
 
     def load_template(self, fp):
         template = [] # (field (int), offset (int))
@@ -33,7 +53,9 @@ class FeatureExtracter():
                 l_rule = []
                 for cond in l_cond:
                     field, n, offset = cond.rstrip("]").partition("[")
-                    l_rule.append([field, int(offset)])
+                    field_id = self._tpl_field(field, offset)
+                    if field_id is not None:
+                        l_rule.append([field, int(offset)])
                 template.append([name, l_rule])
         return tuple(template)
 

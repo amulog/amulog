@@ -27,7 +27,7 @@ class LTGenCRF(lt_common.LTGen):
     LABEL_VAR = "V"
     LABEL_DUMMY = "N"
 
-    def __init__(self, table, sym, model, verbose, template, bos, eos, lwobj):
+    def __init__(self, table, sym, model, verbose, template, lwobj):
         super(LTGenCRF, self).__init__(table, sym)
         self.model = model
         self.verbose = verbose
@@ -36,8 +36,7 @@ class LTGenCRF(lt_common.LTGen):
 
         self.trainer = None
         self.tagger = None
-        self.converter = convert.FeatureExtracter(self._template,
-                                                  bos = bos, eos = eos)
+        self.converter = convert.FeatureExtracter(self._template)
         self.lwobj = lwobj
         #if self._middle == "re":
         #    self._lwobj = LabelWord(conf)
@@ -546,13 +545,13 @@ def init_ltgen_crf(conf, table, sym):
     verbose = conf.getboolean("log_template_crf", "verbose")
     template = conf.get("log_template_crf", "feature_template")
     middle = conf.get("log_template_crf", "middle_label_rule")
-    bos = conf.getboolean("log_template_crf", "template_bos")
-    eos = conf.getboolean("log_template_crf", "template_eos")
+    #bos = conf.getboolean("log_template_crf", "template_bos")
+    #eos = conf.getboolean("log_template_crf", "template_eos")
     if len(middle) > 0:
         lwobj = LabelWord(conf, middle)
     else:
         lwobj = None
-    return LTGenCRF(table, sym, model, verbose, template, bos, eos, lwobj)
+    return LTGenCRF(table, sym, model, verbose, template, lwobj)
 
 
 def make_crf_train(conf, iterobj):
