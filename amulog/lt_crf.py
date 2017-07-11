@@ -27,7 +27,9 @@ class LTGenCRF(lt_common.LTGen):
     LABEL_VAR = "V"
     LABEL_DUMMY = "N"
 
-    def __init__(self, table, sym, model, verbose, template, lwobj):
+    POS_UNKNOWN = "unknown"
+
+    def __init__(self, table, sym, model, verbose, template, ig_val, lwobj):
         super(LTGenCRF, self).__init__(table, sym)
         self.model = model
         self.verbose = verbose
@@ -36,7 +38,8 @@ class LTGenCRF(lt_common.LTGen):
 
         self.trainer = None
         self.tagger = None
-        self.converter = convert.FeatureExtracter(self._template)
+        self.converter = convert.FeatureExtracter(self._template,
+                                                  [self.POS_UNKNOWN], ig_val)
         self.lwobj = lwobj
         #if self._middle == "re":
         #    self._lwobj = LabelWord(conf)
@@ -147,7 +150,7 @@ class LabelWord():
                 if reobj.match(word):
                     return key
 
-        return "unknown"
+        return self.POS_UNKNOWN
 
 
     def label_ipaddr(self, word):
@@ -545,13 +548,12 @@ def init_ltgen_crf(conf, table, sym):
     verbose = conf.getboolean("log_template_crf", "verbose")
     template = conf.get("log_template_crf", "feature_template")
     middle = conf.get("log_template_crf", "middle_label_rule")
-    #bos = conf.getboolean("log_template_crf", "template_bos")
-    #eos = conf.getboolean("log_template_crf", "template_eos")
+    ig_val = conf.get("log_template_crf", "unknown_key_weight")
     if len(middle) > 0:
         lwobj = LabelWord(conf, middle)
     else:
         lwobj = None
-    return LTGenCRF(table, sym, model, verbose, template, lwobj)
+    return LTGenCRF(table, sym, model, verbose, template, ig_val, lwobj)
 
 
 def make_crf_train(conf, iterobj):
