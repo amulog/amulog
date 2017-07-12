@@ -602,7 +602,7 @@ DICT_ARGSET = {
                      [["-s", "--configset"],
                       {"dest": "configset", "metavar": "CONFIG_SET",
                        "default": None,
-                       "help": ("define config group ",
+                       "help": ("define config group "
                                 "and dump it in given filename")}],
                      [["rules"],
                       {"metavar": "RULES", "nargs": "*",

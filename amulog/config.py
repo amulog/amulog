@@ -352,7 +352,7 @@ def config_shadow(n = 1, cond = None, incr = None, fn = None, output = None,
 
     l_ret = []
     for i in range(n):
-        conf = open_config(fn, ex_defaults)
+        conf = open_config(fn, ex_defaults, noimport = True)
         for key, val in cond.items():
             sec, opt = key.split(".")
             conf[sec][opt] = val
