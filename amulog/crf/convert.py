@@ -49,9 +49,12 @@ class FeatureExtracter():
                     raise SyntaxError(
                         "Invalid syntax of feature template ({0})".format(
                             line))
-                field, offset = m.groups()
-                l_rule.append(tuple([field,
-                                     int(offset.strip("[").rstrip("]"))]))
+                field, offset_str = m.groups()
+                if offset_str is None:
+                    offset = None
+                else:
+                    offset = int(offset_str.strip("[").rstrip("]"))
+                l_rule.append(tuple([field, offset]))
             return name, tuple(l_rule), weight
 
         template = [] # name, tuples(field (int), offset (int))), weight
