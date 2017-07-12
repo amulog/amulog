@@ -80,13 +80,13 @@ class FeatureExtracter():
                 for field, offset in l_rule:
                     if field == "bos":
                         if wid == 0:
-                            subfeature.append(("__BOS__", weight))
+                            subfeature.append("__BOS__")
                         else:
                             subfeature = None
                             break
                     elif field == "eos":
                         if wid == len(l_items) - 1:
-                            subfeature.append(("__EOS__", weight))
+                            subfeature.append("__EOS__")
                         else:
                             subfeature = None
                             break
