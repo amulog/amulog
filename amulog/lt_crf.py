@@ -548,7 +548,7 @@ def init_ltgen_crf(conf, table, sym):
     verbose = conf.getboolean("log_template_crf", "verbose")
     template = conf.get("log_template_crf", "feature_template")
     middle = conf.get("log_template_crf", "middle_label_rule")
-    ig_val = conf.get("log_template_crf", "unknown_key_weight")
+    ig_val = conf.getfloat("log_template_crf", "unknown_key_weight")
     if len(middle) > 0:
         lwobj = LabelWord(conf, middle)
     else:

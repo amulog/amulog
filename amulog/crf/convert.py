@@ -104,7 +104,7 @@ class FeatureExtracter():
                     fval = "|".join(subfeature)
                     key = "=".join((name, fval))
                     d_feature[key] = weight
-                    print(key, weight)
+                    #print(key, weight)
             ret.append(d_feature)
 
         return pycrfsuite.ItemSequence(ret)
