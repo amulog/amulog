@@ -280,6 +280,11 @@ def measure_crf(ns):
     print(ma.info())
     print()
     print(ma.result())
+    if ns.failure:
+        from . import log_db
+        ld = log_db.LogData(conf)
+        with open(ns.failure, "w") as f:
+            f.write(ma.failure_report(ld))
     timer.stop()
 
 
@@ -527,6 +532,9 @@ DICT_ARGSET = {
                        dump_crf_train],
     "measure-crf": ["Measure accuracy of CRF-based log template estimation.",
                     [OPT_DEBUG,
+                     [["-f", "--failure"],
+                      {"dest": "failure", "action": "store",
+                       "help": "output failure report"}],
                      [["-c", "--config"],
                       {"dest": "conf_path", "metavar": "CONFIG",
                        "action": "store", "default": None,

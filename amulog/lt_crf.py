@@ -272,12 +272,12 @@ class MeasureAccuracy():
         random.shuffle(l_labeled)
 
         l_group = []
-        l_group_ltidmap = [] # {ltid: cnt}
+        l_group_ltidlist = []
         basenum = 0
         for size in divide_size(len(l_labeled), self.cross_k):
             l_ltid, l_lm = zip(*l_labeled[basenum:basenum+size])
             l_group.append(l_lm)
-            l_group_ltidmap.append(self._make_ltidmap(l_ltid))
+            l_group_ltidlist.append(l_ltid)
             basenum += size
         assert sum([len(g) for g in l_group]) == len(l_labeled)
         del l_labeled
@@ -285,25 +285,25 @@ class MeasureAccuracy():
         for trial in range(self.trials):
             l_train = None
             l_test = []
-            l_test_ltidmap = []
-            for gid, group, ltidmap in zip(range(self.cross_k),
-                                           l_group, l_group_ltidmap):
+            l_test_ltidlist = []
+            for gid, group, ltidlist in zip(range(self.cross_k),
+                                           l_group, l_group_ltidlist):
                 if gid == trial:
                     assert l_train is None
                     l_train = group
-                    train_ltidmap = ltidmap
+                    train_ltidlist = ltidlist
                 else:
                     l_test += group
-                    l_test_ltidmap.append(ltidmap)
-            test_ltidmap = agg_dict(l_test_ltidmap)
+                    test_ltidlist += ltidlist
+            #test_ltidmap = agg_dict(l_test_ltidlist)
 
             d_result = self._trial(l_train, l_test,
-                                   train_ltidmap, test_ltidmap)
+                                   train_ltidlist, test_ltidlist)
             self.results.append(d_result)
 
     def _eval_diff(self):
 
-        l_test, test_ltidmap = self._load_test_diff()
+        l_test, test_ltidlist = self._load_test_diff()
 
         l_train_all = [] # (ltid, lineitems)
         for line in self.ld.iter_lines(**self.sample_train_rules):
@@ -313,20 +313,18 @@ class MeasureAccuracy():
             if self.trials > 1:
                 raise UserWarning(("measure_lt.trials is ignored "
                                    "because the results must be static"))
-            l_ltid = [lm.lt.ltid for lm in l_train_all]
-            train_ltidmap = self._make_ltidmap(l_ltid)
+            train_ltidlist = [lm.lt.ltid for lm in l_train_all]
             l_train = [items.line2train(lm) for lm in l_train_all]
             d_result = self._trial(l_train, l_test,
-                                   train_ltidmap, test_ltidmap)
+                                   train_ltidlist, test_ltidlist)
             self.results.append(d_result)
         elif self.train_sample_method == "random":
             for i in range(self.trials):
                 l_sampled = random.sample(l_train_all, self.train_size)
-                l_ltid = [lm.lt.ltid for lm in l_sampled]
-                train_ltidmap = self._make_ltidmap(l_ltid)
+                train_ltidlist = [lm.lt.ltid for lm in l_sampled]
                 l_train = [items.line2train(lm) for lm in l_sampled]
                 d_result = self._trial(l_train, l_test,
-                                       train_ltidmap, test_ltidmap)
+                                       train_ltidlist, test_ltidlist)
                 self.results.append(d_result)
         elif self.train_sample_method == "random-va":
             table = lt_common.TemplateTable()
@@ -364,37 +362,37 @@ class MeasureAccuracy():
                         ("Train size is not equal to specified number, "
                          "it seems there is some bug"))
                     l_sampled = l_sampled[:self.train_size]
-                l_ltid = [lm.lt.ltid for lm in l_sampled]
-                train_ltidmap = self._make_ltidmap(l_ltid)
+                train_ltidlist = [lm.lt.ltid for lm in l_sampled]
                 l_train = [items.line2train(lm) for lm in l_sampled]
                 d_result = self._trial(l_train, l_test,
-                                       train_ltidmap, test_ltidmap)
+                                       train_ltidlist, test_ltidlist)
                 self.results.append(d_result)
         else:
             raise NotImplementedError
 
     def _eval_file(self):
-        l_train, train_ltidmap = self._load_train_file()
-        l_test, test_ltidmap = self._load_test_diff()
+        l_train, train_ltidlist = self._load_train_file()
+        l_test, test_ltidlist = self._load_test_diff()
         d_result = self._trial(l_train, l_test,
-                               train_ltidmap, test_ltidmap)
+                               train_ltidlist, test_ltidlist)
         self.results.append(d_result)
 
     def _load_test_diff(self):
         l_test = []
+        test_ltidlist = []
         test_ltidmap = defaultdict(int)
         for line in self.ld.iter_lines(**self.sample_rules):
             l_test.append(items.line2train(line))
-            test_ltidmap[line.lt.ltid] += 1
-        return l_test, test_ltidmap
+            test_ltidlist.append(line.lt.ltid)
+        return l_test, test_ltidlist
 
     def _load_train_file(self):
         l_test = []
         for lineitems in items.iter_items_from_file(self.fn):
             l_test.append(lineitems)
-        return l_test, defaultdict(int)
+        return l_test, []
 
-    def _trial(self, l_train, l_test, d_ltid_train, d_ltid_test):
+    def _trial(self, l_train, l_test, l_ltid_train, l_ltid_test):
 
         def form_template(ltgen, l_w, l_label):
             tpl = []
@@ -411,6 +409,7 @@ class MeasureAccuracy():
 
         table = self.ld.ltm._table
         ltgen = lt_common.init_ltgen(self.conf, table, "crf")
+        d_ltid_test = self._make_ltidmap(l_ltid_test)
 
         ltgen.init_trainer()
         ltgen.train(l_train)
@@ -421,18 +420,22 @@ class MeasureAccuracy():
         la_denom = 0.0
         ta_numer = 0.0
         ta_denom = 0.0
+        d_failure = defaultdict(int)
 
-        for lineitems in l_test:
+        for lineitems, ltid in zip(l_test, l_ltid_test):
             l_correct = items.items2label(lineitems)
             l_w = [item[0] for item in lineitems]
             l_label_correct = [item[-1] for item in lineitems]
             tpl = form_template(ltgen, l_w, l_label_correct)
             l_label = ltgen.label_line(lineitems)
 
-            for w_correct, w_label in zip(l_correct, l_label):
+            for wid, (w_correct, w_label) in enumerate(zip(l_correct,
+                                                           l_label)):
                 wa_denom += 1
                 if w_correct == w_label:
                     wa_numer += 1
+                else:
+                    d_failure[(ltid, wid)] += 1
             assert ltgen._table.exists(tpl)
             ltid = ltgen._table.get_tid(tpl)
             cnt = d_ltid_test[ltid]
@@ -447,8 +450,10 @@ class MeasureAccuracy():
                     "tpl_acc": ta_numer / ta_denom,
                     "train_size": len(l_train),
                     "test_size": len(l_test),
-                    "train_tpl_size": len(d_ltid_train),
-                    "test_tpl_size": len(d_ltid_test)}
+                    "train_tpl_size": len(set(l_ltid_train)),
+                    "test_tpl_size": len(set(l_ltid_test)),
+                    "dict_ltid": d_ltid_test,
+                    "failure": d_failure}
         return d_result
 
     def info(self):
@@ -476,7 +481,8 @@ class MeasureAccuracy():
         for rid, result in enumerate(self.results):
             buf.append("Experiment {0}".format(rid))
             for key, val in result.items():
-                buf.append("{0} {1}".format(key, val))
+                if not type(val) in (list, tuple, dict, defaultdict):
+                    buf.append("{0} {1}".format(key, val))
             buf.append("")
 
         buf.append("# General result")
@@ -497,6 +503,56 @@ class MeasureAccuracy():
             ta, ta_err))
 
         return "\n".join(buf)
+
+    def failure_report(self, ld = None):
+
+        def _failure_place(ld, ltid, wid):
+            if ld is None:
+                return None
+            else:
+                tpl = []
+                for temp_wid, w in enumerate(ld.lt(ltid).ltw):
+                    if temp_wid == wid:
+                        tpl.append("<{0}>".format(w))
+                    else:
+                        tpl.append(w)
+                return " ".join(tpl)
+
+        buf = []
+        buf2 = []
+
+        whole_keys = set()
+        for result in self.results:
+            whole_keys = whole_keys | set(result["failure"].keys())
+
+        d_average = defaultdict(float)
+        for result in self.results:
+            d_fail = result["failure"]
+            for key in whole_keys:
+                if key in d_fail:
+                    d_average[key] += 1.0 * d_fail[key] / len(self.results)
+
+        d_ltid = self.results[0]["dict_ltid"]
+        for key, cnt in sorted(d_average.items(), key = lambda x: x[1],
+                               reverse = True):
+            ltid, wid = key
+            ratio = 1.0 * cnt / d_ltid[ltid]
+            buf.append([ltid, wid, ":", int(cnt), "({0})".format(ratio)])
+            tpl_info = _failure_place(ld, ltid, wid)
+            if tpl_info is not None:
+                buf2.append(tpl_info)
+
+        if len(buf2) == 0:
+            return "\n".join(buf)
+        else:
+            from . import common
+            ret = []
+            for buf_line, buf2_line in zip(common.cli_table(buf).split("\n"),
+                                           buf2):
+                ret.append(buf_line)
+                ret.append(buf2_line)
+                ret.append("")
+            return "\n".join(ret)
 
 
 def init_ltgen_crf(conf, table, sym):
