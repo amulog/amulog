@@ -237,9 +237,13 @@ def dump_crf_train(ns):
     print(lt_crf.make_crf_train(conf, iterobj))
 
 
-def parse_condition(condition):
+def parse_condition(conditions):
+    """
+    Args:
+        conditions (list)
+    """
     d = {}
-    for arg in ns.conditions:
+    for arg in conditions:
         if not "=" in arg:
             raise SyntaxError
         key = arg.partition("=")[0]

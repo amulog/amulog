@@ -9,7 +9,6 @@ import re
 import datetime
 import ipaddress
 
-from . import common
 from . import config
 
 DEFAULT_SYMDEF = "/".join((os.path.dirname(__file__), "data/symdef.txt.default"))
@@ -236,6 +235,7 @@ class LogParser():
 
 
 def test_parse(conf):
+    from . import common
     LP = LogParser(conf)
     ret = []
     if conf.getboolean("general", "src_recur"):
@@ -253,6 +253,8 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         sys.exit("usage: {0} config targets".format(sys.argv[0]))
     conf = config.open_config(sys.argv[1])
+    
+    from . import common
     LP = LogParser(conf)
     for fp in common.rep_dir(sys.argv[2:]):
         with open(fp) as f:
