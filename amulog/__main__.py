@@ -218,10 +218,10 @@ def show_log(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
     from . import log_db
 
-    d = _parse_condition(ns.conditions)
+    d = parse_condition(ns.conditions)
     ld = log_db.LogData(conf)
     for e in ld.iter_lines(**d):
-        print(e.restore__line())
+        print(e.restore_line())
 
 
 def dump_crf_train(ns):
@@ -231,13 +231,13 @@ def dump_crf_train(ns):
     from . import log_db
     from . import lt_crf
 
-    d = _parse_condition(ns.conditions)
+    d = parse_condition(ns.conditions)
     ld = log_db.LogData(conf)
     iterobj = ld.iter_lines(**d)
     print(lt_crf.make_crf_train(conf, iterobj))
 
 
-def _parse_condition(condition):
+def parse_condition(condition):
     d = {}
     for arg in ns.conditions:
         if not "=" in arg:
@@ -320,7 +320,7 @@ def measure_crf_multi(ns):
         sys.exit("No configuration file is given")
     diff_keys = ["log_template_crf.model_filename"]
     if not config.check_all_diff(ns.confs, diff_keys, l_conf):
-        print(("This experiment make no sense because model file "
+        print(("This experiment makes no sense because model file "
                "will be overwritten !"))
         sys.exit()
     diff_keys = ns.diff
