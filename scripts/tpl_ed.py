@@ -39,7 +39,7 @@ for ltid1 in s_ltid1:
     for ltid2 in s_ltid2:
         lt1 = ld.lt(ltid1)
         lt2 = ld.lt(ltid2)
-        ed = edit_distance(lt1.ltw, lt2.ltw, sym)
+        ed = edit_distance(lt1.ltw, lt2.ltw, None)
 
         if d_ed1.get(ltid1, sys.maxsize) > ed:
             d_ed1[ltid1] = ed
