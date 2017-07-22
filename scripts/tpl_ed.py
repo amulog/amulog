@@ -41,9 +41,9 @@ for ltid1 in s_ltid1:
         lt2 = ld.lt(ltid2)
         ed = edit_distance(lt1.ltw, lt2.ltw, sym)
 
-        if d_ed1.get(ltid1, sys.maxsize) < ed:
+        if d_ed1.get(ltid1, sys.maxsize) > ed:
             d_ed1[ltid1] = ed
-        if d_ed2.get(ltid2, sys.maxsize) < ed:
+        if d_ed2.get(ltid2, sys.maxsize) > ed:
             d_ed2[ltid2] = ed
 
 avg1 = 1.0 * sum(d_ed1.values()) / len(d_ed1)
