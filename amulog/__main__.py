@@ -370,35 +370,39 @@ def conf_set_edit(ns):
     key = ns.key
     rulestr = ns.rule
 
-    temp = rulestr.rstrip(")").split("(")
-    if not len(temp) == 2:
-        raise ValueError("bad format for value specification")
-    rulename, argstr = temp
-    args = argstr.split(",")
+    if "(" in rulestr:
+        temp = rulestr.rstrip(")").split("(")
+        if not len(temp) == 2:
+            raise ValueError("bad format for value specification")
+        rulename, argstr = temp
+        args = argstr.split(",")
 
-    if rulename == "list":
-        assert len(args) == len(l_conf_name)
-        d = {key: args}
-    elif rulename == "range":
-        assert len(args) == 2
-        start, step = [int(v) for v in args]
-        l_val = [start + i * step for i in range(len(l_conf_name))]
-        d = {key: l_val}
-    elif rulename == "power":
-        assert len(args) == 2
-        start, step = [int(v) for v in args]
-        l_val = [start * (i ** step) for i in range(len(l_conf_name))]
-        d = {key: l_val}
-    elif rulename == "withconf":
-        assert len(args) == 1
-        l_val = [args[0] + name for i, name in enumerate(l_conf_name)]
-        d = {key: l_val}
-    elif rulename == "namerange":
-        assert len(args) == 1
-        l_val = [args[0] + str(i) for i in range(len(l_conf_name))]
-        d = {key: l_val}
+        if rulename == "list":
+            assert len(args) == len(l_conf_name)
+            d = {key: args}
+        elif rulename == "range":
+            assert len(args) == 2
+            start, step = [int(v) for v in args]
+            l_val = [start + i * step for i in range(len(l_conf_name))]
+            d = {key: l_val}
+        elif rulename == "power":
+            assert len(args) == 2
+            start, step = [int(v) for v in args]
+            l_val = [start * (i ** step) for i in range(len(l_conf_name))]
+            d = {key: l_val}
+        elif rulename == "withconf":
+            assert len(args) == 1
+            l_val = [args[0] + name for i, name in enumerate(l_conf_name)]
+            d = {key: l_val}
+        elif rulename == "namerange":
+            assert len(args) == 1
+            l_val = [args[0] + str(i) for i in range(len(l_conf_name))]
+            d = {key: l_val}
+        else:
+            raise NotImplementedError("invalid rule name")
     else:
-        raise NotImplementedError("invalid rule name")
+        l_val = [rulestr] * len(l_conf_name)
+        d = {key: l_val}
 
     config.config_group_edit(l_conf_name, d)
 
