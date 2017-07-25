@@ -27,14 +27,16 @@ for lm in ld.iter_lines(**d_rule2):
     s_ltid2.add(lm.lt.ltid)
 
 common = s_ltid1 & s_ltid2
-print("{0} common log template found... "
-      "these are ignored in following porcess".format(len(common)))
-for key in common:
-    s_ltid1.remove(key)
-    s_ltid2.remove(key)
+print("{0} common log template found... ".format(len(common)))
 
 d_ed1 = {}
 d_ed2 = {}
+for key in common:
+    d_ed1[key] = 0
+    d_ed2[key] = 0
+    s_ltid1.remove(key)
+    s_ltid2.remove(key)
+
 for ltid1 in s_ltid1:
     for ltid2 in s_ltid2:
         lt1 = ld.lt(ltid1)
