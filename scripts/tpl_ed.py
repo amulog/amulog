@@ -20,11 +20,17 @@ from amulog import log_db
 from amulog.lt_shiso import edit_distance
 from amulog.__main__ import parse_condition
 
+RELATIVE = True
+ACCEPT_SYM = False
+
 if len(sys.argv) < 4:
     sys.exit("usage: {0} CONFIG RULE1 RULE2".format(sys.argv[0]))
 
 conf = config.open_config(sys.argv[1])
-sym = conf.get("log_template", "variable_symbol")
+if ACCEPT_SYM:
+    sym = conf.get("log_template", "variable_symbol")
+else:
+    sym = None
 d_rule1 = parse_condition(sys.argv[2].split(","))
 d_rule2 = parse_condition(sys.argv[3].split(","))
 s_ltid1 = set()
@@ -52,12 +58,18 @@ for ltid1 in s_ltid1:
     for ltid2 in s_ltid2:
         lt1 = ld.lt(ltid1)
         lt2 = ld.lt(ltid2)
-        ed = edit_distance(lt1.ltw, lt2.ltw, None)
+        ed = edit_distance(lt1.ltw, lt2.ltw, sym)
 
         if d_ed1.get(ltid1, sys.maxsize) > ed:
-            d_ed1[ltid1] = ed
+            if RELATIVE:
+                d_ed1[ltid1] = 1.0 * ed / len(lt1.ltw)
+            else:
+                d_ed1[ltid1] = ed
         if d_ed2.get(ltid2, sys.maxsize) > ed:
-            d_ed2[ltid2] = ed
+            if RELATIVE:
+                d_ed2[ltid2] = 1.0 * ed / len(lt2.ltw)
+            else:
+                d_ed2[ltid2] = ed
 
 avg1 = 1.0 * sum(d_ed1.values()) / len(d_ed1)
 avg2 = 1.0 * sum(d_ed2.values()) / len(d_ed2)
