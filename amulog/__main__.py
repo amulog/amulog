@@ -7,6 +7,7 @@ Interface to use some functions about Log DB from CLI.
 
 import sys
 import os
+import datetime
 import logging
 import argparse
 from collections import namedtuple
