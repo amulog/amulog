@@ -477,7 +477,7 @@ def train_sample_random_va(iterobj, size, ltgen_va, ret_va):
     l_sampled = []
     while len(l_sampled) < size:
         temp = size - len(l_sampled)
-        if temp >= lem(d_group):
+        if temp >= len(d_group):
             for group in d_group.values():
                 assert len(group) > 0
                 l_sampled.append(group.pop())
