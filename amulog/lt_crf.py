@@ -250,50 +250,16 @@ class MeasureAccuracy():
             self.results.append(d_result)
         elif self.train_sample_method == "random":
             for i in range(self.trials):
-                l_sampled = random.sample(l_train_all, self.train_size)
-                train_ltidlist = [lm.lt.ltid for lm in l_sampled]
-                l_train = [items.line2train(lm) for lm in l_sampled]
+                l_train, train_ltidlist = train_sample_random(l_train_all,
+                                                              self.train_size)
                 d_result = self._trial(l_train, l_test,
                                        train_ltidlist, test_ltidlist)
                 self.results.append(d_result)
         elif self.train_sample_method == "random-va":
-            table = lt_common.TemplateTable()
-            ltgen_va = lt_common.init_ltgen(self.conf, table, method = "va")
-            d = ltgen_va.process_init_data([(lm.l_w, lm.lt.lts)
-                                            for lm in l_train_all])
-
+            ltgen_va, ret_va = va_preprocess(self.conf, l_train_all)
             for i in range(self.trials):
-                d_group = defaultdict(list)
-                for mid, lm in enumerate(l_train_all):
-                    tid = d[mid]
-                    d_group[tid].append(lm)
-                for group in d_group.values():
-                    random.shuffle(group)
-
-                l_sampled = []
-                while len(l_sampled) < self.train_size:
-                    temp = self.train_size - len(l_sampled)
-                    if temp >= len(d_group):
-                        for group in d_group.values():
-                            assert len(group) > 0
-                            l_sampled.append(group.pop())
-                    else:
-                        for group in sorted(d_group.values(),
-                                            key = lambda x: len(x),
-                                            reverse = True)[:temp]:
-                            assert len(group) > 0
-                            l_sampled.append(group.pop())
-                    for key in [key for key, val
-                                in d_group.items() if len(val) == 0]:
-                        d_group.pop(key)
-
-                if not len(l_sampled) == self.train_size:
-                    _logger.warning(
-                        ("Train size is not equal to specified number, "
-                         "it seems there is some bug"))
-                    l_sampled = l_sampled[:self.train_size]
-                train_ltidlist = [lm.lt.ltid for lm in l_sampled]
-                l_train = [items.line2train(lm) for lm in l_sampled]
+                l_train, train_ltidlist = train_sample_random_va(
+                    l_train_all, self.train_size, ltgen_va, ret_va)
                 d_result = self._trial(l_train, l_test,
                                        train_ltidlist, test_ltidlist)
                 self.results.append(d_result)
@@ -485,6 +451,54 @@ class MeasureAccuracy():
             return "\n".join(ret)
 
 
+def train_sample_random(iterobj, size):
+    l_sampled = random.sample(iterobj, self.train_size)
+    ltidlist = [lm.lt.ltid for lm in l_sampled]
+    l_train = [items.line2train(lm) for lm in l_sampled]
+    return l_train, ltidlist
+
+
+def va_preprocess(conf, iterobj):
+    table = lt_common.TemplateTable()
+    ltgen_va = lt_common.init_ltgen(conf, table, method = "va")
+    ret_va = ltgen_va.process_init_data(
+        [(lm.l_w, lm.lt.lts) for lm in iterobj])
+    return ltgen_va, ret_va
+
+
+def train_sample_random_va(iterobj, size, ltgen_va, ret_va):
+    d_group = defaultdict(list)
+    for mid, lm in enumerate(iterobj):
+        tid = ret_va[mid]
+        d_group[tid].append(lm)
+    for group in d_group.values():
+        random.shuffle(group)
+
+    l_sampled = []
+    while len(l_sampled) < size:
+        temp = size - len(l_sampled)
+        if temp >= lem(d_group):
+            for group in d_group.values():
+                assert len(group) > 0
+                l_sampled.append(group.pop())
+        else:
+            for group in sorted(d_group.values(),
+                                key = lambda x: len(x),
+                                reverse = True)[:temp]:
+                assert len(group) > 0
+                l_sampled.append(group.pop())
+        for key in [key for key, val in d_group.items() if len(val) == 0]:
+            d_group.pop(key)
+
+    if not len(l_sampled) == size:
+        _logger.warning("Train size is not equal to specified number,"
+                        "it seems there is some bug")
+        l_sampled = l_sampled[:self.train_size]
+    ltidlist = [lm.lt.ltid for lm in l_sampled]
+    l_train = [items.line2train(lm) for lm in l_sampled]
+    return l_train, ltidlist
+
+
 def init_ltgen_crf(conf, table, sym):
     model = conf.get("log_template_crf", "model_filename")
     verbose = conf.getboolean("log_template_crf", "verbose")
@@ -506,5 +520,27 @@ def make_crf_train(conf, iterobj):
         item = items.line2train(lm, midlabel_func = ltgen._middle_label)
         buf.append(items.items2str(item))
     return "\n\n".join(buf)
+
+
+def make_crf_model(conf, iterobj, size, method = "all"):
+    table = lt_common.TemplateTable()
+    ltgen = lt_common.init_ltgen(conf, table, "crf")
+    ltgen.init_trainer()
+
+    l_train_all = [items.line2train(lm) for lm in iterobj]
+    if method == "all":
+        l_train = l_train_all
+    elif method == "random":
+        l_train, train_ltidlist = train_sample_random(l_train_all, size)
+    elif method == "random-va":
+        ltgen_va, ret_va = va_preprocess(conf, l_train_all)
+        l_train, train_ltidlist = train_sample_random_va(
+            l_train_all, size, ltgen_va, ret_va)
+    else:
+        raise NotImplementedError(
+            "Invalid sampling method name {0}".format(method))
+    ltgen.train(l_train)
+    assert os.path.exists(ltgen.model)
+    return ltgen.model
 
 

@@ -224,7 +224,7 @@ def show_log(ns):
         print(e.restore_line())
 
 
-def dump_crf_train(ns):
+def make_crf_train(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
@@ -235,6 +235,21 @@ def dump_crf_train(ns):
     ld = log_db.LogData(conf)
     iterobj = ld.iter_lines(**d)
     print(lt_crf.make_crf_train(conf, iterobj))
+
+
+def make_crf_model(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+    from . import lt_crf
+
+    size = int(ns.train_size)
+    method = ns.method
+    d = parse_condition(ns.conditions)
+    ld = log_db.LogData(conf)
+    iterobj = ld.iter_lines(**d)
+    print(lt_crf.make_crf_model(conf, iterobj, size, method))
 
 
 def parse_condition(conditions):
@@ -535,9 +550,20 @@ DICT_ARGSET = {
     "show-log": ["Show log messages that satisfy given conditions in args.",
                  [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
                  show_log],
-    "dump-crf-train": ["Output CRF training file for given conditions.",
+    "make-crf-train": ["Output CRF training file for given conditions.",
                        [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
-                       dump_crf_train],
+                       make_crf_train],
+    "make-crf-model": ["Output CRF trained model file for given conditions.",
+                       [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,
+                        [["-n", "--train_size"],
+                         {"dest": "train_size", "action": "store",
+                          "default": "1000",
+                          "help": "number of training data to sample"}],
+                        [["-m", "--method"],
+                         {"dest": "method", "action": "store",
+                          "help": "train data sampling method name. "
+                                  "[all, random, random-va] is available."}],],
+                       make_crf_model],
     "measure-crf": ["Measure accuracy of CRF-based log template estimation.",
                     [OPT_DEBUG,
                      [["-f", "--failure"],
@@ -546,7 +572,7 @@ DICT_ARGSET = {
                      [["-c", "--config"],
                       {"dest": "conf_path", "metavar": "CONFIG",
                        "action": "store", "default": None,
-                       "help": "Extended config file for measure-lt"}],],
+                       "help": "extended config file for measure-lt"}],],
                     measure_crf],
     "measure-crf-multi": ["Multiprocessing of measure-crf.",
                           [OPT_DEBUG, OPT_CONFIG_SET,

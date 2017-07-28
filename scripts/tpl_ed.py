@@ -1,6 +1,17 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""Measure minimum edit distance of 2 datasets.
+The minimum edit distance of a log template in a dataset is defined as 
+the minimum value of edit distances between the template and
+all templates in another dataset..
+This metric shows the similarity of log templates in 2 datasets.
+
+In this script, the dataset is defined as a part of 1 DB.
+The part definition is described in amulog.config.parse_condition format.
+"""
+
+
 import sys
 from collections import defaultdict
 
