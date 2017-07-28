@@ -489,6 +489,10 @@ def train_sample_random_va(iterobj, size, ltgen_va, ret_va):
                 l_sampled.append(group.pop())
         for key in [key for key, val in d_group.items() if len(val) == 0]:
             d_group.pop(key)
+        if len(d_group) == 0:
+            _logger.warning(
+                "Less than {0} messages in given condition".format(size))
+            break
 
     if not len(l_sampled) == size:
         _logger.warning("Train size is not equal to specified number,"
