@@ -562,6 +562,7 @@ DICT_ARGSET = {
                           "help": "number of training data to sample"}],
                         [["-m", "--method"],
                          {"dest": "method", "action": "store",
+                          "default": "all",
                           "help": "train data sampling method name. "
                                   "[all, random, random-va] is available."}],],
                        make_crf_model],

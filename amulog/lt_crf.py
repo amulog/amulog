@@ -452,7 +452,7 @@ class MeasureAccuracy():
 
 
 def train_sample_random(iterobj, size):
-    l_sampled = random.sample(iterobj, self.train_size)
+    l_sampled = random.sample(list(iterobj), size)
     ltidlist = [lm.lt.ltid for lm in l_sampled]
     l_train = [items.line2train(lm) for lm in l_sampled]
     return l_train, ltidlist
@@ -497,7 +497,7 @@ def train_sample_random_va(iterobj, size, ltgen_va, ret_va):
     if not len(l_sampled) == size:
         _logger.warning("Train size is not equal to specified number,"
                         "it seems there is some bug")
-        l_sampled = l_sampled[:self.train_size]
+        l_sampled = l_sampled[:size]
     ltidlist = [lm.lt.ltid for lm in l_sampled]
     l_train = [items.line2train(lm) for lm in l_sampled]
     return l_train, ltidlist
@@ -533,7 +533,7 @@ def make_crf_model(conf, iterobj, size, method = "all"):
 
     l_train_all = iterobj
     if method == "all":
-        l_train = l_train_all
+        l_train = [items.line2train(lm) for lm in l_train_all]
     elif method == "random":
         l_train, train_ltidlist = train_sample_random(l_train_all, size)
     elif method == "random-va":
