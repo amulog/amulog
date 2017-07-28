@@ -527,7 +527,7 @@ def make_crf_model(conf, iterobj, size, method = "all"):
     ltgen = lt_common.init_ltgen(conf, table, "crf")
     ltgen.init_trainer()
 
-    l_train_all = [items.line2train(lm) for lm in iterobj]
+    l_train_all = iterobj
     if method == "all":
         l_train = l_train_all
     elif method == "random":
