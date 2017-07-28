@@ -33,7 +33,7 @@ class FeatureExtracter():
             l_rule = []
             line = line.rstrip()
             if line == "":
-                return None, None
+                return None
 
             if ":" in line:
                 temp = line.split(":")
@@ -60,7 +60,9 @@ class FeatureExtracter():
         template = [] # name, tuples(field (int), offset (int))), weight
         with open(fp, 'r') as f:
             for line in f:
-                template.append(tuple(_parse_line(line)))
+                ret = _parse_line(line)
+                if ret is not None:
+                    template.append(tuple(ret))
         return tuple(template)
 
     def _get_item(self, item, field):
