@@ -249,8 +249,9 @@ def make_crf_model(ns):
     method = ns.method
     d = parse_condition(ns.conditions)
     ld = log_db.LogData(conf)
-    iterobj = ld.iter_lines(**d)
-    print(lt_crf.make_crf_model(conf, iterobj, size, method))
+    l_lm = [lm for lm in ld.iter_lines(**d)]
+    fn = lt_crf.make_crf_model(conf, l_lm, size, method)
+    print("> {0}".format(fn))
 
 
 def parse_condition(conditions):

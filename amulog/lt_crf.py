@@ -451,24 +451,24 @@ class MeasureAccuracy():
             return "\n".join(ret)
 
 
-def train_sample_random(iterobj, size):
-    l_sampled = random.sample(list(iterobj), size)
+def train_sample_random(l_lm, size):
+    l_sampled = random.sample(l_lm, size)
     ltidlist = [lm.lt.ltid for lm in l_sampled]
     l_train = [items.line2train(lm) for lm in l_sampled]
     return l_train, ltidlist
 
 
-def va_preprocess(conf, iterobj):
+def va_preprocess(conf, l_lm):
     table = lt_common.TemplateTable()
     ltgen_va = lt_common.init_ltgen(conf, table, method = "va")
     ret_va = ltgen_va.process_init_data(
-        [(lm.l_w, lm.lt.lts) for lm in iterobj])
+        [(lm.l_w, lm.lt.lts) for lm in l_lm])
     return ltgen_va, ret_va
 
 
-def train_sample_random_va(iterobj, size, ltgen_va, ret_va):
+def train_sample_random_va(l_lm, size, ltgen_va, ret_va):
     d_group = defaultdict(list)
-    for mid, lm in enumerate(iterobj):
+    for mid, lm in enumerate(l_lm):
         tid = ret_va[mid]
         d_group[tid].append(lm)
     for group in d_group.values():
@@ -491,12 +491,13 @@ def train_sample_random_va(iterobj, size, ltgen_va, ret_va):
             d_group.pop(key)
         if len(d_group) == 0:
             _logger.warning(
-                "Less than {0} messages in given condition".format(size))
+                "Less than {0} messages in given condition "
+                "({1} messages from DB)".format(size, len(l_sampled)))
             break
 
     if not len(l_sampled) == size:
         _logger.warning("Train size is not equal to specified number,"
-                        "it seems there is some bug")
+                        "maybe there is some bug")
         l_sampled = l_sampled[:size]
     ltidlist = [lm.lt.ltid for lm in l_sampled]
     l_train = [items.line2train(lm) for lm in l_sampled]
@@ -526,12 +527,12 @@ def make_crf_train(conf, iterobj):
     return "\n\n".join(buf)
 
 
-def make_crf_model(conf, iterobj, size, method = "all"):
+def make_crf_model(conf, l_lm, size, method = "all"):
     table = lt_common.TemplateTable()
     ltgen = lt_common.init_ltgen(conf, table, "crf")
     ltgen.init_trainer()
 
-    l_train_all = iterobj
+    l_train_all = l_lm
     if method == "all":
         l_train = [items.line2train(lm) for lm in l_train_all]
     elif method == "random":
