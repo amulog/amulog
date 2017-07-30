@@ -59,17 +59,13 @@ for ltid1 in s_ltid1:
         lt1 = ld.lt(ltid1)
         lt2 = ld.lt(ltid2)
         ed = edit_distance(lt1.ltw, lt2.ltw, sym)
+        if RELATIVE:
+            ed = 1.0 * ed / max(len(lt1.ltw), len(lt2.ltw))
 
         if d_ed1.get(ltid1, sys.maxsize) > ed:
-            if RELATIVE:
-                d_ed1[ltid1] = 1.0 * ed / max(len(lt1.ltw), len(lt2.ltw))
-            else:
-                d_ed1[ltid1] = ed
+            d_ed1[ltid1] = ed
         if d_ed2.get(ltid2, sys.maxsize) > ed:
-            if RELATIVE:
-                d_ed2[ltid2] = 1.0 * ed / max(len(lt1.ltw), len(lt2.ltw))
-            else:
-                d_ed2[ltid2] = ed
+            d_ed2[ltid2] = ed
 
 avg1 = 1.0 * sum(d_ed1.values()) / len(d_ed1)
 avg2 = 1.0 * sum(d_ed2.values()) / len(d_ed2)
