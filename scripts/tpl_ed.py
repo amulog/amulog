@@ -62,12 +62,12 @@ for ltid1 in s_ltid1:
 
         if d_ed1.get(ltid1, sys.maxsize) > ed:
             if RELATIVE:
-                d_ed1[ltid1] = 1.0 * ed / len(lt1.ltw)
+                d_ed1[ltid1] = 1.0 * ed / max(len(lt1.ltw), len(lt2.ltw))
             else:
                 d_ed1[ltid1] = ed
         if d_ed2.get(ltid2, sys.maxsize) > ed:
             if RELATIVE:
-                d_ed2[ltid2] = 1.0 * ed / len(lt2.ltw)
+                d_ed2[ltid2] = 1.0 * ed / max(len(lt1.ltw), len(lt2.ltw))
             else:
                 d_ed2[ltid2] = ed
 
