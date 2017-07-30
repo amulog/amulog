@@ -72,7 +72,7 @@ class LabelWord():
 
     def label_host(self, word):
         if self._ha.isknown(word):
-            return self._host
+            return "HOST"
         else:
             return None
 
