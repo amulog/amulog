@@ -33,7 +33,7 @@ for conf in [config.open_config(confpath) for confpath in sys.argv[1:3]]:
     l_data.append(temp_data)
 
 assert len(l_data) == 2
-assert len(l_data[0]) == len(l_data[1])
+#assert len(l_data[0]) == len(l_data[1])
 
 print(adjusted_rand_score(l_data[0], l_data[1]))
 
