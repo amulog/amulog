@@ -846,7 +846,7 @@ class RestoreOriginalData(object):
             self.buf = defaultdict(list)
 
     def add(self, lm):
-        if style == "date":
+        if self.style == "date":
             fn = lm.dt.strftime("%Y%m%d")
         else:
             raise NotImplementedError
