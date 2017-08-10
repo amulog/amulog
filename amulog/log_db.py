@@ -851,10 +851,22 @@ class RestoreOriginalData(object):
         else:
             raise NotImplementedError
 
+        linestr = lm.restore_line()
         if self.method == "incremental":
-            self.write_line(lm, fn)
+            self.write_line(linestr, fn)
         elif self.method == "commit":
-            self.buf[fn].append(lm)
+            self.buf[fn].append(linestr)
+
+    def add_str(self, dt, linestr):
+        if self.style == "date":
+            fn = dt.strftime("%Y%m%d")
+        else:
+            raise NotImplementedError
+
+        if self.method == "incremental":
+            self.write_line(linestr, fn)
+        elif self.method == "commit":
+            self.buf[fn].append(linestr)
 
     def commit(self):
         if method == "incremental":
@@ -862,15 +874,15 @@ class RestoreOriginalData(object):
         elif method == "commit":
             self.write_all()
 
-    def write_line(self, lm, fn):
+    def write_line(self, linestr, fn):
         with open("/".join((self.dirname, fn)), "a") as f:
-            f.write(lm.restore_line() + "\n")
+            f.write(linestr + "\n")
 
     def write_all(self):
         assert self.method == "commit"
-        for fn, l_lm in self.buf.items():
+        for fn, l_buf in self.buf.items():
             with open("/".join((self.dirname, fn)), "w") as f:
-                f.write("\n".join(l_lm))
+                f.write("\n".join(l_buf))
 
 
 def _iter_line_from_files(targets):
