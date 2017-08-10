@@ -509,7 +509,7 @@ DICT_ARGSET = {
                     "help": "seed value to generate random values"}]],
                  generate_testdata],
     "data-filter": ["Straighten data and remove lines of undefined template.",
-                    [OPT_CONFIG, OPT_DEBUG,
+                    [OPT_CONFIG, OPT_DEBUG, OPT_RECUR,
                      [["-d", "--dirname"],
                       {"dest": "dirname", "metavar": "DIRNAME",
                        "action": "store",
