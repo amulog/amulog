@@ -91,6 +91,33 @@ def search_exception(conf, targets):
         _logger.info("lt_import job for ({0}) done".format(fn))
 
 
+def filter_org(conf, targets, dirname):
+    from . import logparser
+    from . import log_db
+    from . import strutil
+    lp = logparser.LogParser(conf)
+    def_path = conf.get("log_template_import", "def_path")
+    sym = conf.get("log_template", "variable_symbol")
+    mode = conf.get("log_template_import", "mode")
+    table = lt_common.TemplateTable()
+    temp_lp = logparser.LogParser(conf, sep_variable = True)
+    ltgen = LTGenImport(table, sym, def_path, mode, temp_lp)
+    rod = log_db.RestoreOriginalData(dirname)
+
+    for fn in targets:
+        _logger.info("lt_import job for ({0}) start".format(fn))
+        with open(fn, "r") as f:
+            for line in f:
+                dt, org_host, l_w, l_s = lp.process_line(line)
+                if l_w is None: continue
+                l_w = [strutil.add_esc(w) for w in l_w]
+                tid, dummy = ltgen.process_line(l_w, l_s)
+                if tid is not None:
+                    rod.add(line.rstrip("\n"))
+        rod.commit()
+        _logger.info("lt_import job for ({0}) done".format(fn))
+
+
 #if __name__ == "__main__":
 #    import sys
 #    import optparse

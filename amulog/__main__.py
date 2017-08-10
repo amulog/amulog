@@ -48,6 +48,17 @@ def generate_testdata(ns):
     testlog.generate_testdata(conf_path, ns.file, ns.seed)
 
 
+def data_filter(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    targets = get_targets_opt(ns, conf)
+    dirname = ns.dirname
+    from . import lt_import
+
+    lt_import.filter_org(conf, targets, dirname)
+
+
 def db_make(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -497,6 +508,14 @@ DICT_ARGSET = {
                     "default": 0,
                     "help": "seed value to generate random values"}]],
                  generate_testdata],
+    "data-filter": ["Straighten data and remove lines of undefined template.",
+                    [OPT_CONFIG, OPT_DEBUG,
+                     [["-d", "--dirname"],
+                      {"dest": "dirname", "metavar": "DIRNAME",
+                       "action": "store",
+                       "help": "directory name to output"}],
+                     ARG_FILES_OPT],
+                    data_filter],
     "db-make": [("Initialize database and add log data. "
                  "This fuction works incrementaly."),
                 [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],

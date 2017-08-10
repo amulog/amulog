@@ -832,6 +832,47 @@ class LogDB():
         return [row[0] for row in cursor]
 
 
+class RestoreOriginalData(object):
+
+    def __init__(self, dirname, style = "date", method = "commit"):
+        self.style = style
+        self.method = method
+        self.dirname = dirname
+        common.mkdir(dirname)
+
+        assert self.style in ("date")
+        assert self.method in ("incremental", "commit")
+        if self.method == "commit":
+            self.buf = defaultdict(list)
+
+    def add(self, lm):
+        if style == "date":
+            fn = lm.dt.strftime("%Y%m%d")
+        else:
+            raise NotImplementedError
+
+        if self.method == "incremental":
+            self.write_line(lm, fn)
+        elif self.method == "commit":
+            self.buf[fn].append(lm)
+
+    def commit(self):
+        if method == "incremental":
+            pass
+        elif method == "commit":
+            self.write_all()
+
+    def write_line(self, lm, fn):
+        with open("/".join((self.dirname, fn)), "a") as f:
+            f.write(lm.restore_line() + "\n")
+
+    def write_all(self):
+        assert self.method == "commit"
+        for fn, l_lm in self.buf.items():
+            with open("/".join((self.dirname, fn)), "w") as f:
+                f.write("\n".join(l_lm))
+
+
 def _iter_line_from_files(targets):
     for fp in targets:
         if os.path.isdir(fp):
