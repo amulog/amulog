@@ -113,7 +113,6 @@ def filter_org(conf, targets, dirname):
                 l_w = [strutil.add_esc(w) for w in l_w]
                 tid, dummy = ltgen.process_line(l_w, l_s)
                 if tid is not None:
-                    rod.add(line.rstrip("\n"))
                     rod.add_str(dt, line.rstrip("\n"))
         rod.commit()
         _logger.info("lt_import job for ({0}) done".format(fn))
