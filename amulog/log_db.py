@@ -869,9 +869,9 @@ class RestoreOriginalData(object):
             self.buf[fn].append(linestr)
 
     def commit(self):
-        if method == "incremental":
+        if self.method == "incremental":
             pass
-        elif method == "commit":
+        elif self.method == "commit":
             self.write_all()
 
     def write_line(self, linestr, fn):
