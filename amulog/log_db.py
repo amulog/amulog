@@ -1166,6 +1166,15 @@ def anonymize(conf):
     ld.commit_db()
 
 
+def data_from_db(conf, dirname, method):
+    rod = RestoreOriginalData(dirname, method = method)
+    ld = LogData(conf)
+    top_dt, end_dt = ld.whole_term()
+    for lm in ld.iter_lines(top_dt = top_dt, end_dt = end_dt):
+        rod.add(lm)
+    rod.commit()
+
+
 #def _get_targets(conf, args, recur):
 #    if len(args) == 0:
 #        if conf.getboolean("general", "src_recur") or recur:

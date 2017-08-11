@@ -63,6 +63,20 @@ def data_filter(ns):
     lt_import.filter_org(conf, targets, dirname, method = method)
 
 
+def data_from_db(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    dirname = ns.dirname
+    if ns.incr:
+        method = "incremental"
+    else:
+        method = "commit"
+
+    from . import log_db
+    log_db.data_from_db(conf, dirname, method)
+
+
 def db_make(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -523,6 +537,17 @@ DICT_ARGSET = {
                        "help": "output incrementally, use with small memory"}],
                      ARG_FILES_OPT],
                     data_filter],
+    "data-from-db": ["Generate log data from DB.",
+                     [OPT_CONFIG, OPT_DEBUG,
+                      [["-d", "--dirname"],
+                       {"dest": "dirname", "metavar": "DIRNAME",
+                        "action": "store",
+                        "help": "directory name to output"}],
+                      [["-i", "--incr"],
+                       {"dest": "incr", "action": "store_true",
+                        "help": "output incrementally, use with small memory"}],
+                      ],
+                     data_from_db],
     "db-make": [("Initialize database and add log data. "
                  "This fuction works incrementaly."),
                 [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],
