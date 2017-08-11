@@ -54,9 +54,13 @@ def data_filter(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
     targets = get_targets_opt(ns, conf)
     dirname = ns.dirname
+    if ns.incr:
+        method = "incremental"
+    else:
+        method = "commit"
     from . import lt_import
 
-    lt_import.filter_org(conf, targets, dirname)
+    lt_import.filter_org(conf, targets, dirname, method = method)
 
 
 def db_make(ns):
@@ -514,6 +518,9 @@ DICT_ARGSET = {
                       {"dest": "dirname", "metavar": "DIRNAME",
                        "action": "store",
                        "help": "directory name to output"}],
+                     [["-i", "--incr"],
+                      {"dest": "incr", "action": "store_true",
+                       "help": "output incrementally, use with small memory"}],
                      ARG_FILES_OPT],
                     data_filter],
     "db-make": [("Initialize database and add log data. "

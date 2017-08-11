@@ -91,7 +91,7 @@ def search_exception(conf, targets):
         _logger.info("lt_import job for ({0}) done".format(fn))
 
 
-def filter_org(conf, targets, dirname):
+def filter_org(conf, targets, dirname, style = "date", method = "commit"):
     from . import logparser
     from . import log_db
     from . import strutil
@@ -102,7 +102,7 @@ def filter_org(conf, targets, dirname):
     table = lt_common.TemplateTable()
     temp_lp = logparser.LogParser(conf, sep_variable = True)
     ltgen = LTGenImport(table, sym, def_path, mode, temp_lp)
-    rod = log_db.RestoreOriginalData(dirname)
+    rod = log_db.RestoreOriginalData(dirname, style = style, method = method)
 
     for fn in targets:
         _logger.info("lt_import job for ({0}) start".format(fn))
