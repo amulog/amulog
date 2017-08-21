@@ -106,11 +106,17 @@ class LTGenCRF(lt_common.LTGen):
 
 class MeasureAccuracy():
 
-    def __init__(self, conf):
+    def __init__(self, conf, s_ltid = None):
+        """
+        Args:
+            conf
+            s_ltid (set): if not None, use limited messages
+                          of given ltid as train data"""
         from . import log_db
         self.ld = log_db.LogData(conf)
         self.ld.init_ltmanager()
         self.conf = conf
+        self.s_ltid = s_ltid
         self.measure_lt_method = conf.get("measure_lt", "lt_method")
         self.sample_from = conf.get("measure_lt", "sample_from")
         self.sample_rules = self._rules(
@@ -227,6 +233,8 @@ class MeasureAccuracy():
                     test_ltidlist += ltidlist
             #test_ltidmap = agg_dict(l_test_ltidlist)
 
+            l_train, train_ltidlist = self._filter_train(l_train,
+                                                         train_ltidlist)
             d_result = self._trial(l_train, l_test,
                                    train_ltidlist, test_ltidlist)
             self.results.append(d_result)
@@ -245,6 +253,8 @@ class MeasureAccuracy():
                                    "because the results must be static"))
             train_ltidlist = [lm.lt.ltid for lm in l_train_all]
             l_train = [items.line2train(lm) for lm in l_train_all]
+            l_train, train_ltidlist = self._filter_train(l_train,
+                                                         train_ltidlist)
             d_result = self._trial(l_train, l_test,
                                    train_ltidlist, test_ltidlist)
             self.results.append(d_result)
@@ -252,6 +262,8 @@ class MeasureAccuracy():
             for i in range(self.trials):
                 l_train, train_ltidlist = train_sample_random(l_train_all,
                                                               self.train_size)
+                l_train, train_ltidlist = self._filter_train(l_train,
+                                                             train_ltidlist)
                 d_result = self._trial(l_train, l_test,
                                        train_ltidlist, test_ltidlist)
                 self.results.append(d_result)
@@ -260,6 +272,8 @@ class MeasureAccuracy():
             for i in range(self.trials):
                 l_train, train_ltidlist = train_sample_random_va(
                     l_train_all, self.train_size, ltgen_va, ret_va)
+                l_train, train_ltidlist = self._filter_train(l_train,
+                                                             train_ltidlist)
                 d_result = self._trial(l_train, l_test,
                                        train_ltidlist, test_ltidlist)
                 self.results.append(d_result)
@@ -269,6 +283,8 @@ class MeasureAccuracy():
     def _eval_file(self):
         l_train, train_ltidlist = self._load_train_file()
         l_test, test_ltidlist = self._load_test_diff()
+        l_train, train_ltidlist = self._filter_train(l_train,
+                                                     train_ltidlist)
         d_result = self._trial(l_train, l_test,
                                train_ltidlist, test_ltidlist)
         self.results.append(d_result)
@@ -287,6 +303,17 @@ class MeasureAccuracy():
         for lineitems in items.iter_items_from_file(self.fn):
             l_test.append(lineitems)
         return l_test, []
+
+    def _filter_train(self, l_train, train_ltidlist):
+        if self.s_ltid is None:
+            return l_train, train_ltidlist
+        ret_l_train = []
+        ret_train_ltidlist = []
+        for trainobj, ltid in zip(l_train, train_ltidlist):
+            if ltid in self.s_ltid:
+                ret_l_train.append(trainobj)
+                ret_train_ltidlist.append(ltid)
+        return ret_l_train, ret_train_ltidlist
 
     def _trial(self, l_train, l_test, l_ltid_train, l_ltid_test):
 
@@ -322,7 +349,6 @@ class MeasureAccuracy():
             l_correct = items.items2label(lineitems)
             l_w = [item[0] for item in lineitems]
             l_label_correct = [item[-1] for item in lineitems]
-            tpl = form_template(ltgen, l_w, l_label_correct)
             l_label = ltgen.label_line(lineitems)
 
             for wid, (w_correct, w_label) in enumerate(zip(l_correct,
@@ -332,8 +358,10 @@ class MeasureAccuracy():
                     wa_numer += 1
                 else:
                     d_failure[(ltid, wid)] += 1
-            assert ltgen._table.exists(tpl)
-            ltid = ltgen._table.get_tid(tpl)
+            if ltid is None:
+                tpl = form_template(ltgen, l_w, l_label_correct)
+                assert ltgen._table.exists(tpl)
+                ltid = ltgen._table.get_tid(tpl)
             cnt = d_ltid_test[ltid]
             la_denom += 1
             ta_denom += 1.0 / cnt

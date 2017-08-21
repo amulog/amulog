@@ -81,4 +81,11 @@ print("group 2 ({0}):".format(sys.argv[3]))
 for ltid, ed in sorted(d_ed2.items(), key = lambda x: x[1], reverse = True):
     print("ltid {0} : {1}".format(ltid, ed))
 
+fn = "tpl_ed_pickle"
+import pickle
+with open(fn, "w") as f:
+    pickle.dump((d_ed1, d_ed2), f)
+print("> {0}".format(fn))
+
+
 
