@@ -313,6 +313,7 @@ class MeasureAccuracy():
             if ltid in self.s_ltid:
                 ret_l_train.append(trainobj)
                 ret_train_ltidlist.append(ltid)
+        assert len(ret_l_train) > 0
         _logger.info("train data decreased with ltid-based filter "
                      "({0} -> {1})".format(len(l_train), len(ret_l_train)))
         return ret_l_train, ret_train_ltidlist
