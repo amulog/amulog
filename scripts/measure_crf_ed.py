@@ -5,7 +5,7 @@
 # - ed_threshold
 # - d_ed1, d_ed2
 
-from . import lt_crf
+from amulog import lt_crf
 
 if len(sys.argv) < 4:
     sys.exit("usage: {0} CONFIG DISTFILE THRESHOLD".format(sys.argv[0]))
