@@ -10,10 +10,14 @@ import sys
 from amulog import config
 from amulog import lt_crf
 
+_logger = logging.getLogger("amulog")
+
 if len(sys.argv) < 4:
     sys.exit("usage: {0} CONFIG DISTFILE THRESHOLD".format(sys.argv[0]))
 
 conf = config.open_config(sys.argv[1])
+config.set_common_logging(conf, logger = _logger, lv = logging.INFO)
+
 d_ed = {}
 with open(sys.argv[2], "r") as f:
     for line in f:
