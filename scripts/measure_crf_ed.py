@@ -5,6 +5,9 @@
 # - ed_threshold
 # - d_ed1, d_ed2
 
+import sys
+
+from amulog import config
 from amulog import lt_crf
 
 if len(sys.argv) < 4:
