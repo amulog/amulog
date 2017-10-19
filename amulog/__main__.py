@@ -261,10 +261,13 @@ def make_crf_train(ns):
     from . import log_db
     from . import lt_crf
 
+    size = int(ns.train_size)
+    method = ns.method
     d = parse_condition(ns.conditions)
     ld = log_db.LogData(conf)
     iterobj = ld.iter_lines(**d)
-    print(lt_crf.make_crf_train(conf, iterobj))
+    l_train = lt_crf.make_crf_train(conf, l_lm, size, method)
+    print("\n\n".join(l_train))
 
 
 def make_crf_model(ns):
@@ -278,8 +281,8 @@ def make_crf_model(ns):
     method = ns.method
     d = parse_condition(ns.conditions)
     ld = log_db.LogData(conf)
-    l_lm = [lm for lm in ld.iter_lines(**d)]
-    fn = lt_crf.make_crf_model(conf, l_lm, size, method)
+    iterobj = [lm for lm in ld.iter_lines(**d)]
+    fn = lt_crf.make_crf_model(conf, iterobj, size, method)
     print("> {0}".format(fn))
 
 
@@ -604,7 +607,16 @@ DICT_ARGSET = {
                  [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
                  show_log],
     "make-crf-train": ["Output CRF training file for given conditions.",
-                       [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
+                       [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,
+                        [["-n", "--train_size"],
+                         {"dest": "train_size", "action": "store",
+                          "default": "1000",
+                          "help": "number of training data to sample"}],
+                        [["-m", "--method"],
+                         {"dest": "method", "action": "store",
+                          "default": "all",
+                          "help": "train data sampling method name. "
+                                  "[all, random, random-va] is available."}],],
                        make_crf_train],
     "make-crf-model": ["Output CRF trained model file for given conditions.",
                        [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,

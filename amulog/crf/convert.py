@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""Convert Sequencial-string training data into ItemSequence data
+by feature generation based on feature definitions.
+The features are defined by 3 components.
+- crf feature template: defining positional relations of each features
+- crf label definition: defining mid-labels for feature "pos"
+- input data (Sequencial-string)
+"""
+
 import os
 import re
 

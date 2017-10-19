@@ -548,22 +548,9 @@ def init_ltgen_crf(conf, table, sym):
     return LTGenCRF(table, sym, model, verbose, template, ig_val, lwobj)
 
 
-def make_crf_train(conf, iterobj):
-    buf = []
-    table = lt_common.TemplateTable()
-    ltgen = lt_common.init_ltgen(conf, table, method = "crf")
-    for lm in iterobj:
-        item = items.line2train(lm, midlabel_func = ltgen._middle_label)
-        buf.append(items.items2str(item))
-    return "\n\n".join(buf)
-
-
-def make_crf_model(conf, l_lm, size, method = "all"):
-    table = lt_common.TemplateTable()
-    ltgen = lt_common.init_ltgen(conf, table, "crf")
-    ltgen.init_trainer()
-
-    l_train_all = l_lm
+def make_crf_train(conf, iterobj, size = 1000, method = "all",
+                   return_ltidlist = False):
+    l_train_all = iterobj
     if method == "all":
         l_train = [items.line2train(lm) for lm in l_train_all]
     elif method == "random":
@@ -575,6 +562,19 @@ def make_crf_model(conf, l_lm, size, method = "all"):
     else:
         raise NotImplementedError(
             "Invalid sampling method name {0}".format(method))
+
+    if return_ltidlist:
+        return l_train, train_ltidlist
+    else:
+        return l_train
+
+
+def make_crf_model(conf, iterobj, size = 1000, method = "all"):
+    l_train, train_ltidlist = make_crf_train(conf, iterobj, size, method,
+                                             return_ltidlist = True)
+    table = lt_common.TemplateTable()
+    ltgen = lt_common.init_ltgen(conf, table, "crf")
+    ltgen.init_trainer()
     ltgen.train(l_train)
     assert os.path.exists(ltgen.model)
     return ltgen.model
