@@ -55,6 +55,7 @@ class LTGenCRF(lt_common.LTGen):
             self.trainer.set_params(d)
 
     def train(self, iterable_items):
+        _logger.info("crf: {0} lines learned".format(len(iterable_items)))
         for lineitem in iterable_items:
             xseq = self.converter.feature(lineitem)
             yseq = self.converter.label(lineitem)
@@ -572,6 +573,29 @@ def make_crf_train(conf, iterobj, size = 1000, method = "all",
 def make_crf_model(conf, iterobj, size = 1000, method = "all"):
     l_train, train_ltidlist = make_crf_train(conf, iterobj, size, method,
                                              return_ltidlist = True)
+    table = lt_common.TemplateTable()
+    ltgen = lt_common.init_ltgen(conf, table, "crf")
+    ltgen.init_trainer()
+    ltgen.train(l_train)
+    assert os.path.exists(ltgen.model)
+    return ltgen.model
+
+
+def make_crf_model_ideal(conf, ld, size = None):
+    l_train = []
+    train_ltidlist = {}
+    for lt in ld.iter_lt():
+        iterobj = ld.iterlines(ltid = lt.ltid)
+        line = iterobj.next()
+        l_train.append(line)
+        train_ltidlist.append(lt.ltid)
+
+    if size is not None:
+        assert isinstance(size, int)
+        temp = zip(l_train, train_ltidlist)
+        random.shuffle(temp)
+        l_train, train_ltidlist = zip(*temp[:size])
+
     table = lt_common.TemplateTable()
     ltgen = lt_common.init_ltgen(conf, table, "crf")
     ltgen.init_trainer()

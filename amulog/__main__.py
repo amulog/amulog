@@ -303,6 +303,22 @@ def make_crf_model(ns):
     print("> {0}".format(fn))
 
 
+def make_crf_model_ideal(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+    from . import lt_crf
+    
+    if ns.train_size < 0:
+        size = None
+    else:
+        size = ns.train_size
+    ld = log_db.LogData(conf)
+    fn = lt_crf.make_crf_model_ideal(conf, ld, size)
+    print("> {0}".format(fn))
+
+
 def parse_condition(conditions):
     """
     Args:
@@ -664,6 +680,17 @@ DICT_ARGSET = {
                           "help": "train data sampling method name. "
                                   "[all, random, random-va] is available."}],],
                        make_crf_model],
+    "make-crf-model-ideal": [("Output CRF trained model file "
+                              "in ideal situation "
+                              "(correct log cluster is available)."),
+                             [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,
+                              [["-n", "--train_size"],
+                               {"dest": "train_size", "action": "store",
+                                "default": "-1",
+                                "help": ("number of training data to sample, "
+                                         "if omitted use all log templates")}],
+                              ],
+                             make_crf_model_ideal],
     "measure-crf": ["Measure accuracy of CRF-based log template estimation.",
                     [OPT_DEBUG,
                      [["-f", "--failure"],
