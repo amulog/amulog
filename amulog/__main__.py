@@ -72,9 +72,26 @@ def data_from_db(ns):
         method = "incremental"
     else:
         method = "commit"
+    reset = ns.reset
 
     from . import log_db
-    log_db.data_from_db(conf, dirname, method)
+    log_db.data_from_db(conf, dirname, method, reset)
+
+
+def data_from_data(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    dirname = ns.dirname
+    targets = get_targets_opt(ns, conf)
+    if ns.incr:
+        method = "incremental"
+    else:
+        method = "commit"
+    reset = ns.reset
+
+    from . import log_db
+    log_db.data_from_data(targets, dirname, method, reset)
 
 
 def db_make(ns):
@@ -549,8 +566,25 @@ DICT_ARGSET = {
                       [["-i", "--incr"],
                        {"dest": "incr", "action": "store_true",
                         "help": "output incrementally, use with small memory"}],
+                      [["--reset"],
+                       {"dest": "reset", "action": "store_true",
+                        "help": "reset log file directory before processing"}],
                       ],
                      data_from_db],
+    "data-from-data": ["Re-arrange log file, splitting messages by date.",
+                     [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILE_OPT,
+                      [["-d", "--dirname"],
+                       {"dest": "dirname", "metavar": "DIRNAME",
+                        "action": "store",
+                        "help": "directory name to output"}],
+                      [["-i", "--incr"],
+                       {"dest": "incr", "action": "store_true",
+                        "help": "output incrementally, use with small memory"}],
+                      [["--reset"],
+                       {"dest": "reset", "action": "store_true",
+                        "help": "reset log file directory before processing"}],
+                      ],
+                     data_from_data],
     "db-make": [("Initialize database and add log data. "
                  "This fuction works incrementaly."),
                 [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],

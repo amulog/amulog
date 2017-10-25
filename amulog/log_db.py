@@ -834,11 +834,15 @@ class LogDB():
 
 class RestoreOriginalData(object):
 
-    def __init__(self, dirname, style = "date", method = "commit"):
+    def __init__(self, dirname, style = "date", method = "commit",
+                 reset = False):
         self.style = style
         self.method = method
         self.dirname = dirname
         common.mkdir(dirname)
+        if reset:
+            _logger.info("RestoreOriginalData was requested to reset files")
+            common.rm_dirchild(dirname)
 
         assert self.style in ("date")
         assert self.method in ("incremental", "commit")
@@ -881,7 +885,7 @@ class RestoreOriginalData(object):
     def write_all(self):
         assert self.method == "commit"
         for fn, l_buf in self.buf.items():
-            with open("/".join((self.dirname, fn)), "w") as f:
+            with open("/".join((self.dirname, fn)), "a") as f:
                 f.write("\n".join(l_buf))
 
 
@@ -1166,12 +1170,24 @@ def anonymize(conf):
     ld.commit_db()
 
 
-def data_from_db(conf, dirname, method):
-    rod = RestoreOriginalData(dirname, method = method)
+def data_from_db(conf, dirname, method, reset):
+    rod = RestoreOriginalData(dirname, method = method, reset = reset)
     ld = LogData(conf)
     top_dt, end_dt = ld.whole_term()
     for lm in ld.iter_lines(top_dt = top_dt, end_dt = end_dt):
         rod.add(lm)
+    rod.commit()
+
+
+def data_from_data(targets, dirname, method, reset):
+    rod = RestoreOriginalData(dirname, method = method, reset = reset)
+    lp = logparser.LogParser(conf)
+    for fp in targets:
+        with open(fp, 'r') in f:
+            for line in f:
+                linestr = line.rstrip("\n")
+                dt, org_host, l_w, l_s = lp.process_line(line)
+                rod.add_str(dt, linestr)
     rod.commit()
 
 
