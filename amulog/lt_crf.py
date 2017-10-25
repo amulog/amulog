@@ -616,6 +616,7 @@ def generate_lt_mprocess(conf, targets, pal = 1):
     """
 
     import multiprocessing
+    from . import common
     timer = common.Timer("generate_lt task", output = _logger)
     timer.start()
     queue = multiprocessing.Queue()
