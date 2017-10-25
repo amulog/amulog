@@ -91,7 +91,7 @@ def data_from_data(ns):
     reset = ns.reset
 
     from . import log_db
-    log_db.data_from_data(targets, dirname, method, reset)
+    log_db.data_from_data(conf, targets, dirname, method, reset)
 
 
 def db_make(ns):

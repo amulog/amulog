@@ -1179,7 +1179,7 @@ def data_from_db(conf, dirname, method, reset):
     rod.commit()
 
 
-def data_from_data(targets, dirname, method, reset):
+def data_from_data(conf, targets, dirname, method, reset):
     rod = RestoreOriginalData(dirname, method = method, reset = reset)
     lp = logparser.LogParser(conf)
     for fp in targets:
