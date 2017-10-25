@@ -310,10 +310,10 @@ def make_crf_model_ideal(ns):
     from . import log_db
     from . import lt_crf
     
-    if ns.train_size < 0:
+    if int(ns.train_size) <= 0:
         size = None
     else:
-        size = ns.train_size
+        size = int(ns.train_size)
     ld = log_db.LogData(conf)
     fn = lt_crf.make_crf_model_ideal(conf, ld, size)
     print("> {0}".format(fn))
