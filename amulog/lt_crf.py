@@ -586,7 +586,7 @@ def make_crf_model_ideal(conf, ld, size = None):
     train_ltidlist = {}
     for lt in ld.iter_lt():
         iterobj = ld.iter_lines(ltid = lt.ltid)
-        line = iterobj.next()
+        line = iterobj.__next__()
         l_train.append(line)
         train_ltidlist.append(lt.ltid)
 
