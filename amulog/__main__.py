@@ -572,7 +572,7 @@ DICT_ARGSET = {
                       ],
                      data_from_db],
     "data-from-data": ["Re-arrange log file, splitting messages by date.",
-                     [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILE_OPT,
+                     [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
                       [["-d", "--dirname"],
                        {"dest": "dirname", "metavar": "DIRNAME",
                         "action": "store",
