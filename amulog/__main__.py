@@ -705,7 +705,7 @@ DICT_ARGSET = {
                              make_crf_model_ideal],
     "make-lt-mp": [("Generate log templates with CRF"
                     " in multiprocessing."),
-                   [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,
+                   [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
                     [["-p", "--pal"],
                      {"dest": "pal", "action": "store",
                       "type": int, "default": 1,
