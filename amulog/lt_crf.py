@@ -82,7 +82,7 @@ class LTGenCRF(lt_common.LTGen):
         l_label = self.tagger.tag(fset)        
         return l_label
 
-    def process_line(self, l_w, l_s):
+    def estimate_tpl(self, l_w, l_s):
         lineitems = items.line2items(l_w, midlabel_func = self._middle_label,
                                      dummy_label = self.LABEL_DUMMY)
         l_label = self.label_line(lineitems)
@@ -96,7 +96,10 @@ class LTGenCRF(lt_common.LTGen):
                 raise ValueError("Some word labeled as DUMMY in LTGenCRF")
             else:
                 raise ValueError("Unknown labels in LTGenCRF")
+        return tpl
 
+    def process_line(self, l_w, l_s):
+        tpl = self.estimate_tpl(l_w, l_s)
         if self._table.exists(tpl):
             tid = self._table.get_tid(tpl)
             return tid, self.state_unchanged
@@ -603,4 +606,48 @@ def make_crf_model_ideal(conf, ld, size = None):
     assert os.path.exists(ltgen.model)
     return ltgen.model
 
+
+def generate_lt_mprocess(conf, targets, pal = 1):
+    """Generate log templates for all given log messages.
+    This function does not generate DB,
+    but instead of that this function can be processed in multiprocessing.
+    This function is available only in CRF log template estimation
+    (because other methods uses estimation results of other messages).
+    """
+
+    import multiprocessing
+    timer = common.Timer("generate_lt task", output = _logger)
+    timer.start()
+    queue = multiprocessing.Queue()
+    l_args = generate_lt_args(conf, targets, queue)
+    l_process = [multiprocessing.Process(name = args[2],
+        target = generate_lt_file, args = args) for args in l_args]
+    common.mprocess_queueing(l_process, pal)
+    
+    s_tpl = set()
+    while not queue.empty():
+        s_tpl = s_tpl | queue.get()
+    timer.stop()
+    return s_tpl
+
+
+def generate_lt_args(conf, targets, queue):
+    return [(queue, conf, fp) for fp in targets]
+
+
+def generate_lt_file(queue, conf, fp):
+    from . import logparser
+    lp = logparser.LogParser(conf)
+    table = lt_common.TemplateTable()
+    ltgen = lt_common.init_ltgen(conf, table, "crf")
+    s_tpl = set()
+
+    with open(fp, 'r') as f:
+        for line in f:
+            line = line.rstrip()
+            dt, org_host, l_w, l_s = lp.process_line(line)
+            tpl = ltgen.estimate_tpl(l_w, l_s)
+            s_tpl.add(tuple(tpl))
+
+    queue.put(s_tpl)
 

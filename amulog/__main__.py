@@ -319,6 +319,18 @@ def make_crf_model_ideal(ns):
     print("> {0}".format(fn))
 
 
+def make_lt_mp(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import lt_crf
+    targets = get_targets_opt(ns, conf)
+
+    s_tpl = lt_crf.generate_lt_mprocess(conf, targets, ns.pal)
+    for tpl in s_tpl:
+        print(" ".join(tpl))
+
+
 def parse_condition(conditions):
     """
     Args:
@@ -660,7 +672,7 @@ DICT_ARGSET = {
                        [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,
                         [["-n", "--train_size"],
                          {"dest": "train_size", "action": "store",
-                          "default": "1000",
+                          "type": int, "default": 1000,
                           "help": "number of training data to sample"}],
                         [["-m", "--method"],
                          {"dest": "method", "action": "store",
@@ -672,7 +684,7 @@ DICT_ARGSET = {
                        [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,
                         [["-n", "--train_size"],
                          {"dest": "train_size", "action": "store",
-                          "default": "1000",
+                          "type": int, "default": 1000,
                           "help": "number of training data to sample"}],
                         [["-m", "--method"],
                          {"dest": "method", "action": "store",
@@ -686,11 +698,19 @@ DICT_ARGSET = {
                              [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,
                               [["-n", "--train_size"],
                                {"dest": "train_size", "action": "store",
-                                "default": "-1",
+                                "type": int, "default": -1,
                                 "help": ("number of training data to sample, "
                                          "if omitted use all log templates")}],
                               ],
                              make_crf_model_ideal],
+    "make-lt-mp": [("Generate log templates with CRF"
+                    " in multiprocessing."),
+                   [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,
+                    [["-p", "--pal"],
+                     {"dest": "pal", "action": "store",
+                      "type": int, "default": 1,
+                      "help": "number of processes"}],],
+                   make_lt_mp],
     "measure-crf": ["Measure accuracy of CRF-based log template estimation.",
                     [OPT_DEBUG,
                      [["-f", "--failure"],
