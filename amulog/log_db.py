@@ -1183,7 +1183,7 @@ def data_from_data(conf, targets, dirname, method, reset):
     rod = RestoreOriginalData(dirname, method = method, reset = reset)
     lp = logparser.LogParser(conf)
     for fp in targets:
-        with open(fp, 'r') in f:
+        with open(fp, 'r') as f:
             for line in f:
                 linestr = line.rstrip("\n")
                 dt, org_host, l_w, l_s = lp.process_line(line)
