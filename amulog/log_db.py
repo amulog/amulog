@@ -1010,7 +1010,7 @@ def process_init_data(conf, targets, isnew_check = False):
         host = ha.resolve_host(org_host)
         if host is None:
             if drop_undefhost:
-                ld.ltm.failure_output(msg)
+                ld.ltm.failure_output(line)
                 return None
             else:
                 host = org_host
