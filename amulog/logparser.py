@@ -226,7 +226,7 @@ class LogParser():
             return None, None, None
 
         if self.header_size is not None:
-            message = line.split()[self.header_size:]
+            message = " ".join(line.split()[self.header_size:])
         return dt, host, message
 
     def process_line(self, line):
