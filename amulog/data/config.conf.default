@@ -85,6 +85,8 @@ default_year =
 # remove_header_filename = freewrite_header.txt, hoge.txt
 remove_header_filename = 
 
+header_size = 
+
 
 [log_template]
 
