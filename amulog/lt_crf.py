@@ -637,6 +637,7 @@ def generate_lt_args(conf, targets, queue):
 
 
 def generate_lt_file(queue, conf, fp):
+    _logger.info("processing {0} start".format(fp))
     from . import logparser
     lp = logparser.LogParser(conf)
     table = lt_common.TemplateTable()
@@ -650,5 +651,6 @@ def generate_lt_file(queue, conf, fp):
             tpl = ltgen.estimate_tpl(l_w, l_s)
             s_tpl.add(tuple(tpl))
 
+    _logger.info("processing {0} done".format(fp))
     queue.put(s_tpl)
 
