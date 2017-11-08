@@ -25,4 +25,5 @@ def generate_lt_file(conf, fp):
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         sys.exit("usage: {0} config filepath".format(sys.argv[0]))
-    generate_lt_file(sys.argv[1], sys.argv[2])
+    conf = config.open_config(sys.argv[1])
+    generate_lt_file(conf, sys.argv[2])
