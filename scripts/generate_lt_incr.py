@@ -3,6 +3,7 @@
 
 import sys
 
+from amulog import config
 from amulog import lt_common
 from amulog import logparser
 
