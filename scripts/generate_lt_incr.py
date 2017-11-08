@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import sys
 
 from amulog import lt_common
 from amulog import logparser
