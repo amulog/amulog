@@ -660,7 +660,7 @@ def generate_lt_file(queue, conf, fp):
     queue.put(s_tpl)
 
 
-def generate_lt_import():
+def generate_lt_import_file():
     pass
 
 
