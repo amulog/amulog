@@ -607,7 +607,7 @@ def make_crf_model_ideal(conf, ld, size = None):
     return ltgen.model
 
 
-def generate_lt_mprocess(conf, targets, pal = 1):
+def generate_lt_mprocess(conf, targets, check_import = False, pal = 1):
     """Generate log templates for all given log messages.
     This function does not generate DB,
     but instead of that this function can be processed in multiprocessing.
@@ -620,14 +620,19 @@ def generate_lt_mprocess(conf, targets, pal = 1):
     timer = common.Timer("generate_lt task", output = _logger)
     timer.start()
     queue = multiprocessing.Queue()
+    if check_import:
+        target_func = generate_lt_import_file
+    else:
+        target_func = generate_lt_file
     l_args = generate_lt_args(conf, targets, queue)
     l_process = [multiprocessing.Process(name = args[2],
-        target = generate_lt_file, args = args) for args in l_args]
+        target = target_func, args = args) for args in l_args]
     common.mprocess_queueing(l_process, pal)
     
     s_tpl = set()
     while not queue.empty():
-        s_tpl = s_tpl | queue.get()
+        s_temp = queue.get_nowait()
+        s_tpl = s_tpl | s_temp
     timer.stop()
     return s_tpl
 
@@ -653,4 +658,11 @@ def generate_lt_file(queue, conf, fp):
 
     _logger.info("processing {0} done".format(fp))
     queue.put(s_tpl)
+
+
+def generate_lt_import():
+    pass
+
+
+
 
