@@ -326,7 +326,7 @@ def make_lt_mp(ns):
     from . import lt_crf
     targets = get_targets_opt(ns, conf)
 
-    s_tpl = lt_crf.generate_lt_mprocess(conf, targets, ns.pal)
+    s_tpl = lt_crf.generate_lt_mprocess(conf, targets, pal = ns.pal)
     for tpl in s_tpl:
         print(" ".join(tpl))
 
