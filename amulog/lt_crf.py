@@ -625,14 +625,14 @@ def generate_lt_mprocess(conf, targets, check_import = False, pal = 1):
         target_func = generate_lt_file
     l_args = generate_lt_args(conf, targets)
     l_queue = [multiprocessing.Queue() for args in l_args]
-    l_process = [multiprocessing.Process(name = args[2],
+    l_process = [multiprocessing.Process(name = args[-1],
                                          target = target_func,
                                          args = [queue] + args)
                  for args, queue in zip(l_args, l_queue)]
     l_pq = list(zip(l_process, l_queue))
     
     s_tpl = set()
-    for ret in common.mprocess_queueing(l_process, pal):
+    for ret in common.mprocess_queueing(l_pq, pal):
         s_tpl = s_tpl | ret
     timer.stop()
     return s_tpl
