@@ -619,20 +619,21 @@ def generate_lt_mprocess(conf, targets, check_import = False, pal = 1):
     from . import common
     timer = common.Timer("generate_lt task", output = _logger)
     timer.start()
-    queue = multiprocessing.Queue()
     if check_import:
         target_func = generate_lt_import_file
     else:
         target_func = generate_lt_file
     l_args = generate_lt_args(conf, targets, queue)
+    l_queue = [multiprocessing.Queue() for args in l_args]
     l_process = [multiprocessing.Process(name = args[2],
-        target = target_func, args = args) for args in l_args]
-    common.mprocess_queueing(l_process, pal)
+                                         target = target_func,
+                                         args = [queue] + args)
+                 for args, queue in zip(l_args, l_queue)]
+    l_pq = list(zip(l_process, l_queue))
     
     s_tpl = set()
-    while not queue.empty():
-        s_temp = queue.get_nowait()
-        s_tpl = s_tpl | s_temp
+    for ret in common.mprocess_queueing(l_process, pal):
+        s_tpl = s_tpl | ret
     timer.stop()
     return s_tpl
 

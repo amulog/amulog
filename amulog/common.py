@@ -190,16 +190,23 @@ def call_process(cmd):
 
 # parallel computing
 
-def mthread_queueing(l_thread, pal):
+def mprocess(l_process, pal):
     """
+    Handle multiprocessing with an upper limit of working processes.
+    This function incrementally fill working processes with remaining tasks.
+    This function does not use memory sharing or process communications.
+    If you need processe communications,
+    use common.mprocess_queueing.
+
     Args:
-        l_thread (List[threading.Thread]): A sequence of thread objects.
-        pal (int): Maximum number of threads executed at once.
+        l_process (List(multiprocess.Process))
+        pal (int): Maximum number of processes executed at once.
     """
+
     l_job = []
-    while len(l_thread) > 0:
+    while len(l_process) > 0:
         if len(l_job) < pal:
-            job = l_thread.pop(0)
+            job = l_process.pop(0)
             job.start()
             l_job.append(job)
         else:
@@ -210,8 +217,71 @@ def mthread_queueing(l_thread, pal):
             job.join()
 
 
-def mprocess_queueing(l_process, pal):
-    mthread_queueing(l_process, pal)
+def mprocess_queueing(l_pq, pal):
+    """
+    Same as mprocess, but this function yields
+    returned values of every processes with multiprocessing.Queue.
+
+    Args:
+        l_pq (List[multiprocessing.Process, multiprocessingQueue])
+        pal (int): Maximum number of processes executed at once.
+    """
+
+    l_job = []
+    while len(l_pq) > 0:
+        if len(l_job) < pal:
+            process, queue = l_pq.pop(0)
+            process.start()
+            l_job.append((process, queue))
+        else:
+            time.sleep(1)
+            l_temp = []
+            for process, queue in l_job:
+                if queue.empty():
+                    l_temp.append((process, queue))
+                else:
+                    ret = queue.get()
+                    yield ret
+                    assert queue.empty()
+                    process.join()
+            l_job = l_temp
+    else:
+        while len(l_job) > 0:
+            time.sleep(1)
+            l_temp = []
+            for process, queue in l_job:
+                if queue.empty():
+                    l_temp.append((process, queue))
+                else:
+                    ret = queue.get()
+                    yield ret
+                    assert queue.empty()
+                    process.join()
+            l_job = l_temp
+
+
+#def mthread_queueing(l_thread, pal):
+#    """
+#    Args:
+#        l_thread (List[threading.Thread]): A sequence of thread objects.
+#        pal (int): Maximum number of threads executed at once.
+#    """
+#    l_job = []
+#    while len(l_thread) > 0:
+#        if len(l_job) < pal:
+#            job = l_thread.pop(0)
+#            job.start()
+#            l_job.append(job)
+#        else:
+#            time.sleep(1)
+#            l_job = [j for j in l_job if j.is_alive()]
+#    else:
+#        for job in l_job:
+#            job.join()
+#
+#
+#def mprocess_queueing(l_process, pal):
+#    mthread_queueing(l_process, pal)
 
 
 # measurement
