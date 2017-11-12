@@ -623,7 +623,7 @@ def generate_lt_mprocess(conf, targets, check_import = False, pal = 1):
         target_func = generate_lt_import_file
     else:
         target_func = generate_lt_file
-    l_args = generate_lt_args(conf, targets, queue)
+    l_args = generate_lt_args(conf, targets)
     l_queue = [multiprocessing.Queue() for args in l_args]
     l_process = [multiprocessing.Process(name = args[2],
                                          target = target_func,
@@ -638,8 +638,8 @@ def generate_lt_mprocess(conf, targets, check_import = False, pal = 1):
     return s_tpl
 
 
-def generate_lt_args(conf, targets, queue):
-    return [(queue, conf, fp) for fp in targets]
+def generate_lt_args(conf, targets):
+    return [(conf, fp) for fp in targets]
 
 
 def generate_lt_file(queue, conf, fp):
