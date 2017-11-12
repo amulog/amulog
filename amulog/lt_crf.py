@@ -639,7 +639,7 @@ def generate_lt_mprocess(conf, targets, check_import = False, pal = 1):
 
 
 def generate_lt_args(conf, targets):
-    return [(conf, fp) for fp in targets]
+    return [[conf, fp] for fp in targets]
 
 
 def generate_lt_file(queue, conf, fp):
