@@ -617,12 +617,15 @@ def generate_lt_mprocess(conf, targets, check_import = False, pal = 1):
 
     import multiprocessing
     from . import common
-    timer = common.Timer("generate_lt task", output = _logger)
-    timer.start()
     if check_import:
         target_func = generate_lt_import_file
+        method = "with import"
     else:
         target_func = generate_lt_file
+        method = "without import"
+    timer = common.Timer("generate_lt ({0}) task".format(method),
+                         output = _logger)
+    timer.start()
     l_args = generate_lt_args(conf, targets)
     l_queue = [multiprocessing.Queue() for args in l_args]
     l_process = [multiprocessing.Process(name = args[-1],
@@ -662,8 +665,26 @@ def generate_lt_file(queue, conf, fp):
 
 
 def generate_lt_import_file():
-    pass
+    _logger.info("processing {0} start".format(fp))
+    from . import logparser
+    lp = logparser.LogParser(conf)
+    table = lt_common.TemplateTable()
+    ltgen_import = lt_common.init_ltgen(conf, table, "import")
+    ltgen_crf = lt_common.init_ltgen(conf, table, "crf")
+    s_tpl = set()
 
+    with open(fp, 'r') as f:
+        for line in f:
+            line = line.rstrip()
+            dt, org_host, l_w, l_s = lp.process_line(line)
+            tid, dummy = ltgen_import.process_line(l_w, l_s)
+            if tid is None:
+                # recorded in imported definition, ignore
+                pass
+            else:
+                tpl = ltgen_crf.estimate_tpl(l_w, l_s)
+                s_tpl.add(tuple(tpl))
 
-
+    _logger.info("processing {0} done".format(fp))
+    queue.put(s_tpl)
 

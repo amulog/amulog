@@ -325,8 +325,10 @@ def make_lt_mp(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
     from . import lt_crf
     targets = get_targets_opt(ns, conf)
+    with_import = ns.check_import
 
-    s_tpl = lt_crf.generate_lt_mprocess(conf, targets, pal = ns.pal)
+    s_tpl = lt_crf.generate_lt_mprocess(conf, targets,
+                                        check_import, pal = ns.pal)
     for tpl in s_tpl:
         print(" ".join(tpl))
 
@@ -703,13 +705,18 @@ DICT_ARGSET = {
                                          "if omitted use all log templates")}],
                               ],
                              make_crf_model_ideal],
-    "make-lt-mp": [("Generate log templates with CRF"
-                    " in multiprocessing."),
+    "make-lt-mp": [("Generate log templates with CRF "
+                    "in multiprocessing."),
                    [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
                     [["-p", "--pal"],
                      {"dest": "pal", "action": "store",
                       "type": int, "default": 1,
-                      "help": "number of processes"}],],
+                      "help": "number of processes"}],
+                    [["-i", "--import"],
+                     {"dest": "check_import", "action": "store_true",
+                      "help": ("ignore messages corresponding to "
+                               "imported log template definition "
+                               "(i.e., process only unknown messages)")}],],
                    make_lt_mp],
     "measure-crf": ["Measure accuracy of CRF-based log template estimation.",
                     [OPT_DEBUG,
