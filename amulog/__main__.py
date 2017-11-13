@@ -325,7 +325,7 @@ def make_lt_mp(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
     from . import lt_crf
     targets = get_targets_opt(ns, conf)
-    with_import = ns.check_import
+    check_import = ns.check_import
 
     s_tpl = lt_crf.generate_lt_mprocess(conf, targets,
                                         check_import, pal = ns.pal)
