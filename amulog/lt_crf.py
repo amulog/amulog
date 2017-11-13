@@ -664,7 +664,7 @@ def generate_lt_file(queue, conf, fp):
     queue.put(s_tpl)
 
 
-def generate_lt_import_file():
+def generate_lt_import_file(queue, conf, fp):
     _logger.info("processing {0} start".format(fp))
     from . import logparser
     lp = logparser.LogParser(conf)
