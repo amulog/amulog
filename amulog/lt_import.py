@@ -45,7 +45,7 @@ class LTGenImport(lt_common.LTGen):
     def process_line(self, l_w, l_s):
         defid = self.searchtree.search(l_w)
         if defid is None:
-            _logger.warning(
+            _logger.debug(
                     "No log template found for message : {0}".format(l_w))
             return None, None
         else:
