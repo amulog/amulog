@@ -678,7 +678,7 @@ def generate_lt_import_file(queue, conf, fp):
             line = line.rstrip()
             dt, org_host, l_w, l_s = lp.process_line(line)
             tid, dummy = ltgen_import.process_line(l_w, l_s)
-            if tid is None:
+            if tid is not None:
                 # recorded in imported definition, ignore
                 pass
             else:
