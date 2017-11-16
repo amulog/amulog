@@ -202,6 +202,19 @@ def show_lt_import(ns):
     log_db.show_lt_import(conf)
 
 
+def show_lt_import_exception(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+    form = ns.format
+    assert form in ("log", "message")
+    targets = get_targets(ns, conf)
+    from . import lt_import
+
+    lt_import.search_exception(conf, targets, form)
+
+
 def show_lt_words(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -652,6 +665,17 @@ DICT_ARGSET = {
     "show-lt-import": ["Output log template definitions in lt_import format.",
                        [OPT_CONFIG, OPT_DEBUG],
                        show_lt_import],
+    "show-lt-import-exception": [("Output log messages in a file "
+                                  "that is not defined "
+                                  "in lt_import definitions."),
+                                 [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES,
+                                  [["-f", "--format"],
+                                   {"dest": "format", "action": "store",
+                                    "default": "log",
+                                    "help": ("message format to load: "
+                                             "log: with header,"
+                                             "message: without header")}]],
+                                 show_lt_import_exception],
     "show-host": ["Show all hostnames in database.",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_host],

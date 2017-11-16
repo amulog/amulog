@@ -10,6 +10,7 @@ import datetime
 import ipaddress
 
 from . import config
+from . import strutil
 
 DEFAULT_SYMDEF = "/".join((os.path.dirname(__file__), "data/symdef.txt.default"))
 
@@ -18,7 +19,6 @@ class LogParser():
 
     re_time = re.compile(r"^\d{2}:\d{2}:\d{2}(\.\d+)?$")
     re_mac = re.compile(r"^[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}$")
-    #re_ipv6 = re.compile(r"^((([0-9a-fA-F]{1,4}:){7}([0-9a-fA-F]{1,4}|:))|(([0-9a-fA-F]{1,4}:){6}(:[0-9a-fA-F]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-fA-F]{1,4}:){5}(((:[0-9a-fA-F]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-fA-F]{1,4}:){4}(((:[0-9a-fA-F]{1,4}){1,3})|((:[0-9a-fA-F]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-fA-F]{1,4}:){3}(((:[0-9a-fA-F]{1,4}){1,4})|((:[0-9a-fA-F]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-fA-F]{1,4}:){2}(((:[0-9a-fA-F]{1,4}){1,5})|((:[0-9a-fA-F]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-fA-F]{1,4}:){1}(((:[0-9a-fA-F]{1,4}){1,6})|((:[0-9a-fA-F]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9a-fA-F]{1,4}){1,7})|((:[0-9a-fA-F]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))$")
     #l_var_re = [re_time, re_mac, re_ipv6]
     l_var_re = [re_time, re_mac]
 
@@ -240,6 +240,37 @@ class LogParser():
             return None, None, None, None
         l_word, l_symbol = self.split_message(message)
         return dt, host, l_word, l_symbol
+
+
+def iter_lines_log(conf, fn):
+    lp = LogParser(conf)
+    with open(fn, 'r') as f:
+        for line in f:
+            line = line.rstrip()
+            dt, org_host, l_w, l_s = lp.process_line(line)
+            if l_w is None: continue
+            l_w = [strutil.add_esc(w) for w in l_w]
+            yield l_w, l_s
+
+
+def iter_lines_message(conf, fn):
+    lp = LogParser(conf)
+    with open(fn, 'r') as f:
+        for line in f:
+            line = line.rstrip()
+            l_w, l_s = lp.split_message(line)
+            if l_w is None: continue
+            l_w = [strutil.add_esc(w) for w in l_w]
+            yield l_w, l_s
+
+
+def iter_lines(conf, fn, form):
+    if form == "log":
+        return iter_lines_log(conf, fn)
+    elif form == "message":
+        return iter_lines_message(conf, fn)
+    else:
+        raise NotImplementedError
 
 
 def test_parse(conf):

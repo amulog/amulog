@@ -66,11 +66,9 @@ def init_ltgen_import(conf, table, sym):
     return LTGenImport(table, sym, fn, mode, lp)
 
 
-def search_exception(conf, targets):
+def search_exception(conf, targets, form):
     
     from . import logparser
-    from . import strutil
-    lp = logparser.LogParser(conf)
     def_path = conf.get("log_template_import", "def_path")
     sym = conf.get("log_template", "variable_symbol")
     mode = conf.get("log_template_import", "mode")
@@ -80,14 +78,10 @@ def search_exception(conf, targets):
 
     for fn in targets:
         _logger.info("lt_import job for ({0}) start".format(fn))
-        with open(fn, "r") as f:
-            for line in f:
-                dt, org_host, l_w, l_s = lp.process_line(line)
-                if l_w is None: continue
-                l_w = [strutil.add_esc(w) for w in l_w]
-                tid, dummy = ltgen.process_line(l_w, l_s)
-                if tid is None:
-                    print(line.rstrip("\n"))
+        for l_w, l_s in logparser.iter_lines(conf, fn, form):
+            tid, dummy = ltgen.process_line(l_w, l_s)
+            if tid is None:
+                print(line.rstrip("\n"))
         _logger.info("lt_import job for ({0}) done".format(fn))
 
 
