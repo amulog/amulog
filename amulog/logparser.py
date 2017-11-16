@@ -250,7 +250,7 @@ def iter_lines_log(conf, fn):
             dt, org_host, l_w, l_s = lp.process_line(line)
             if l_w is None: continue
             l_w = [strutil.add_esc(w) for w in l_w]
-            yield l_w, l_s
+            yield line, l_w, l_s
 
 
 def iter_lines_message(conf, fn):
@@ -261,7 +261,7 @@ def iter_lines_message(conf, fn):
             l_w, l_s = lp.split_message(line)
             if l_w is None: continue
             l_w = [strutil.add_esc(w) for w in l_w]
-            yield l_w, l_s
+            yield line, l_w, l_s
 
 
 def iter_lines(conf, fn, form):

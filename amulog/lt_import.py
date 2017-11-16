@@ -78,10 +78,10 @@ def search_exception(conf, targets, form):
 
     for fn in targets:
         _logger.info("lt_import job for ({0}) start".format(fn))
-        for l_w, l_s in logparser.iter_lines(conf, fn, form):
+        for org, l_w, l_s in logparser.iter_lines(conf, fn, form):
             tid, dummy = ltgen.process_line(l_w, l_s)
             if tid is None:
-                print(" ".join(l_w))
+                print(org)
         _logger.info("lt_import job for ({0}) done".format(fn))
 
 
