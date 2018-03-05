@@ -263,6 +263,15 @@ def show_lt_variables(ns):
                                   reverse = True)))
 
 
+def show_ltg_label(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import lt_label
+
+    lt_label.list_ltlabel(conf)
+
+
 def show_host(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -691,6 +700,9 @@ DICT_ARGSET = {
                            {"dest": "repld", "action": "store_true",
                             "help": "replace digit to \d"}]],
                          show_lt_variables],
+    "show-ltg-label": ["Show labels for log template groups",
+                       [OPT_CONFIG, OPT_DEBUG],
+                       show_ltg_label],
     "show-log": ["Show log messages that satisfy given conditions in args.",
                  [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
                  show_log],

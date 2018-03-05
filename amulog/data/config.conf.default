@@ -26,6 +26,11 @@ pickle_compatible = false
 # In imported configparser file, existing options in defaults will be ignored
 import = 
 
+# Do NOT provide this option, keep blank
+# This option is used in internal functions
+base_filename = 
+
+
 
 [database]
 

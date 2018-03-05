@@ -2,7 +2,7 @@
 members = user, remote, syslog
 
 [group_l7]
-members = dns, dhcp, snmp, ntp, smtp, syslog
+members = dns, dhcp, snmp, ntp, smtp
 
 
 # c: case-sensitive, i : ignorecase

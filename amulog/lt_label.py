@@ -237,7 +237,7 @@ def count_ltlabel(conf):
     print(d_line_group); print(d_line_label)
 
 
-def test_ltlabel(conf):
+def list_ltlabel(conf):
 
     def output(ld, ltgid, label, group):
         if label is None:
@@ -261,6 +261,9 @@ def test_ltlabel(conf):
         if label is None:
             buf_none.append(output(ld, ltgid, str(label), group))
         else:
+            if group is None:
+                raise SyntaxError("bad config for label {0}: "
+                                  "No group found".format(label))
             d_buf.setdefault(label, []).append(output(ld, ltgid, label, group))
     for k, buf in sorted(d_buf.items()):
         print("\n".join(buf))
@@ -474,7 +477,7 @@ if __name__ == "__main__":
         sys.exit(usage)
     mode = args.pop(0)
     if mode == "list":
-        test_ltlabel(conf)
+        list_ltlabel(conf)
     elif mode == "count":
         count_ltlabel(conf)
     elif mode == "event":

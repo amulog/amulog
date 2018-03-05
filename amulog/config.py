@@ -9,6 +9,8 @@ from collections import defaultdict
 
 DEFAULT_CONFIG = "/".join((os.path.dirname(__file__),
                            "data/config.conf.default"))
+LOAD_SECTION = 'general'
+LOAD_OPTION = 'base_filename'
 IMPORT_SECTION = 'general'
 IMPORT_OPTION = 'import'
 
@@ -192,6 +194,7 @@ def open_config(fn = None, ex_defaults = None,
         ret = conf.read(fn)
         if len(ret) == 0:
             raise IOError("config load error ({0})".format(fn))
+        conf.set(LOAD_SECTION, LOAD_OPTION, fn)
 
     if not noimport:
         while conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
@@ -467,7 +470,7 @@ def set_common_logging(conf, logger = None, logger_name = None,
         raise TypeError
     if logger_name is None:
         pass
-    elif isinstance(logger, list):
+    elif isinstance(logger_name, list):
         temp_loggers += [logging.getLogger(ln) for ln in logger_name]
     elif isinstance(logger_name, str):
         temp_loggers.append(logging.getLogger(logger_name))

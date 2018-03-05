@@ -220,18 +220,20 @@ class LogData():
                 datetime.timedelta(days = 1)
         return top_dt, end_dt
 
-    def whole_host_lt(self, top_dt = None, end_dt = None):
+    def whole_host_lt(self, top_dt = None, end_dt = None, area = None):
         """List[str, str]: Sequence of all combinations of 
         hostname and ltids in DB."""
-        return self.db.whole_host_lt(top_dt = top_dt, end_dt = end_dt)
+        return self.db.whole_host_lt(top_dt = top_dt, end_dt = end_dt,
+                                     area = area)
 
-    def whole_host_ltg(self, top_dt = None, end_dt = None):
+    def whole_host_ltg(self, top_dt = None, end_dt = None, area = None):
         """List[str, str]: Sequence of all combinations of 
-        hostname and ltids in DB."""
+        hostname and ltgids in DB."""
         ret = set()
-        for host, ltid in self.whole_host_lt(top_dt = top_dt, end_dt = end_dt):
+        for host, ltid in self.whole_host_lt(top_dt = top_dt, end_dt = end_dt,
+                                             area = area):
             ret.add((host, self.ltgid_from_ltid(ltid))) 
-        return list(ret)
+        return list(set(ret))
 
     def whole_host(self, top_dt = None, end_dt = None):
         """List[str]: Sequence of all source hostname in DB."""
@@ -513,7 +515,6 @@ class LogDB():
         l_ss = [db_common.setstate(k, k) for k in d_val.keys()]
         sql = self.db.insert_sql(table_name, l_ss)
         self.db.execute(sql, d_val)
-        
 
     def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
                    end_dt = None, host = None, area = None):
@@ -643,7 +644,7 @@ class LogDB():
             raise ValueError("No data found in DB")
         return self.db.datetime(top_dtstr), self.db.datetime(end_dtstr)
 
-    def whole_host_lt(self, top_dt = None, end_dt = None):
+    def whole_host_lt(self, top_dt = None, end_dt = None, area = None):
         table_name = "log"
         l_key = ["host", "ltid"]
         l_cond = []
@@ -654,11 +655,17 @@ class LogDB():
         if end_dt is not None:
             l_cond.append(db_common.cond("dt", "<", "end_dt"))
             args["end_dt"] = end_dt
+        if area is None or area == "all":
+            pass
+        elif area[:5] == "host_":
+            args["host"] = area[5:]
+        else:
+            args["area"] = area
         sql = self.db.select_sql(table_name, l_key, l_cond, opt = ["distinct"])
         cursor = self.db.execute(sql, args)
         return [(row[0], row[1]) for row in cursor]
 
-    def whole_host(self, top_dt = None, end_dt = None):
+    def whole_host(self, top_dt = None, end_dt = None, area = None):
         table_name = "log"
         l_key = ["host"]
         l_cond = []
