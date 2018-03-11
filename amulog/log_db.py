@@ -664,7 +664,7 @@ class LogDB():
         else:
             temp_sql = self.db.select_sql(
                 "area", ["host"], [db_common.cond("area", "=", "area")])
-            l_cond.append(db_common.cond("host", "in", sql, False))
+            l_cond.append(db_common.cond("host", "in", temp_sql, False))
 
         sql = self.db.select_sql(table_name, l_key, l_cond, opt = ["distinct"])
         cursor = self.db.execute(sql, args)
