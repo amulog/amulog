@@ -574,11 +574,11 @@ class LogDB():
         l_cond = []
         for c in d_cond.keys():
             if c == "ltgid":
-                sql= self.db.select_sql("ltg", ["ltid"],
+                sql = self.db.select_sql("ltg", ["ltid"],
                         [db_common.cond(c, "=", c)])
                 l_cond.append(db_common.cond("ltid", "in", sql, False))
             elif c == "area":
-                sql= self.db.select_sql("area", ["host"],
+                sql = self.db.select_sql("area", ["host"],
                         [db_common.cond(c, "=", c)])
                 l_cond.append(db_common.cond("host", "in", sql, False))
             elif c == "top_dt":
@@ -626,7 +626,6 @@ class LogDB():
         sql = self.db.update_sql(table_name, l_ss, l_cond)
         self.db.execute(sql, args)
 
-
     def count_lines(self):
         table_name = "log"
         l_key = ["max(lid)"]
@@ -651,16 +650,22 @@ class LogDB():
         args = {}
         if top_dt is not None:
             l_cond.append(db_common.cond("dt", ">=", "top_dt"))
-            args["top_dt"] = top_dt
+            #args["top_dt"] = top_dt
+            args["top_dt"] = self.db.strftime(top_dt)
         if end_dt is not None:
             l_cond.append(db_common.cond("dt", "<", "end_dt"))
-            args["end_dt"] = end_dt
+            #args["end_dt"] = end_dt
+            args["end_dt"] = self.db.strftime(end_dt)
         if area is None or area == "all":
             pass
         elif area[:5] == "host_":
+            l_cond.append(db_common.cond("host", "=", "host"))
             args["host"] = area[5:]
         else:
-            args["area"] = area
+            temp_sql = self.db.select_sql(
+                "area", ["host"], [db_common.cond("area", "=", "area")])
+            l_cond.append(db_common.cond("host", "in", sql, False))
+
         sql = self.db.select_sql(table_name, l_key, l_cond, opt = ["distinct"])
         cursor = self.db.execute(sql, args)
         return [(row[0], row[1]) for row in cursor]
@@ -672,10 +677,12 @@ class LogDB():
         args = {}
         if top_dt is not None:
             l_cond.append(db_common.cond("dt", ">=", "top_dt"))
-            args["top_dt"] = top_dt
+            args["top_dt"] = self.db.strftime(top_dt)
+            #args["top_dt"] = top_dt
         if end_dt is not None:
             l_cond.append(db_common.cond("dt", "<", "end_dt"))
-            args["end_dt"] = end_dt
+            #args["end_dt"] = end_dt
+            args["end_dt"] = self.db.strftime(end_dt)
         sql = self.db.select_sql(table_name, l_key, l_cond, opt = ["distinct"])
         cursor = self.db.execute(sql, args)
         return [row[0] for row in cursor]
