@@ -378,7 +378,7 @@ def parse_condition(conditions):
         elif key == "date":
             date_string = arg.partition("=")[-1]
             d["top_dt"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
-            d["end_dt"] = d_["top_dt"] + datetime.timedelta(days = 1)
+            d["end_dt"] = d["top_dt"] + datetime.timedelta(days = 1)
         elif key == "host":
             d["host"] = arg.partition("=")[-1]
         elif key == "area":
