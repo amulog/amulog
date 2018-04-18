@@ -157,7 +157,7 @@ class LogData():
             LogMessage: An annotated log message instance
                 which satisfies all given conditions.
         """
-        _logger.info("iter_lines called ({0})".format(" ".join(
+        _logger.debug("iter_lines called ({0})".format(" ".join(
                 ["{0}:{1}".format(k, v) for k, v in kargs.items()
                 if v is not None])))
         return self.db.iter_lines(**kargs)
