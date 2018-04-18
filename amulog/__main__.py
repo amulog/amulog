@@ -847,11 +847,10 @@ DICT_ARGSET = {
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])
-                            for key, val in DICT_ARGSET.items()])
+                            for key, val in sorted(DICT_ARGSET.items())])
 USAGE = ("usage: {0} MODE [options and arguments] ...\n\n"
          "mode:\n".format(
         sys.argv[0])) + USAGE_COMMANDS
-
 
 if __name__ == "__main__":
     if len(sys.argv) < 1:

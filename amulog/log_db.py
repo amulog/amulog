@@ -480,7 +480,8 @@ class LogDB():
 
         table_name = "log"
         index_name = "log_index"
-        l_key = [db_common.tablekey("ltid", "integer"),
+        l_key = [db_common.tablekey("lid", "integer"),
+                 db_common.tablekey("ltid", "integer"),
                  db_common.tablekey("dt", "datetime"),
                  db_common.tablekey("host", "text", (100, ))]
         if not index_name in l_table_name:
