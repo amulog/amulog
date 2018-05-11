@@ -30,9 +30,10 @@ class LTLabel():
     group_header = "group_"
     label_header = "label_"
 
-    def __init__(self, conf_fn, default_group = None):
+    def __init__(self, conf_fn, default_label = None, default_group = None):
         self.conf = configparser.ConfigParser()
         self.conf.read(conf_fn)
+        self.default_label = default_label
         self.default_group = default_group
 
         self.groups = []
@@ -119,13 +120,13 @@ class LTLabel():
         else:
             # all reobj passes
             return True
-    
+
     def get_lt_label(self, ltline):
         for label, t_re in self.rules:
             if self._test_rule(ltline, t_re):
                 return label
         else:
-            return None
+            return self.default_label
 
     def get_lt_group(self, ltline):
         label = self.get_lt_label(ltline)
@@ -153,7 +154,7 @@ class LTLabel():
         elif len(l_cand) == 1:
             return self.rules[l_cand[0]][0]
         else:
-            return None
+            return self.default_label
 
     def get_ltg_group(self, ltgid, l_ltline):
         label = self.get_ltg_label(ltgid, l_ltline)
@@ -168,23 +169,24 @@ class LTLabel():
                 assert len(group) == 1
                 return group[0]
             else:
-                return None
+                return self.default_group
 
 
-def init_ltlabel(conf, default_group = None):
-    ltconf_path = conf.get("lt_label", "ltlabel")
+def init_ltlabel(conf):
+    ltconf_path = conf.get("visual", "ltlabel")
     if ltconf_path == "":
         ltconf_path = DEFAULT_LABEL_CONF
-    if default_group is None:
-        default_group = conf.get("lt_label", "ltlabel_default_group")
-    return LTLabel(ltconf_path, default_group)
+    default_label = conf.get("visual", "ltlabel_default_label")
+    default_group = conf.get("visual", "ltlabel_default_group")
+    return LTLabel(ltconf_path, default_label = default_label,
+                   default_group = default_group)
 
 
 def count_ltlabel(conf):
     ld = log_db.LogData(conf)
     ll = init_ltlabel(conf)
-    default_label = conf.get("lt_label", "ltlabel_default_label")
-    default_group = conf.get("lt_label", "ltlabel_default_group")
+    default_label = conf.get("visual", "ltlabel_default_label")
+    default_group = conf.get("visual", "ltlabel_default_group")
 
     d_lt_group = defaultdict(int)
     d_lt_label = defaultdict(int)

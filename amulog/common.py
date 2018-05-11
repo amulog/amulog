@@ -244,6 +244,7 @@ def mprocess_queueing(l_pq, pal):
                     yield ret
                     assert queue.empty()
                     process.join()
+                    queue.close()
             l_job = l_temp
     else:
         while len(l_job) > 0:
@@ -257,6 +258,7 @@ def mprocess_queueing(l_pq, pal):
                     yield ret
                     assert queue.empty()
                     process.join()
+                    queue.close()
             l_job = l_temp
 
 

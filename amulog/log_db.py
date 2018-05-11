@@ -339,6 +339,20 @@ class LogData():
                 buf.append(self.show_ltgroup(ltgid))
             return "\n".join(buf)
 
+    def show_ltgroup_cond(self, **kwargs):
+        buf = []
+        for gid in self.db.iter_ltgid():
+            l_lt = self.ltg_members(gid)
+            l_ltid = self.db.get_ltg_members(gid)
+            label = self.ll.get_ltg_label(gid, l_lt)
+            group = self.ll.get_ltg_group(gid, l_lt)
+            if "group" in kwargs and not kwargs["group"] == group:
+                continue
+            if "label" in kwargs and not kwargs["label"] == label:
+                continue
+            buf.append(self.show_ltgroup(gid))
+        return "\n".join(buf)
+
     def show_ltgroup(self, gid):
         """Show log template groups.
 
@@ -348,8 +362,8 @@ class LogData():
         buf = []
         l_lt = self.ltg_members(gid)
         l_ltid = self.db.get_ltg_members(gid)
-        group = self.ll.get_ltg_group(gid, l_lt)
         label = self.ll.get_ltg_label(gid, l_lt)
+        group = self.ll.get_ltg_group(gid, l_lt)
         length = len(l_ltid)
         cnt = 0
         for ltid in l_ltid:
@@ -357,7 +371,9 @@ class LogData():
             cnt += ltline.cnt
             buf.append(self._str_ltline(ltline))
         
-        buf = ["[ltgroup {0} ({1}, {2})] # {3}({4})".format(gid, length, cnt, group, label)] + buf
+        buf = ["[ltgroup {0} ({1}, {2})] # {3}({4})".format(gid, length,
+                                                            cnt, group,
+                                                            label)] + buf
         return "\n".join(buf)
 
     def add_line(self, ltid, dt, host, l_w):
@@ -1080,9 +1096,9 @@ def info_term(conf, top_dt, end_dt):
     print("Hosts : {0}".format(len(s_host)))
 
 
-def show_lt(conf):
+def show_lt(conf, **kwargs):
     ld = LogData(conf)
-    print(ld.show_all_ltgroup())
+    print(ld.show_ltgroup_cond(**kwargs))
 
 
 def dump_lt(conf):

@@ -190,7 +190,10 @@ def show_ltg(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
     from . import log_db
 
-    log_db.show_lt(conf)
+    kwargs = {}
+    if ns.group is not None:
+        kwargs["group"] = ns.group
+    log_db.show_lt(conf, **kwargs)
 
 
 def show_lt_import(ns):
@@ -577,7 +580,7 @@ ARG_FILES_OPT = [["files"],
 ARG_DBSEARCH = [["conditions"],
                 {"metavar": "CONDITION", "nargs": "+",
                  "help": ("Conditions to search log messages. "
-                          "Example: show-log gid=24 date=2012-10-10 ..., "
+                          "Example: MODE gid=24 date=2012-10-10 ..., "
                           "Keys: ltid, gid, date, top_date, end_date, "
                           "host, area")}]
 
@@ -669,10 +672,13 @@ DICT_ARGSET = {
                 [OPT_CONFIG, OPT_DEBUG],
                 show_lt],
     "show-ltg": ["Show all log template groups and their members in database.",
-                 [OPT_CONFIG, OPT_DEBUG],
+                 [OPT_CONFIG, OPT_DEBUG,
+                  [["-g", "--group"],
+                   {"dest": "group", "action": "store", "default": None,
+                    "help": "show members of given labeling group"}]],
                  show_ltg],
     "show-lt-import": ["Output log template definitions in lt_import format.",
-                       [OPT_CONFIG, OPT_DEBUG],
+                       [OPT_CONFIG, OPT_DEBUG,],
                        show_lt_import],
     "show-lt-import-exception": [("Output log messages in a file "
                                   "that is not defined "
