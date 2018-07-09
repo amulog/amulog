@@ -72,7 +72,7 @@ class LabelWord():
 
     def label_ipnetwork(self, word):
         try:
-            ret = ipaddress.ip_network(str(word))
+            ret = ipaddress.ip_network(str(word), strict = False)
             if isinstance(ret, ipaddress.IPv4Network):
                 return "IPv4NET"
             elif isinstance(ret, ipaddress.IPv6Network):
