@@ -70,6 +70,20 @@ class LabelWord():
             return None
 
 
+    def label_ipnetwork(self, word):
+        try:
+            ret = ipaddress.ip_network(str(word))
+            if isinstance(ret, ipaddress.IPv4Network):
+                return "IPv4NET"
+            elif isinstance(ret, ipaddress.IPv6Network):
+                return "IPv6NET"
+            else:
+                raise TypeError("ip_address returns unknown type? {0}".format(
+                        str(ret)))
+        except ValueError:
+            return None
+
+
     def label_host(self, word):
         if self._ha.isknown(word):
             return "HOST"
