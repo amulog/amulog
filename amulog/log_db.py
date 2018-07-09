@@ -1042,13 +1042,15 @@ def process_init_data(conf, targets, isnew_check = False):
     for line in _iter_line_from_files(targets):
         dt, org_host, l_w, l_s = lp.process_line(line)
         if latest is not None and dt < latest: continue
-        if len(l_w) == 0: return None
+        if len(l_w) == 0:
+            _logger.debug("pass empty message {0}".format(str(l_w)))
+            continue
         l_w = [strutil.add_esc(w) for w in l_w]
         host = ha.resolve_host(org_host)
         if host is None:
             if drop_undefhost:
                 ld.ltm.failure_output(line)
-                return None
+                continue
             else:
                 host = org_host
 
