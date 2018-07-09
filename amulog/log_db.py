@@ -961,9 +961,13 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
     line = None
 
     dt, org_host, l_w, l_s = lp.process_line(msg)
-    if latest is not None and dt < latest: return None
-    if l_w is None: return None
-    if len(l_w) == 0: return None
+    if latest is not None and dt < latest:
+        _logger.debug(
+            "pass message with excluded timestamp {0}".format(dt))
+        return None
+    if l_w is None or len(l_w) == 0:
+        _logger.debug("pass empty message {0}".format(str(l_w)))
+        return None
     l_w = [strutil.add_esc(w) for w in l_w]
     host = ha.resolve_host(org_host)
     #if host is None: host = org_host
@@ -1045,7 +1049,7 @@ def process_init_data(conf, targets, isnew_check = False):
             _logger.debug(
                 "pass message with excluded timestamp {0}".format(dt))
             continue
-        if len(l_w) == 0:
+        if l_w is None or len(l_w) == 0:
             _logger.debug("pass empty message {0}".format(str(l_w)))
             continue
         l_w = [strutil.add_esc(w) for w in l_w]
