@@ -1041,7 +1041,10 @@ def process_init_data(conf, targets, isnew_check = False):
     l_data = []
     for line in _iter_line_from_files(targets):
         dt, org_host, l_w, l_s = lp.process_line(line)
-        if latest is not None and dt < latest: continue
+        if latest is not None and dt < latest:
+            _logger.debug(
+                "pass message with excluded timestamp {0}".format(dt))
+            continue
         if len(l_w) == 0:
             _logger.debug("pass empty message {0}".format(str(l_w)))
             continue
