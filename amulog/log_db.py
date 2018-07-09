@@ -958,7 +958,8 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
 
     dt, org_host, l_w, l_s = lp.process_line(msg)
     if latest is not None and dt < latest: return None
-    if l_w is None: return None
+    #if l_w is None: return None
+    if len(l_w) == 0: return None
     l_w = [strutil.add_esc(w) for w in l_w]
     host = ha.resolve_host(org_host)
     #if host is None: host = org_host
@@ -1037,7 +1038,7 @@ def process_init_data(conf, targets, isnew_check = False):
     for line in _iter_line_from_files(targets):
         dt, org_host, l_w, l_s = lp.process_line(line)
         if latest is not None and dt < latest: continue
-        if l_w is None: continue
+        if len(l_w) == 0: return None
         l_w = [strutil.add_esc(w) for w in l_w]
         host = ha.resolve_host(org_host)
         if host is None:
