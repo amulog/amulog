@@ -648,7 +648,11 @@ class LogDB():
         l_key = ["max(lid)"]
         sql = self.db.select_sql(table_name, l_key)
         cursor = self.db.execute(sql)
-        return int(cursor.fetchone()[0])
+        tmp = cursor.fetchone()
+        if tmp is None:
+            return 0
+        else:
+            return int(tmp[0])
 
     def dt_term(self):
         table_name = "log"
