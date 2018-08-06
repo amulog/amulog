@@ -296,7 +296,7 @@ def search_stable_vrule(ld, restr):
                 d_var = d_args.setdefault(vid, {})
                 d_var[arg] = d_var.get(arg, 0) + 1
         for vid, loc in enumerate(ld.lt(ltid).var_location()):
-            if len(d_args[vid]) == 1 and reobj.match(d_args[vid]):
+            if len(d_args[vid]) == 1 and reobj.match(d_args.keys()[0]):
                 print("{0} {1}".format(ltobj.ltid, ltobj))
                 print("variable {0} (word location {1}): {2}".format(
                         vid, loc, d_args.keys()[0]))
