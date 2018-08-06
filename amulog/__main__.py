@@ -300,7 +300,7 @@ def show_lt_vstable_word(ns):
 
     word = ns.word
     ld = log_db.LogData(conf)
-    lt_tool.search_stable_vword(ld, word, th = 1)
+    lt_tool.search_stable_vword(ld, word)
 
 
 def show_ltg_label(ns):
