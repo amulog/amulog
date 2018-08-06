@@ -1,8 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import logging
+
 from . import common
 from . import lt_common
+
+_logger = logging.getLogger(__package__)
 
 
 class LTSearchTree():
@@ -64,6 +68,7 @@ class LTSearchTree():
             point.set_ltid(ltid)
 
     def _trace(self, ltwords):
+        _logger.debug("tracing message {0}".format(ltwords))
         point = self.root
         temp_ltwords = ltwords[:]
         check_points = []
@@ -85,29 +90,41 @@ class LTSearchTree():
                 # also go to wild node, when check_points poped
                 if point.wild is not None:
                     check_points.append((point, len(temp_ltwords)))
+                    _logger.debug("# add checkpoint ({0} (+{1}))".format(point, len(temp_ltwords) + 1))
+                _logger.debug("{0} (+{1}) -> goto {2}".format(point, len(temp_ltwords) + 1, w))
                 point = point.windex[w]
             elif point.wild is not None:
                 # w is not in windex, but have wild node
+                _logger.debug("{0} (+{1}) -> goto {2}".format(point, len(temp_ltwords) + 1, self.sym))
                 point = point.wild
             else:
+                _logger.debug("{0} (+{1}) : no available children".format(point, len(temp_ltwords) + 1))
                 # no template to process w, go back or end
                 if len(check_points) == 0:
+                    _logger.debug("template not found")
                     return None
                 else:
                     p, left_wlen = check_points.pop(-1)
-                    temp_ltwords = ltwords[-left_wlen:]
+                    temp_ltwords = ltwords[-left_wlen:] if left_wlen > 0 else []
                         # +1 : for one **(wild) node
                     point = p.wild
+                    _logger.debug("go back to a stacked branch : {0} (+{1})".format(point, len(temp_ltwords)))
+                    _logger.debug("remaining words : {0}".format(temp_ltwords))
 
-            if len(temp_ltwords) == 0:
+            while len(temp_ltwords) == 0:
                 if point.end is None:
+                    _logger.debug("{0} (+{1}) : no template in this node".format(point, len(temp_ltwords)))
                     if len(check_points) == 0:
+                        _logger.debug("all ends are empty(no templates)")
                         return None
                     else:
                         p, left_wlen = check_points.pop(-1)
-                        temp_ltwords = ltwords[-left_wlen:]
+                        temp_ltwords = ltwords[-left_wlen:] if left_wlen > 0 else []
                         point = p.wild
+                        _logger.debug("go back to a stacked branch : {0} (+{1})".format(point, len(temp_ltwords)))
+                        _logger.debug("remaining words : {0}".format(temp_ltwords))
                 else:
+                    _logger.debug("done (tpl: {0}, id: {1})".format(point, point.end))
                     return point
 
     def remove(self, ltid, ltwords):
@@ -153,7 +170,7 @@ class LTSearchTreeNode():
             else:
                 ret.append(p.word)
             p = p.parent
-        return " ".join(ret)
+        return " ".join(reversed(ret))
 
     def child(self, word = None):
         if word is None:
