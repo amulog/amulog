@@ -291,16 +291,16 @@ def show_lt_vstable(ns):
     lt_tool.search_stable_variable(ld, th = 1)
 
 
-def show_lt_vstable_word(ns):
+def show_lt_vstable_rule(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
     from . import log_db
     from . import lt_tool
 
-    word = ns.word
+    restr = ns.word
     ld = log_db.LogData(conf)
-    lt_tool.search_stable_vword(ld, word)
+    lt_tool.search_stable_vrule(ld, restr)
 
 
 def show_ltg_label(ns):
@@ -763,7 +763,7 @@ DICT_ARGSET = {
                            "action": "store", "type": int, "default": 1,
                            "help": "thureshold number to be stable"}]],
                         show_lt_vstable],
-    "show-lt-vstable-word": ["Show stable variables in the template.",
+    "show-lt-vstable-rule": ["Show stable variables in the template.",
                              [OPT_CONFIG, OPT_DEBUG,
                               [["-n", "--number"],
                                {"dest": "number", "metavar": "NUMBER",
@@ -771,8 +771,8 @@ DICT_ARGSET = {
                                 "help": "thureshold number to be stable"}],
                               [["word"],
                                {"metavar": "WORD", "action": "store",
-                                "help": "word to search"}]],
-                             show_lt_vstable_word],
+                                "help": "word / regular expression"}]],
+                             show_lt_vstable_rule],
     "show-ltg-label": ["Show labels for log template groups",
                        [OPT_CONFIG, OPT_DEBUG],
                        show_ltg_label],
