@@ -266,3 +266,4 @@ class LTGroupFuzzyHash(lt_common.LTGroup):
                 ret.append((ltid, score))
         return ret
 
+

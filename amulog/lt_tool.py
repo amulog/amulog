@@ -268,7 +268,7 @@ def free_ltid(ld, ltid, l_wid, sym):
 
 
 def search_stable_variable(ld, th = 1):
-    ld.init_ltmanager()
+    #ld.init_ltmanager()
 
     for ltobj in ld.iter_lt():
         ltid = ltobj.ltid

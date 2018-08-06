@@ -266,6 +266,31 @@ def show_lt_variables(ns):
                                   reverse = True)))
 
 
+def show_lt_breakdown(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+    from . import lt_tool
+
+    ld = log_db.LogData()
+    ltid = ns.ltid
+    limit = ns.lines
+    ret = lt_tool.breakdown_ltid(ld, ltid, limit)
+    print(ret)
+
+
+def show_lt_vstable(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+    from . import lt_tool
+
+    ld = log_db.LogData()
+    lt_tool.search_stable_variable(ld, th = 1)
+
+
 def show_ltg_label(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -706,6 +731,26 @@ DICT_ARGSET = {
                            {"dest": "repld", "action": "store_true",
                             "help": "replace digit to \d"}]],
                          show_lt_variables],
+    "show-lt-breakdown": ["Show variable candidates in a log template.",
+                          [OPT_CONFIG, OPT_DEBUG,
+                           [["-l", "--ltid"],
+                            {"dest": "ltid", "metavar": "LTID",
+                             "action": "store", "type": int,
+                             "help": "log template identifier to investigate"}
+                            ],
+                           [["-n", "--number"],
+                            {"dest": "lines", "metavar": "LINES",
+                             "action": "store", "type": int, "default": 5,
+                             "help": "number of variable candidates to show"}
+                            ]],
+                          show_lt_breakdown],
+    "show-lt-vstable": ["Show stable variables in the template.",
+                        [OPT_CONFIG, OPT_DEBUG,
+                         [["-n", "--number"],
+                          {"dest": "number", "metavar": "NUMBER",
+                           "action": "store", "type": int, "default": 1,
+                           "help": "thureshold number to be stable"}]],
+                        show_lt_vstable],
     "show-ltg-label": ["Show labels for log template groups",
                        [OPT_CONFIG, OPT_DEBUG],
                        show_ltg_label],
