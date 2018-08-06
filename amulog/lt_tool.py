@@ -285,7 +285,7 @@ def search_stable_variable(ld, th = 1):
                         vid, loc, d_args[vid]))
 
 
-def search_stable_vword(ld, word, th = 1):
+def search_stable_vword(ld, word):
     for ltobj in ld.iter_lt():
         ltid = ltobj.ltid
         d_args = {}
@@ -295,7 +295,7 @@ def search_stable_vword(ld, word, th = 1):
                 d_var[arg] = d_var.get(arg, 0) + 1
         for vid, loc in enumerate(ld.lt(ltid).var_location()):
             var_variety = len(d_args[vid].keys())
-            if var_variety <= th and d_args[vid] == word:
+            if var_variety == 1 and d_args[vid][0] == word:
                 print("{0} {1}".format(ltobj.ltid, ltobj))
                 print("variable {0} (word location {1}): {2}".format(
                         vid, loc, d_args[vid]))
