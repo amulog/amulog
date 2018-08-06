@@ -294,11 +294,10 @@ def search_stable_vword(ld, word):
                 d_var = d_args.setdefault(vid, {})
                 d_var[arg] = d_var.get(arg, 0) + 1
         for vid, loc in enumerate(ld.lt(ltid).var_location()):
-            var_variety = len(d_args[vid].keys())
-            if var_variety == 1 and d_args[vid][0] == word:
+            if len(d_args[vid]) == 1 and word in d_args[vid]:
                 print("{0} {1}".format(ltobj.ltid, ltobj))
                 print("variable {0} (word location {1}): {2}".format(
-                        vid, loc, d_args[vid]))
+                        vid, loc, word))
 
 
 #if __name__ == "__main__":
