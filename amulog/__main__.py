@@ -273,7 +273,7 @@ def show_lt_breakdown(ns):
     from . import log_db
     from . import lt_tool
 
-    ld = log_db.LogData()
+    ld = log_db.LogData(conf)
     ltid = ns.ltid
     limit = ns.lines
     ret = lt_tool.breakdown_ltid(ld, ltid, limit)
@@ -287,7 +287,7 @@ def show_lt_vstable(ns):
     from . import log_db
     from . import lt_tool
 
-    ld = log_db.LogData()
+    ld = log_db.LogData(conf)
     lt_tool.search_stable_variable(ld, th = 1)
 
 
@@ -299,7 +299,7 @@ def show_lt_vstable_word(ns):
     from . import lt_tool
 
     word = ns.word
-    ld = log_db.LogData()
+    ld = log_db.LogData(conf)
     lt_tool.search_stable_vword(ld, word, th = 1)
 
 
