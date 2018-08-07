@@ -299,8 +299,9 @@ def show_lt_vstable_rule(ns):
     from . import lt_tool
 
     restr = ns.word
+    update = ns.update
     ld = log_db.LogData(conf)
-    lt_tool.search_stable_vrule(ld, restr)
+    lt_tool.search_stable_vrule(ld, restr, update)
 
 
 def show_ltg_label(ns):
@@ -769,6 +770,10 @@ DICT_ARGSET = {
                                {"dest": "number", "metavar": "NUMBER",
                                 "action": "store", "type": int, "default": 1,
                                 "help": "thureshold number to be stable"}],
+                              [["-u", "--update"],
+                               {"dest": "update",
+                                "action": "store_true", "default": False,
+                                "help": "update templates automatically"}],
                               [["word"],
                                {"metavar": "WORD", "action": "store",
                                 "help": "word / regular expression"}]],

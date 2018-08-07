@@ -285,7 +285,7 @@ def search_stable_variable(ld, th = 1):
                         vid, loc, d_args[vid]))
 
 
-def search_stable_vrule(ld, restr):
+def search_stable_vrule(ld, restr, update = False):
     import re
     reobj = re.compile(restr)
     for ltobj in ld.iter_lt():
@@ -300,6 +300,9 @@ def search_stable_vrule(ld, restr):
                 print("{0} {1}".format(ltobj.ltid, ltobj))
                 print("variable {0} (word location {1}): {2}".format(
                         vid, loc, d_args.keys()[0]))
+
+                if update:
+                    fix_ltid(ld, ltid, [vid], sym)
 
 
 #if __name__ == "__main__":
