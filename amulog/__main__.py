@@ -181,7 +181,7 @@ def show_lt(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
     from . import log_db
 
-    log_db.dump_lt(conf)
+    log_db.show_lt(conf)
 
 
 def show_ltg(ns):
