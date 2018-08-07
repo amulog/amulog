@@ -291,17 +291,104 @@ def show_lt_vstable(ns):
     lt_tool.search_stable_variable(ld, th = 1)
 
 
-def show_lt_vstable_rule(ns):
+#def show_lt_vstable_rule(ns):
+#    conf = config.open_config(ns.conf_path)
+#    lv = logging.DEBUG if ns.debug else logging.INFO
+#    config.set_common_logging(conf, logger = _logger, lv = lv)
+#    from . import log_db
+#    from . import lt_tool
+#
+#    restr = ns.word
+#    update = ns.update
+#    ld = log_db.LogData(conf)
+#    lt_tool.search_stable_vrule(ld, restr, update)
+
+def lttool_merge(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
     from . import log_db
     from . import lt_tool
 
-    restr = ns.word
-    update = ns.update
+    ltid1 = ns.ltid1
+    ltid2 = ns.ltid2
     ld = log_db.LogData(conf)
-    lt_tool.search_stable_vrule(ld, restr, update)
+    lt_tool.merge_ltid(ld, ltid1, ltid2)
+
+
+def lttool_separate(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+    from . import lt_tool
+
+    ltid = ns.ltid
+    vid = ns.vid
+    word = ns.word
+    lt_tool.separate_ltid(ld, ltid, vid, word)
+
+
+def lttool_split(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+    from . import lt_tool
+
+    ltid = ns.ltid
+    vid = ns.vid
+    lt_tool.split_ltid(ld, ltid, vid)
+
+
+def lttool_fix(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+    from . import lt_tool
+
+    ltid = ns.ltid
+    l_vid = ns.vids
+    lt_tool.fix_ltid(ld, ltid, l_vid)
+
+
+def lttool_free(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+    from . import lt_tool
+
+    ltid = ns.ltid
+    l_wid = ns.l_wids
+    lt_tool.free_ltid(ld, ltid, l_wid)
+
+
+def lttool_fix_search(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+    from . import lt_tool
+
+    restr = ns.rule
+    dry = ns.dry
+    ld = log_db.LogData(conf)
+    lt_tool.search_stable_vrule(ld, restr, dry)
+
+
+def lttool_free_search(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    from . import log_db
+    from . import lt_tool
+
+    restr = ns.rule
+    dry = ns.dry
+    ld = log_db.LogData(conf)
+    lt_tool.search_desc_free(ld, restr, dry)
 
 
 def show_ltg_label(ns):
@@ -732,58 +819,119 @@ DICT_ARGSET = {
     "show-host": ["Show all hostnames in database.",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_host],
-    "show-lt-word": ["Show words and their counts in all messages",
-                     [OPT_CONFIG, OPT_DEBUG],
-                     show_lt_words],
-    "show-lt-description": ["Show description words and their counts",
-                            [OPT_CONFIG, OPT_DEBUG],
-                            show_lt_descriptions],
-    "show-lt-variable": ["Show variable words and their counts",
-                         [OPT_CONFIG, OPT_DEBUG,
-                          [["-d", "--digit"],
-                           {"dest": "repld", "action": "store_true",
-                            "help": "replace digit to \d"}]],
-                         show_lt_variables],
-    "show-lt-breakdown": ["Show variable candidates in a log template.",
-                          [OPT_CONFIG, OPT_DEBUG,
-                           [["-l", "--ltid"],
-                            {"dest": "ltid", "metavar": "LTID",
-                             "action": "store", "type": int,
-                             "help": "log template identifier to investigate"}
-                            ],
-                           [["-n", "--number"],
-                            {"dest": "lines", "metavar": "LINES",
-                             "action": "store", "type": int, "default": 5,
-                             "help": "number of variable candidates to show"}
-                            ]],
-                          show_lt_breakdown],
-    "show-lt-vstable": ["Show stable variables in the template.",
-                        [OPT_CONFIG, OPT_DEBUG,
-                         [["-n", "--number"],
-                          {"dest": "number", "metavar": "NUMBER",
-                           "action": "store", "type": int, "default": 1,
-                           "help": "thureshold number to be stable"}]],
-                        show_lt_vstable],
-    "show-lt-vstable-rule": ["Show stable variables in the template.",
-                             [OPT_CONFIG, OPT_DEBUG,
-                              [["-n", "--number"],
-                               {"dest": "number", "metavar": "NUMBER",
-                                "action": "store", "type": int, "default": 1,
-                                "help": "thureshold number to be stable"}],
-                              [["-u", "--update"],
-                               {"dest": "update",
-                                "action": "store_true", "default": False,
-                                "help": "update templates automatically"}],
-                              [["word"],
-                               {"metavar": "WORD", "action": "store",
-                                "help": "word / regular expression"}]],
-                             show_lt_vstable_rule],
     "show-ltg-label": ["Show labels for log template groups",
                        [OPT_CONFIG, OPT_DEBUG],
                        show_ltg_label],
     "show-log": ["Show log messages that satisfy given conditions in args.",
                  [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
                  show_log],
+    "lttool-countall": ["Show words and their counts in all messages",
+                        [OPT_CONFIG, OPT_DEBUG],
+                        show_lt_words],
+    "lttool-countd": ["Show description words and their counts",
+                      [OPT_CONFIG, OPT_DEBUG],
+                      show_lt_descriptions],
+    "lttool-countv": ["Show variable words and their counts",
+                      [OPT_CONFIG, OPT_DEBUG,
+                       [["-d", "--digit"],
+                        {"dest": "repld", "action": "store_true",
+                         "help": "replace digit to \d"}]],
+                      show_lt_variables],
+    "lttool-breakdown": ["Show variable candidates in a log template.",
+                         [OPT_CONFIG, OPT_DEBUG,
+                          [["-l", "--ltid"],
+                           {"dest": "ltid", "metavar": "LTID",
+                            "action": "store", "type": int,
+                            "help": "log template identifier to investigate"}
+                           ],
+                          [["-n", "--number"],
+                           {"dest": "lines", "metavar": "LINES",
+                            "action": "store", "type": int, "default": 5,
+                            "help": "number of variable candidates to show"}
+                           ]],
+                         show_lt_breakdown],
+    "lttool-vstable": ["Show stable variables in the template.",
+                       [OPT_CONFIG, OPT_DEBUG,
+                        [["-n", "--number"],
+                         {"dest": "number", "metavar": "NUMBER",
+                          "action": "store", "type": int, "default": 1,
+                          "help": "thureshold number to be stable"}]],
+                       show_lt_vstable],
+    "lttool-merge": ["Merge 2 templates and generate a new template.",
+                     [OPT_CONFIG, OPT_DEBUG,
+                      [["ltid1"],
+                       {"metavar": "LTID1", "action": "store",
+                        "help": "first log template to merge"}],
+                      [["ltid2"],
+                       {"metavar": "LTID2", "action": "store",
+                        "help": "second log template to merge"}],],
+                     lttool_merge],
+    "lttool-separate": ["Separate messages satisfying the given condition "
+                        "and make it a new log template.",
+                        [OPT_CONFIG, OPT_DEBUG,
+                         [["ltid"],
+                          {"metavar": "LTID", "action": "store",
+                           "help": "log template indentifier"}],
+                         [["vid"],
+                          {"metavar": "VARIABLE-ID", "action": "store",
+                           "help": "variable identifier to fix"}],
+                         [["word"],
+                          {"metavar": "WORD", "action": "store",
+                           "help": "a word to fix in the location of vid"}]],
+                        lttool_separate],
+    "lttool-split": ["Fix variables to split a template into tempaltes. "
+                     "Use carefully because this function may cause "
+                     "to generate enormous failure templates.",
+                     [OPT_CONFIG, OPT_DEBUG,
+                      [["ltid"],
+                       {"metavar": "LTID", "action": "store",
+                        "help": "log template indentifier"}],
+                      [["vid"],
+                       {"metavar": "VARIABLE-ID", "action": "store",
+                        "help": "variable identifier to fix"}]],
+                     lttool_split],
+    "lttool-fix": ["Fix specified stable variable and modify template. "
+                   "If not stable, use lttool-split or lttool-separate.",
+                   [OPT_CONFIG, OPT_DEBUG,
+                    [["ltid"],
+                     {"metavar": "LTID", "action": "store",
+                      "help": "log template to fix"}],
+                    [["vids"],
+                     {"metavar": "VARIABLE-IDs", "nargs": "+", "type": "int",
+                      "help": "variable identifiers to fix"}]],
+                   lttool_fix],
+    "lttool-free": ["Make a description word as a variable"
+                    "and modify the template.",
+                    [OPT_CONFIG, OPT_DEBUG,
+                     [["ltid"],
+                      {"metavar": "LTID", "action": "store",
+                       "help": "log template indentifier"}],
+                     [["wids"],
+                      {"metavar": "WORD-IDs", "nargs": "+", "type": "int",
+                       "help": "word locations to fix"}]],
+                    lttool_free],
+    "lttool-fix-search": ["Search templates with variables of given rule "
+                          "and modify templates by fixing them.",
+                          [OPT_CONFIG, OPT_DEBUG,
+                           [["-d", "--dry-run"],
+                            {"dest": "dry",
+                             "action": "store_true", "default": False,
+                             "help": "do not update templates"}],
+                           [["rule"],
+                            {"metavar": "RULE", "action": "store",
+                             "help": "word / regular expression"}]],
+                          lttool_fix_search],
+    "lttool-free-search": ["Search templates with words of given rule ",
+                           "and modify templates by making them variable.",
+                           [OPT_CONFIG, OPT_DEBUG,
+                            [["-u", "--update"],
+                             {"dest": "update",
+                              "action": "store_true", "default": False,
+                              "help": "update templates automatically"}],
+                            [["rule"],
+                             {"metavar": "RULE", "action": "store",
+                              "help": "word / regular expression"}]],
+                           lttool_free_search],
     "make-crf-train": ["Output CRF training file for given conditions.",
                        [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,
                         [["-n", "--train_size"],
