@@ -326,6 +326,7 @@ def lttool_separate(ns):
     ltid = ns.ltid
     vid = ns.vid
     word = ns.word
+    ld = log_db.LogData(conf)
     lt_tool.separate_ltid(ld, ltid, vid, word)
 
 
@@ -338,6 +339,7 @@ def lttool_split(ns):
 
     ltid = ns.ltid
     vid = ns.vid
+    ld = log_db.LogData(conf)
     lt_tool.split_ltid(ld, ltid, vid)
 
 
@@ -350,6 +352,7 @@ def lttool_fix(ns):
 
     ltid = ns.ltid
     l_vid = ns.vids
+    ld = log_db.LogData(conf)
     lt_tool.fix_ltid(ld, ltid, l_vid)
 
 
@@ -362,6 +365,7 @@ def lttool_free(ns):
 
     ltid = ns.ltid
     l_wid = ns.l_wids
+    ld = log_db.LogData(conf)
     lt_tool.free_ltid(ld, ltid, l_wid)
 
 
@@ -860,20 +864,21 @@ DICT_ARGSET = {
     "lttool-merge": ["Merge 2 templates and generate a new template.",
                      [OPT_CONFIG, OPT_DEBUG,
                       [["ltid1"],
-                       {"metavar": "LTID1", "action": "store",
+                       {"metavar": "LTID1", "action": "store", "type": int,
                         "help": "first log template to merge"}],
                       [["ltid2"],
-                       {"metavar": "LTID2", "action": "store",
+                       {"metavar": "LTID2", "action": "store", "type": int,
                         "help": "second log template to merge"}],],
                      lttool_merge],
     "lttool-separate": ["Separate messages satisfying the given condition "
                         "and make it a new log template.",
                         [OPT_CONFIG, OPT_DEBUG,
                          [["ltid"],
-                          {"metavar": "LTID", "action": "store",
+                          {"metavar": "LTID", "action": "store", "type": int,
                            "help": "log template indentifier"}],
                          [["vid"],
                           {"metavar": "VARIABLE-ID", "action": "store",
+                           "type": int,
                            "help": "variable identifier to fix"}],
                          [["word"],
                           {"metavar": "WORD", "action": "store",
@@ -884,7 +889,7 @@ DICT_ARGSET = {
                      "to generate enormous failure templates.",
                      [OPT_CONFIG, OPT_DEBUG,
                       [["ltid"],
-                       {"metavar": "LTID", "action": "store",
+                       {"metavar": "LTID", "action": "store", "type": int,
                         "help": "log template indentifier"}],
                       [["vid"],
                        {"metavar": "VARIABLE-ID", "action": "store",
@@ -894,20 +899,20 @@ DICT_ARGSET = {
                    "If not stable, use lttool-split or lttool-separate.",
                    [OPT_CONFIG, OPT_DEBUG,
                     [["ltid"],
-                     {"metavar": "LTID", "action": "store",
+                     {"metavar": "LTID", "action": "store", "type": int,
                       "help": "log template to fix"}],
                     [["vids"],
-                     {"metavar": "VARIABLE-IDs", "nargs": "+", "type": "int",
+                     {"metavar": "VARIABLE-IDs", "nargs": "+", "type": int,
                       "help": "variable identifiers to fix"}]],
                    lttool_fix],
     "lttool-free": ["Make a description word as a variable"
                     "and modify the template.",
                     [OPT_CONFIG, OPT_DEBUG,
                      [["ltid"],
-                      {"metavar": "LTID", "action": "store",
+                      {"metavar": "LTID", "action": "store", "type": int,
                        "help": "log template indentifier"}],
                      [["wids"],
-                      {"metavar": "WORD-IDs", "nargs": "+", "type": "int",
+                      {"metavar": "WORD-IDs", "nargs": "+", "type": int,
                        "help": "word locations to fix"}]],
                     lttool_free],
     "lttool-fix-search": ["Search templates with variables of given rule "
