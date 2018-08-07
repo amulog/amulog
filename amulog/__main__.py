@@ -364,7 +364,7 @@ def lttool_free(ns):
     from . import lt_tool
 
     ltid = ns.ltid
-    l_wid = ns.l_wids
+    l_wid = ns.wids
     ld = log_db.LogData(conf)
     lt_tool.free_ltid(ld, ltid, l_wid)
 
