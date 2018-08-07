@@ -69,7 +69,7 @@ def breakdown_ltid(ld, ltid, limit):
     return "\n".join(buf)
 
 
-def _str_lt(ltid):
+def _str_lt(ltid, ld):
     return "ltid {0} : {1}".format(ltid, str(ld.lt(ltid)))
 
 
@@ -86,8 +86,8 @@ def merge_ltid(ld, ltid1, ltid2):
     ld.init_ltmanager()
     sym = ld.ltm.sym
     print("merge following log templates...")
-    print(_str_lt(ltid1))
-    print(_str_lt(ltid2))
+    print(_str_lt(ltid1, ld))
+    print(_str_lt(ltid2, ld))
     print()
 
     ltw1 = ld.lt(ltid1).ltw
@@ -106,7 +106,7 @@ def merge_ltid(ld, ltid1, ltid2):
     ld.commit_db()
 
     print("> new log template : ltid {0}".format(ltid1))
-    print(_str_lt(ltid1))
+    print(_str_lt(ltid1, ld))
 
 
 def separate_ltid(ld, ltid, vid, value):
@@ -130,7 +130,7 @@ def separate_ltid(ld, ltid, vid, value):
     ld.init_ltmanager()
     sym = ld.ltm.sym
     print("separate following log template...")
-    print(_str_lt(ltid))
+    print(_str_lt(ltid, ld))
     print("new log template if variable {0} is {1}".format(vid, value))
     print()
 
@@ -151,15 +151,15 @@ def separate_ltid(ld, ltid, vid, value):
     ld.commit_db()
 
     print("> new log templates : ltid {0}, ltid {1}".format(ltid, new_ltid))
-    print(_str_lt(ltid))
-    print(_str_lt(new_ltid))
+    print(_str_lt(ltid, ld))
+    print(_str_lt(new_ltid, ld))
 
 
 def split_ltid(ld, ltid, vid):
     ld.init_ltmanager()
     sym = ld.ltm.sym
     print("split following log template...")
-    print(_str_lt(ltid))
+    print(_str_lt(ltid, ld))
     
     d_lid = {}
     for lm in ld.iter_lines(ltid = ltid):
@@ -187,7 +187,7 @@ def split_ltid(ld, ltid, vid):
     ld.ltm.replace_lt(new_ltid, new_ltw, l_s, cnt)
     d_word_ltid[new_word] = new_ltid
     print("> new log templates : ltid {0}".format(new_ltid))
-    print(_str_lt(new_ltid))
+    print(_str_lt(new_ltid, ld))
 
     # Add templates
     while len(args) > 0:
@@ -200,7 +200,7 @@ def split_ltid(ld, ltid, vid):
         assert new_ltid == new_ltobj.ltid
         d_word_ltid[new_word] = new_ltid
         print("> new log templates : ltid {0}".format(new_ltid))
-        print(_str_lt(new_ltid))
+        print(_str_lt(new_ltid, ld))
     
     # Update log lines
     for word, l_lid in d_lid.items():
@@ -215,7 +215,7 @@ def fix_ltid(ld, ltid, l_vid):
     ld.init_ltmanager()
     sym = ld.ltm.sym
     print("make variable (with no variety) into description word...")
-    print(_str_lt(ltid))
+    print(_str_lt(ltid, ld))
     
     d_variety = {vid : set() for vid in l_vid}
     for lm in ld.iter_lines(ltid = ltid):
@@ -245,14 +245,14 @@ def fix_ltid(ld, ltid, l_vid):
     ld.ltm.replace_lt(ltid, new_ltw, l_s, cnt)
     ld.commit_db()
     print("> new log templates : ltid {0}".format(ltid))
-    print(_str_lt(ltid))
+    print(_str_lt(ltid, ld))
 
 
 def free_ltid(ld, ltid, l_wid):
     ld.init_ltmanager()
     sym = ld.ltm.sym
     print("make description word into variable (with no variety)...")
-    print(_str_lt(ltid))
+    print(_str_lt(ltid, ld))
  
     ltobj = ld.lt(ltid)
     new_ltw = ltobj.ltw[:]
@@ -269,7 +269,7 @@ def free_ltid(ld, ltid, l_wid):
     ld.ltm.replace_lt(ltid, new_ltw, l_s, cnt)
     ld.commit_db()
     print("> new log templates : ltid {0}".format(ltid))
-    print(_str_lt(ltid))
+    print(_str_lt(ltid, ld))
 
 
 def search_stable_variable(ld, th = 1):
