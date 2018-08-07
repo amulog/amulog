@@ -290,7 +290,7 @@ def search_stable_variable(ld, th = 1):
                         vid, loc, d_args[vid]))
 
 
-def search_stable_vrule(ld, restr, update = False):
+def search_stable_vrule(ld, restr, dry = False):
     import re
     reobj = re.compile(restr)
     for ltobj in ld.iter_lt():
@@ -306,9 +306,23 @@ def search_stable_vrule(ld, restr, update = False):
                 print("{0} {1}".format(ltobj.ltid, ltobj))
                 print("variable {0} (word location {1}): {2}".format(
                         vid, loc, list(d_args[vid].keys())[0]))
-
-                if update:
+                if not dry:
                     fix_ltid(ld, ltid, [vid])
+
+    
+def search_desc_free(ld, restr, dry = False):
+    import re
+    reobj = re.compile(restr)
+    for ltobj in ld.iter_lt():
+        ltid = ltobj.ltid
+        for wid, w in enumerate(ltobj.ltw):
+            if w == ltobj.sym:
+                pass
+            elif reobj.match(w):
+                print("{0} {1}".format(ltobj.ltid, ltobj))
+                print("word location {0}".format(wid))
+                if not dry:
+                    free_ltid(ld, ltid, wid)
 
 
 #if __name__ == "__main__":
