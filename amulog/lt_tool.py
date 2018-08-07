@@ -82,8 +82,9 @@ def _str_lt(ltid):
 #        raise ValueError("No existing tpl, failed")
 
 
-def merge_ltid(ld, ltid1, ltid2, sym):
+def merge_ltid(ld, ltid1, ltid2):
     ld.init_ltmanager()
+    sym = ld.ltm.sym
     print("merge following log templates...")
     print(_str_lt(ltid1))
     print(_str_lt(ltid2))
@@ -108,7 +109,7 @@ def merge_ltid(ld, ltid1, ltid2, sym):
     print(_str_lt(ltid1))
 
 
-def separate_ltid(ld, ltid, vid, value, sym):
+def separate_ltid(ld, ltid, vid, value):
 
     def remake_lt(ld, ltid):
         # use iter_words rather than iter_lines
@@ -127,6 +128,7 @@ def separate_ltid(ld, ltid, vid, value, sym):
         return new_lt, cnt
 
     ld.init_ltmanager()
+    sym = ld.ltm.sym
     print("separate following log template...")
     print(_str_lt(ltid))
     print("new log template if variable {0} is {1}".format(vid, value))
@@ -153,8 +155,9 @@ def separate_ltid(ld, ltid, vid, value, sym):
     print(_str_lt(new_ltid))
 
 
-def split_ltid(ld, ltid, vid, sym):
+def split_ltid(ld, ltid, vid):
     ld.init_ltmanager()
+    sym = ld.ltm.sym
     print("split following log template...")
     print(_str_lt(ltid))
     
@@ -208,8 +211,9 @@ def split_ltid(ld, ltid, vid, sym):
     ld.commit_db()
 
 
-def fix_ltid(ld, ltid, l_vid, sym):
+def fix_ltid(ld, ltid, l_vid):
     ld.init_ltmanager()
+    sym = ld.ltm.sym
     print("make variable (with no variety) into description word...")
     print(_str_lt(ltid))
     
@@ -244,8 +248,9 @@ def fix_ltid(ld, ltid, l_vid, sym):
     print(_str_lt(ltid))
 
 
-def free_ltid(ld, ltid, l_wid, sym):
+def free_ltid(ld, ltid, l_wid):
     ld.init_ltmanager()
+    sym = ld.ltm.sym
     print("make description word into variable (with no variety)...")
     print(_str_lt(ltid))
  
@@ -303,7 +308,7 @@ def search_stable_vrule(ld, restr, update = False):
                         vid, loc, list(d_args[vid].keys())[0]))
 
                 if update:
-                    fix_ltid(ld, ltid, [vid], sym)
+                    fix_ltid(ld, ltid, [vid])
 
 
 #if __name__ == "__main__":
