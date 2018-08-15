@@ -63,10 +63,7 @@ class GroupDef():
         return self.rgdict.keys()
 
     def ingroup(self, group, val):
-        if self.rgdict(val):
-            return val in self.rgdict[val]
-        else:
-            return False
+        return val in self.gdict[group]
 
     def get_group(self, val):
         if val in self.rgdict:
