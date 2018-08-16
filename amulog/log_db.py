@@ -1112,9 +1112,11 @@ def info_term(conf, top_dt, end_dt):
 
 def show_lt(conf, **kwargs):
     ld = LogData(conf)
-    for ltobj in ld.iter_lt():
-        print(ltobj)
-    #print(ld.show_ltgroup_cond(**kwargs))
+    if "simple" in kwargs and "simple":
+        for ltobj in ld.iter_lt():
+            print(ltobj)
+    else:
+        print(ld.show_ltgroup_cond(**kwargs))
 
 
 def dump_lt(conf):

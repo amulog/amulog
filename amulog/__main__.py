@@ -181,7 +181,8 @@ def show_lt(ns):
     config.set_common_logging(conf, logger = _logger, lv = lv)
     from . import log_db
 
-    log_db.show_lt(conf)
+    simple = ns.simple
+    log_db.show_lt(conf, simple = simple)
 
 
 def show_ltg(ns):
@@ -798,7 +799,10 @@ DICT_ARGSET = {
                      [OPT_CONFIG, OPT_DEBUG, OPT_TERM],
                      show_db_info],
     "show-lt": ["Show all log templates in database.",
-                [OPT_CONFIG, OPT_DEBUG],
+                [OPT_CONFIG, OPT_DEBUG,
+                 [["-s", "--simple"],
+                  {"dest": "simple", "action": "store_true",
+                   "help": "only show log templates"}]],
                 show_lt],
     "show-ltg": ["Show all log template groups and their members in database.",
                  [OPT_CONFIG, OPT_DEBUG,
