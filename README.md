@@ -9,11 +9,11 @@ and to store the data in a database.
 
 This project was partially ported from repository LogCausalAnaysis.
 (https://github.com/cpflat/LogCausalAnalysis)
-
 This system works on python3.
+<!--
 There are some outdated functions because of library problems
 (like MySQL, CRF-based template generation).
-It is planned to add them soon.
+It is planned to add them soon. -->
 
 
 ## Author
