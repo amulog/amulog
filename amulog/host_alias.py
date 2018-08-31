@@ -82,6 +82,9 @@ class HostAlias(object):
                     add_alias(name, alias)
                     add_groupdef(name, group)
 
+    def keys(self):
+        return self._d_alias.keys()
+
     def print_definitions(self):
         print("[aliases]")
         for k, val in self._d_alias.items():
