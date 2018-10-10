@@ -129,6 +129,9 @@ class HostAlias(object):
             else:
                 return None
 
+    def group(self, group):
+        return self._d_group[group]
+
     def get_group(self, string):
         try:
             addr = str(ipaddress.ip_address(string))

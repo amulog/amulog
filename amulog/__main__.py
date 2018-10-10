@@ -103,7 +103,7 @@ def db_make(ns):
 
     timer = common.Timer("db-make", output = _logger)
     timer.start()
-    log_db.process_files(conf, targets, True)
+    log_db.process_files(conf, targets, True, lid_header = ns.lid_header)
     timer.stop()
 
 
@@ -116,7 +116,7 @@ def db_make_init(ns):
 
     timer = common.Timer("db-make-init", output = _logger)
     timer.start()
-    log_db.process_init_data(conf, targets)
+    log_db.process_init_data(conf, targets, lid_header = ns.lid_header)
     timer.stop()
 
 
@@ -129,7 +129,7 @@ def db_add(ns):
 
     timer = common.Timer("db-add", output = _logger)
     timer.start()
-    log_db.process_files(conf, targets, False)
+    log_db.process_files(conf, targets, False, lid_header = ns.lid_header)
     timer.stop()
 
 
@@ -142,7 +142,8 @@ def db_update(ns):
 
     timer = common.Timer("db-update", output = _logger)
     timer.start()
-    log_db.process_files(conf, targets, False, diff = True)
+    log_db.process_files(conf, targets, False, diff = True,
+                         lid_header = ns.lid_header)
     timer.stop()
 
 
@@ -419,11 +420,15 @@ def show_log(ns):
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger = _logger, lv = lv)
     from . import log_db
+    lidflag = ns.lid
 
     d = parse_condition(ns.conditions)
     ld = log_db.LogData(conf)
     for e in ld.iter_lines(**d):
-        print(e.restore_line())
+        if lidflag:
+            print(e.restore_line_lid())
+        else:
+            print(e.restore_line())
 
 
 def make_crf_train(ns):
@@ -697,6 +702,9 @@ OPT_TERM = [["-t", "--term"],
              "metavar": "DATE1 DATE2", "nargs": 2,
              "help": ("datetime range, start and end in %Y-%M-%d style."
                       "(optional; defaultly use all data in database)")}]
+OPT_LID = [["-l", "--lid"],
+             {"dest": "lid_header", "action": "store_true",
+              "help": "parse lid from head part of log message"}]
 ARG_FILE = [["file"],
              {"metavar": "PATH", "action": "store",
               "help": "filepath to output"}]
@@ -772,21 +780,21 @@ DICT_ARGSET = {
                      data_from_data],
     "db-make": [("Initialize database and add log data. "
                  "This fuction works incrementaly."),
-                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],
+                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_LID, ARG_FILES_OPT],
                 db_make],
     "db-make-init": [("Initialize database and add log data "
                       "for given dataset. "
                       "This function does not consider "
                       "to add other data afterwards."),
-                     [OPT_CONFIG, OPT_DEBUG, OPT_RECUR,
+                     [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_LID,
                       ARG_FILES_OPT],
                      db_make_init],
     "db-add": ["Add log data to existing database.",
-               [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES],
+               [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_LID, ARG_FILES],
                db_add],
     "db-update": [("Add newer log data (seeing timestamp range) "
                    "to existing database."),
-                  [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES],
+                  [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_LID, ARG_FILES],
                   db_update],
     "db-anonymize": [("Remove variables in log messages. "
                       "(Not anonymize hostnames; to be added)"),
@@ -831,7 +839,11 @@ DICT_ARGSET = {
                        [OPT_CONFIG, OPT_DEBUG],
                        show_ltg_label],
     "show-log": ["Show log messages that satisfy given conditions in args.",
-                 [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH],
+                 [OPT_CONFIG, OPT_DEBUG,
+                  [["--lid"],
+                   {"dest": "lid", "action": "store_true",
+                    "help": "show lid"}],
+                  ARG_DBSEARCH],
                  show_log],
     "lttool-countall": ["Show words and their counts in all messages",
                         [OPT_CONFIG, OPT_DEBUG],

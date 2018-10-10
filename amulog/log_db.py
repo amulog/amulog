@@ -376,7 +376,7 @@ class LogData():
                                                             label)] + buf
         return "\n".join(buf)
 
-    def add_line(self, ltid, dt, host, l_w):
+    def add_line(self, ltid, dt, host, l_w, lid = None):
         """Add a log message to DB.
 
         Args:
@@ -388,8 +388,8 @@ class LogData():
         Returns:
             LogMessage: An annotated log message instance.
         """
-        self.db.add_line(ltid, dt, host, l_w)
-        return LogMessage(ltid, self.lttable[ltid], dt, host, l_w)
+        new_lid = self.db.add_line(ltid, dt, host, l_w, lid = lid)
+        return LogMessage(new_lid, self.lttable[ltid], dt, host, l_w)
 
     def update_area(self):
         self.db._remove_area()
@@ -459,7 +459,8 @@ class LogDB():
     def _init_tables(self):
         table_name = "log"
         l_key = [db_common.tablekey("lid", "integer",
-                    ("primary_key", "auto_increment", "not_null")),
+                    #("primary_key", "auto_increment", "not_null")),
+                    ("primary_key", "not_null")),
                  db_common.tablekey("ltid", "integer"),
                  db_common.tablekey("dt", "datetime"),
                  db_common.tablekey("host", "text"),
@@ -521,7 +522,7 @@ class LogDB():
     def commit(self):
         self.db.commit()
     
-    def add_line(self, ltid, dt, host, l_w):
+    def add_line(self, ltid, dt, host, l_w, lid = None):
         table_name = "log"
         d_val = {
             "ltid" : ltid,
@@ -529,9 +530,18 @@ class LogDB():
             "host" : host,
             "words" : self._splitter.join(l_w),
         }
+
+        self._line_cnt += 1
+        if lid is None:
+            d_val["lid"] = self._line_cnt
+        else:
+            d_val["lid"] = lid
+
         l_ss = [db_common.setstate(k, k) for k in d_val.keys()]
         sql = self.db.insert_sql(table_name, l_ss)
         self.db.execute(sql, d_val)
+
+        return d_val["lid"]
 
     def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
                    end_dt = None, host = None, area = None):
@@ -942,7 +952,7 @@ def _iter_line_from_files(targets):
 
 
 def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
-            drop_undefhost = False):
+            drop_undefhost = False, lid_header = False):
     """Add a log message to DB.
     
     Args:
@@ -960,6 +970,11 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
     """
     line = None
 
+    if lid_header:
+        lidstr, _, msg = msg.partition(" ")
+        lid = int(lidstr)
+    else:
+        lid = None
     dt, org_host, l_w, l_s = lp.process_line(msg)
     if latest is not None and dt < latest:
         _logger.debug(
@@ -986,11 +1001,12 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
         return None
     else:
         _logger.debug("Template [{0}]".format(ltline))
-        line = ld.add_line(ltline.ltid, dt, host, l_w)
+        line = ld.add_line(ltline.ltid, dt, host, l_w, lid = lid)
     return line
 
 
-def process_files(conf, targets, reset_db, isnew_check = False):
+def process_files(conf, targets, reset_db, isnew_check = False,
+                  lid_header = False):
     """Add log messages to DB from files.
 
     Args:
@@ -1012,12 +1028,14 @@ def process_files(conf, targets, reset_db, isnew_check = False):
     drop_undefhost = conf.getboolean("database", "undefined_host")
 
     for line in _iter_line_from_files(targets):
-        process_line(line, ld, lp, ha, isnew_check, latest, drop_undefhost)
+        process_line(line, ld, lp, ha, isnew_check, latest, drop_undefhost,
+                     lid_header)
 
     ld.commit_db()
 
 
-def process_init_data(conf, targets, isnew_check = False):
+def process_init_data(conf, targets, isnew_check = False,
+                      lid_header = False):
     """Add log messages to DB from files. This function do NOT process
     messages incrementally. Use this to avoid bad-start problem of
     log template generation with clustering or training methods.
@@ -1043,8 +1061,13 @@ def process_init_data(conf, targets, isnew_check = False):
 
     l_line = []
     l_data = []
-    for line in _iter_line_from_files(targets):
-        dt, org_host, l_w, l_s = lp.process_line(line)
+    for msg in _iter_line_from_files(targets):
+        if lid_header:
+            lidstr, _, msg = msg.partition(" ")
+            lid = int(lidstr)
+        else:
+            lid = None
+        dt, org_host, l_w, l_s = lp.process_line(msg)
         if latest is not None and dt < latest:
             _logger.debug(
                 "pass message with excluded timestamp {0}".format(dt))
@@ -1062,13 +1085,13 @@ def process_init_data(conf, targets, isnew_check = False):
                 host = org_host
 
         l_line.append((l_w, l_s))
-        l_data.append((dt, host))
+        l_data.append((lid, dt, host))
 
     for ltline, line, data in zip(ld.ltm.process_init_data(l_line),
                                   l_line, l_data):
         l_w, l_s = line
-        dt, host = data
-        ld.add_line(ltline.ltid, dt, host, l_w)
+        lid, dt, host = data
+        ld.add_line(ltline.ltid, dt, host, l_w, lid = lid)
 
     ld.commit_db()
 

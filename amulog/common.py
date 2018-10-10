@@ -11,6 +11,12 @@ from collections import UserDict  # for python3
 #from UserDict import UserDict  # for python2
 
 
+# args
+json_args = {"ensure_ascii" : False,
+             "indent" : 4,
+             "sort_keys" : True}
+
+
 # classes
 
 class singleton(object):
@@ -114,6 +120,20 @@ def recur_dir(args):
     else:
         raise NotImplementedError
     return l_fn
+
+
+def filepath(dn, fn):
+    if len(dn) == 0:
+        return fn
+    else:
+        return "/".join((dn, fn))
+
+
+def filename(fp):
+    if "/" in fp:
+        return fp.split("/")[-1]
+    else:
+        return fp
 
 
 def mkdir(path):
