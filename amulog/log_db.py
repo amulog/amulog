@@ -93,6 +93,12 @@ class LogMessage():
         return " ".join((str(self.dt), str(self.host),
                 self.restore_message()))
 
+    #def restore_line_lid(self):
+    #    """str: Get original log message contents
+    #    except headers (timestamp and hostname).
+    #    """
+    #    return " ".join((str(self.lid), self.restore_line()))
+
 
 class LogData():
 

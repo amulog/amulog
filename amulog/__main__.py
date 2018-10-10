@@ -426,7 +426,7 @@ def show_log(ns):
     ld = log_db.LogData(conf)
     for e in ld.iter_lines(**d):
         if lidflag:
-            print(e.restore_line_lid())
+            print("{0} {1}".format(e.lid, e.restore_line()))
         else:
             print(e.restore_line())
 
