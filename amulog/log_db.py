@@ -140,6 +140,9 @@ class LogData():
             self.ltm = lt_common.init_ltmanager(self.conf, self.db,
                     self.lttable, self._reset_db)
 
+    def get_line(self, lid):
+        return self.db.get_line(lid)
+
     def iter_lines(self, **kargs):
         """Generate log messages in DB that satisfy conditions
         given in arguments. All arguments are defaults to None, and ignored.
@@ -624,6 +627,33 @@ class LogDB():
                 l_cond.append(db_common.cond(c, "=", c))
         sql = self.db.select_sql(table_name, l_key, l_cond)
         return self.db.execute(sql, args)
+
+    def get_line(self, lid):
+        table_name = "log"
+        l_key = ["lid", "ltid", "dt", "host", "words"]
+        l_cond = [db_common.cond("lid", "=", "lid")]
+        sql = self.db.select_sql(table_name, l_key, l_cond)
+        args = {"lid": lid}
+
+        ret = []
+        for row in self.db.execute(sql, args):
+            lid = int(row[0])
+            ltid = int(row[1])
+            dt = self.db.datetime(row[2])
+            host = row[3]
+            if row[4] == "":
+                l_w = []
+            else:
+                l_w = strutil.split_igesc(row[4], self._splitter)
+            lm = LogMessage(lid, self.lttable[ltid], dt, host, l_w)
+            ret.append(lm)
+
+        if len(ret) == 0:
+            return None
+        elif len(ret) == 1:
+            return ret[0]
+        else:
+            raise ValueError("Duplicated messages for lid {0}".format(lid))
 
     def update_log(self, d_cond, d_update):
         if len(d_cond) == 0:

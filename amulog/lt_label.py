@@ -148,8 +148,8 @@ class LTLabel():
             elif score == max_score:
                 l_cand.append(rid)
         if len(l_cand) > 1:
-            _logger.info("multiple label for ltgid {0} : {1}".format(\
-                    ltgid, [self.rules[rid][0] for rid in l_cand]))
+            _logger.debug("multiple label for ltgid {0} : {1}".format(\
+                ltgid, [self.rules[rid][0] for rid in l_cand]))
             return self.rules[l_cand[0]][0]
         elif len(l_cand) == 1:
             return self.rules[l_cand[0]][0]
