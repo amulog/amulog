@@ -253,6 +253,14 @@ class LogTemplate():
     def __str__(self):
         return self.restore_message(self.ltw)
 
+    def get(self, key):
+        if key == "ltid":
+            return self.ltid
+        elif key == "ltgid":
+            return self.ltgid
+        else:
+            raise KeyError
+
     def var(self, l_w):
         if len(l_w) == 0:
             return [self.sym for w in self.ltw if w == self.sym]
