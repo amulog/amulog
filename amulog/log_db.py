@@ -17,7 +17,8 @@ from . import common
 from . import config
 from . import strutil
 from . import db_common
-from . import logparser
+#from . import logparser
+from . import logsplit
 from . import lt_common
 from . import host_alias
 
@@ -996,7 +997,7 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
             Line feed code will be ignored.
         ld (LogData): An log database interface opened in edit mode.
             Needs to initialize template classifier with ld.init_ltmanager.
-        lp (logparser.LogParser): An open message parser.
+        lp (logsplit.LogSplit): An open message parser.
         latest (Optional[datetime.datetime]): If not None,
             Ignore messages that have later timestamp than 'latest'.
 
@@ -1033,6 +1034,7 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
     _logger.debug("Processing [{0}]".format(" ".join(l_w)))
     ltline = ld.ltm.process_line(l_w, l_s)
     if ltline is None:
+        #print(" ".join(l_w))
         ld.ltm.failure_output(msg)
         return None
     else:
@@ -1058,7 +1060,8 @@ def process_files(conf, targets, reset_db, isnew_check = False,
     """
     ld = LogData(conf, edit = True, reset_db = reset_db)
     ld.init_ltmanager()
-    lp = logparser.LogParser(conf)
+    lp = logsplit.LogSplit(conf)
+    #lp = logparser.LogParser(conf)
     ha = host_alias.HostAlias(conf)
     latest = ld.dt_term()[1] if isnew_check else None
     drop_undefhost = conf.getboolean("database", "undefined_host")
@@ -1090,7 +1093,8 @@ def process_init_data(conf, targets, isnew_check = False,
     """
     ld = LogData(conf, edit = True, reset_db = True)
     ld.init_ltmanager()
-    lp = logparser.LogParser(conf)
+    lp = logsplit.LogSplit(conf)
+    #lp = logparser.LogParser(conf)
     ha = host_alias.HostAlias(conf)
     latest = ld.dt_term()[1] if isnew_check else None
     drop_undefhost = conf.getboolean("database", "undefined_host")
@@ -1290,7 +1294,8 @@ def data_from_db(conf, dirname, method, reset):
 
 def data_from_data(conf, targets, dirname, method, reset):
     rod = RestoreOriginalData(dirname, method = method, reset = reset)
-    lp = logparser.LogParser(conf)
+    lp = logsplit.LogSplit(conf)
+    #lp = logparser.LogParser(conf)
     for fp in targets:
         with open(fp, 'r') as f:
             for line in f:

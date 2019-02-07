@@ -18,7 +18,7 @@ src_recur = false
 # If empty, output log on stderr
 logging = auto.log
 
-# Compatible mode with logcausality (python2) on pickle io
+# Not supported (TODO)
 pickle_compatible = false
 
 # Another configparser filename, to add any options without warnings
@@ -59,6 +59,9 @@ mysql_passwd = test
 # use symbol that will not appear in raw log messages
 split_symbol = @@
 
+# Script to parse log messages (See data/default_logparser_regex.py)
+parser_script = 
+
 # Network area groups of host names
 # For exapmle:
 # area_filename = area_def.txt
@@ -85,12 +88,9 @@ undefined_host = false
 # default_year = 2112
 default_year = 
 
-# Remove log messages with given message headers in following files
-# For example to remove messages with free-write options
-# remove_header_filename = freewrite_header.txt, hoge.txt
+# !!!!! Not used in logsplit, 
 remove_header_filename = 
-
-header_size = 
+header_size = 5
 
 
 [log_template]
@@ -189,7 +189,7 @@ middle_label_rule =
 unknown_key_weight = 1.0
 
 
-[lt_label]
+[visual]
 
 # Log template label definition
 # If empty, use default configuration (lt_label.conf.sample)
