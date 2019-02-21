@@ -274,6 +274,13 @@ class LogData():
         """
         return self.lttable[ltid]
 
+    def iter_gid(self, gid_name):
+        if gid_name == "ltid":
+            return [lt.ltid for lt in self.iter_lt()]
+        elif gid_name == "ltgid":
+            return self.iter_ltgid()
+
+
     def iter_ltgid(self):
         """Yields int: Get all identifiers of log template groups."""
         return self.db.iter_ltgid()
