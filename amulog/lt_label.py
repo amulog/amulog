@@ -164,13 +164,13 @@ class LTLabel():
         if gid_name == "ltid":
             return self.get_lt_label(ld.lt(gid))
         elif gid_name == "ltgid":
-            return self.get_ltg_label(ld.ltg_members(gid))
+            return self.get_ltg_label(gid, ld.ltg_members(gid))
 
     def get_gid_group(self, gid, gid_name, ld):
         if gid_name == "ltid":
             return self.get_lt_group(ld.lt(gid))
         elif gid_name == "ltgid":
-            return self.get_ltg_group(ld.ltg_members(gid))
+            return self.get_ltg_group(gid, ld.ltg_members(gid))
 
     def get_group(self, label):
         if label is None:
