@@ -969,13 +969,15 @@ class RestoreOriginalData(object):
             self.write_all()
 
     def write_line(self, linestr, fn):
-        with open("/".join((self.dirname, fn)), "a") as f:
+        with open("/".join((self.dirname, fn)), 
+                  "a", encoding='utf-8') as f:
             f.write(linestr + "\n")
 
     def write_all(self):
         assert self.method == "commit"
         for fn, l_buf in self.buf.items():
-            with open("/".join((self.dirname, fn)), "a") as f:
+            with open("/".join((self.dirname, fn)),
+                      "a", encoding='utf-8') as f:
                 f.write("\n".join(l_buf))
 
 
@@ -989,7 +991,7 @@ def _iter_line_from_files(targets):
         else:
             if not os.path.isfile(fp):
                 raise IOError("File {0} not found".format(fp))
-            with open(fp, 'r') as f:
+            with open(fp, 'r', encoding='utf-8') as f:
                 _logger.info("log_db processing file {0}".format(fp))
                 for line in f:
                     yield line
@@ -1304,7 +1306,7 @@ def data_from_data(conf, targets, dirname, method, reset):
     lp = logsplit.LogSplit(conf)
     #lp = logparser.LogParser(conf)
     for fp in targets:
-        with open(fp, 'r') as f:
+        with open(fp, 'r', encoding='utf-8') as f:
             for line in f:
                 linestr = line.rstrip("\n")
                 dt, org_host, l_w, l_s = lp.process_line(line)
