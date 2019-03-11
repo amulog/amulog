@@ -12,13 +12,14 @@ import datetime
 import sqlite3
 import logging
 from collections import defaultdict
+import log2seq
 
 from . import common
 from . import config
 from . import strutil
 from . import db_common
 #from . import logparser
-from . import logsplit
+#from . import logsplit
 from . import lt_common
 from . import host_alias
 
@@ -981,6 +982,15 @@ class RestoreOriginalData(object):
                 f.write("\n".join(l_buf))
 
 
+def _load_log2seq(conf):
+    fp = conf.get("database", "parser_script")
+    if len(fp.strip()) == 0:
+        return log2seq.init_parser()
+    else:
+        rules = log2seq.load_from_script(fp)
+        return log2seq.init_parser(rules)
+
+
 def _iter_line_from_files(targets):
     for fp in targets:
         if os.path.isdir(fp):
@@ -1006,7 +1016,7 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
             Line feed code will be ignored.
         ld (LogData): An log database interface opened in edit mode.
             Needs to initialize template classifier with ld.init_ltmanager.
-        lp (logsplit.LogSplit): An open message parser.
+        lp (log2seq.LogParser): An open message parser.
         latest (Optional[datetime.datetime]): If not None,
             Ignore messages that have later timestamp than 'latest'.
 
@@ -1021,12 +1031,21 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
         lid = int(lidstr)
     else:
         lid = None
-    dt, org_host, l_w, l_s = lp.process_line(msg)
+    d = lp.process_line(msg)
+    dt = d["timestamp"]
+    org_host = d["host"]
+    #dt, org_host, l_w, l_s = lp.process_line(msg)
     if latest is not None and dt < latest:
         _logger.debug(
             "pass message with excluded timestamp {0}".format(dt))
         return None
-    if l_w is None or len(l_w) == 0:
+    try:
+        l_w = d["words"]
+        l_s = d["symbols"]
+    except KeyError:
+        _logger.debug("pass empty message {0}".format(str(l_w)))
+        return None
+    if len(l_w) == 0:
         _logger.debug("pass empty message {0}".format(str(l_w)))
         return None
     l_w = [strutil.add_esc(w) for w in l_w]
@@ -1069,7 +1088,8 @@ def process_files(conf, targets, reset_db, isnew_check = False,
     """
     ld = LogData(conf, edit = True, reset_db = reset_db)
     ld.init_ltmanager()
-    lp = logsplit.LogSplit(conf)
+    lp = _load_log2seq(conf)
+    #lp = logsplit.LogSplit(conf)
     #lp = logparser.LogParser(conf)
     ha = host_alias.HostAlias(conf)
     latest = ld.dt_term()[1] if isnew_check else None
@@ -1102,7 +1122,8 @@ def process_init_data(conf, targets, isnew_check = False,
     """
     ld = LogData(conf, edit = True, reset_db = True)
     ld.init_ltmanager()
-    lp = logsplit.LogSplit(conf)
+    lp = _load_log2seq(conf)
+    #lp = logsplit.LogSplit(conf)
     #lp = logparser.LogParser(conf)
     ha = host_alias.HostAlias(conf)
     latest = ld.dt_term()[1] if isnew_check else None
@@ -1303,7 +1324,8 @@ def data_from_db(conf, dirname, method, reset):
 
 def data_from_data(conf, targets, dirname, method, reset):
     rod = RestoreOriginalData(dirname, method = method, reset = reset)
-    lp = logsplit.LogSplit(conf)
+    lp = _load_log2seq(conf)
+    #lp = logsplit.LogSplit(conf)
     #lp = logparser.LogParser(conf)
     for fp in targets:
         with open(fp, 'r', encoding='utf-8') as f:

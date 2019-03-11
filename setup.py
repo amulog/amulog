@@ -25,7 +25,7 @@ setup(name='amulog',
     author='Satoru Kobayashi',
     author_email='sat@hongo.wide.ad.jp',
     url='https://github.com/cpflat/amulog/',
-    install_requires=['numpy>=1.9.2'],
+    install_requires=['numpy>=1.9.2', 'log2seq>=0.0.3'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
