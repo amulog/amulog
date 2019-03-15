@@ -20,7 +20,7 @@ class LTGenImportExternal(lt_common.LTGen):
         super(LTGenImportExternal, self).__init__(table, sym)
         self._table = table
         self._fp = filename
-        self._l_tpl = self._load_tpl(self._fp)
+        self._l_tpl = self._load_tpl(self._fp, mode)
         self._l_regex = [tpl_match.generate_regex(tpl)
                          for tpl in self._l_tpl]
         self._rtable = regexhash.RegexHashTable(self._l_tpl, self._l_regex,
@@ -29,11 +29,11 @@ class LTGenImportExternal(lt_common.LTGen):
     @staticmethod
     def _load_tpl(fp, mode):
         l_tpl = []
-        if not os.path.exists(filename):
+        if not os.path.exists(fp):
             errmes = ("log_template_import.def_path"
-                      " {0} is invalid".format(filename))
+                      " {0} is invalid".format(fp))
             raise ValueError(errmes)
-        with open(filename, 'r') as f:
+        with open(fp, 'r') as f:
             for line in f:
                 if mode == "plain":
                     mes = line.rstrip("\n")
@@ -69,10 +69,10 @@ class LTGenImportExternal(lt_common.LTGen):
 def init_ltgen_import_ext(conf, table, sym):
     fn = conf.get("log_template_import", "def_path")
     mode = conf.get("log_template_import", "mode")
-    head = conf.get("log_template_import", "hash_strlen")
+    head = conf.getint("log_template_import", "hash_strlen")
 
     from . import log_db
     lp = log_db._load_log2seq(conf)
-    return LTGenImport(table, sym, fn, mode, lp, head)
+    return LTGenImportExternal(table, sym, fn, mode, lp, head)
 
 
