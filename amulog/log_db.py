@@ -1041,7 +1041,6 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
         return None
     try:
         l_w = parsed_line["words"]
-        l_s = parsed_line["symbols"]
     except KeyError:
         _logger.debug("pass empty message {0}".format(str(l_w)))
         return None
@@ -1057,9 +1056,8 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
             host = org_host
 
     _logger.debug("Processing [{0}]".format(" ".join(l_w)))
-    ltline = ld.ltm.process_line(l_w, l_s)
+    ltline = ld.ltm.process_line(parsed_line)
     if ltline is None:
-        #print(" ".join(l_w))
         ld.ltm.failure_output(msg)
         return None
     else:

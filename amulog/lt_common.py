@@ -53,15 +53,11 @@ class LTManager(object):
     def _set_ltspl(self, ltspl):
         self.ltspl = ltspl
 
-    def process_init_data(self, l_line):
-        """
-        Args:
-            lines [List[Tuple[str]]]: A sequence of lines which is
-                    presented in a tuple of l_w and l_s.
-        """
-        d = self.ltgen.process_init_data(l_line)
-        for mid, line in enumerate(l_line):
-            l_w, l_s = line
+    def process_init_data(self, plines):
+        d = self.ltgen.process_init_data(plines)
+        for mid, pline in enumerate(plines):
+            l_w = pline["words"]
+            l_s = pline["symbols"]
             tid = d[mid]
             tpl = self._table[tid]
             ltw = self.ltspl.replace_variable(l_w, tpl, self.sym)
@@ -74,7 +70,7 @@ class LTManager(object):
                 ltline = self._lttable[ltid]
             yield ltline
 
-    def process_line(self, l_w, l_s):
+    def process_line(self, pline):
 
         def lt_diff(ltid, ltw):
             d_diff = {}
@@ -95,7 +91,9 @@ class LTManager(object):
                     ret.append(w)
             return ret
 
-        tid, state = self.ltgen.process_line(l_w, l_s)
+        l_w = pline["words"]
+        l_s = pline["symbols"]
+        tid, state = self.ltgen.process_line(pline)
         if tid is None:
             return None
 
