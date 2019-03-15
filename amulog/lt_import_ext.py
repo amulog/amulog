@@ -20,6 +20,7 @@ class LTGenImportExternal(lt_common.LTGen):
         super(LTGenImportExternal, self).__init__(table, sym)
         self._table = table
         self._fp = filename
+        self.sym = sym
         self._l_tpl = self._load_tpl(self._fp, mode)
         self._l_regex = [tpl_match.generate_regex(tpl)
                          for tpl in self._l_tpl]
