@@ -312,6 +312,7 @@ class Timer():
 
     def __init__(self, header, output = None):
         self.start_dt = None
+        self.lap_dt = []
         self.header = header
         self.output = output
 
@@ -325,12 +326,20 @@ class Timer():
         self.start_dt = datetime.datetime.now()
         self._output("{0} start".format(self.header))
 
+    def lap(self, name):
+        if self.start_dt is None:
+            raise AssertionError("call start() before lap()")
+        lap_dt = datetime.datetime.now()
+        self.lap_dt.append(lap_dt)
+        self._output("{0} lap({1}) ({2})".format(self.header, name,
+                                                 self.lap_dt - self.start_dt))
+
     def stop(self):
         if self.start_dt is None:
             raise AssertionError("call start() before stop()")
         self.end_dt = datetime.datetime.now()
         self._output("{0} done ({1})".format(self.header,
-                self.end_dt - self.start_dt))
+                                             self.end_dt - self.start_dt))
 
 
 # visualization
