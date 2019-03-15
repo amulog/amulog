@@ -35,7 +35,7 @@ class RegexHashTable():
         else:
             return True
 
-    def search(mes):
+    def search(self, mes):
         key = mes[:self.headlen]
         if not key in self.table:
             key = None
