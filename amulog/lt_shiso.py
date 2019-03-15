@@ -51,7 +51,8 @@ class LTGenSHISO(lt_common.LTGen):
     def dumpobj(self):
         return self._n_root
 
-    def process_line(self, l_w, l_s):
+    def process_line(self, pline):
+        l_w = pline["words"]
         n_parent = self._n_root
         while True:
             for n_child in n_parent:

@@ -80,14 +80,14 @@ class LTGenVA(lt_common.LTGen):
                 raise ValueError
         return ret
 
-    def process_init_data(self, lines):
+    def process_init_data(self, plines):
         d = {}
-        for line in lines:
-            l_w, l_s = line
+        for pline in plines:
+            l_w = pline["words"]
             self._add_dict(l_w)
 
-        for mid, line in enumerate(lines):
-            l_w, l_s = line
+        for mid, pline in enumerate(plines):
+            l_w = pline["words"]
             l_label = self._label(l_w)
             tpl = self._label2tpl(l_w, l_label)
 
@@ -98,7 +98,8 @@ class LTGenVA(lt_common.LTGen):
             d[mid] = tid
         return d
 
-    def process_line(self, l_w, l_s):
+    def process_line(self, pline):
+        l_w = pline["words"]
         self._add_dict(l_w)
         l_label = self._label(l_w)
         tpl = self._label2tpl(l_w, l_label)

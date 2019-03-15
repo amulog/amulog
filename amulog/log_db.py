@@ -1031,28 +1031,25 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
         lid = int(lidstr)
     else:
         lid = None
-    d = lp.process_line(msg)
-    dt = d["timestamp"]
-    org_host = d["host"]
+    parsed_line = lp.process_line(strutil.add_esc(msg))
+    dt = parsed_line["timestamp"]
+    org_host = parsed_line["host"]
     #dt, org_host, l_w, l_s = lp.process_line(msg)
     if latest is not None and dt < latest:
         _logger.debug(
             "pass message with excluded timestamp {0}".format(dt))
         return None
     try:
-        l_w = d["words"]
-        l_s = d["symbols"]
+        l_w = parsed_line["words"]
+        l_s = parsed_line["symbols"]
     except KeyError:
         _logger.debug("pass empty message {0}".format(str(l_w)))
         return None
     if len(l_w) == 0:
         _logger.debug("pass empty message {0}".format(str(l_w)))
         return None
-    l_w = [strutil.add_esc(w) for w in l_w]
     host = ha.resolve_host(org_host)
-    #if host is None: host = org_host
     if host is None:
-        #if conf.getboolean("database", "undefined_host"):
         if drop_undefhost:
             ld.ltm.failure_output(msg)
             return None
@@ -1137,15 +1134,22 @@ def process_init_data(conf, targets, isnew_check = False,
             lid = int(lidstr)
         else:
             lid = None
-        dt, org_host, l_w, l_s = lp.process_line(msg)
+        parsed_line = lp.process_line(strutil.add_esc(msg))
+        dt = parsed_line["timestamp"]
+        org_host = parsed_line["host"]
         if latest is not None and dt < latest:
             _logger.debug(
                 "pass message with excluded timestamp {0}".format(dt))
             continue
-        if l_w is None or len(l_w) == 0:
+        try:
+            l_w = parsed_line["words"]
+            l_s = parsed_line["symbols"]
+        except KeyError:
+            _logger.debug("pass empty message {0}".format(str(l_w)))
+            return None
+        if len(l_w) == 0:
             _logger.debug("pass empty message {0}".format(str(l_w)))
             continue
-        l_w = [strutil.add_esc(w) for w in l_w]
         host = ha.resolve_host(org_host)
         if host is None:
             if drop_undefhost:
@@ -1153,13 +1157,14 @@ def process_init_data(conf, targets, isnew_check = False,
                 continue
             else:
                 host = org_host
+        pline["host"] = host
 
-        l_line.append((l_w, l_s))
+        l_line.append(pline)
         l_data.append((lid, dt, host))
 
-    for ltline, line, data in zip(ld.ltm.process_init_data(l_line),
-                                  l_line, l_data):
-        l_w, l_s = line
+    for ltline, pline, data in zip(ld.ltm.process_init_data(l_line),
+                                   l_line, l_data):
+        l_w = pline["words"]
         lid, dt, host = data
         ld.add_line(ltline.ltid, dt, host, l_w, lid = lid)
 

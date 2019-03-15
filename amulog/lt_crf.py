@@ -98,7 +98,9 @@ class LTGenCRF(lt_common.LTGen):
                 raise ValueError("Unknown labels in LTGenCRF")
         return tpl
 
-    def process_line(self, l_w, l_s):
+    def process_line(self, pline):
+        l_w = pline["words"]
+        l_s = pline["symbols"]
         tpl = self.estimate_tpl(l_w, l_s)
         if self._table.exists(tpl):
             tid = self._table.get_tid(tpl)
@@ -655,9 +657,8 @@ def generate_lt_file(queue, conf, fp):
 
     with open(fp, 'r') as f:
         for line in f:
-            line = line.rstrip()
-            dt, org_host, l_w, l_s = lp.process_line(line)
-            tpl = ltgen.estimate_tpl(l_w, l_s)
+            pline = lp.process_line(strutil.add_esc(msg))
+            tpl = ltgen.estimate_tpl(pline["words"], pline["symbols"])
             s_tpl.add(tuple(tpl))
 
     _logger.info("processing {0} done".format(fp))
@@ -675,14 +676,13 @@ def generate_lt_import_file(queue, conf, fp):
 
     with open(fp, 'r') as f:
         for line in f:
-            line = line.rstrip()
-            dt, org_host, l_w, l_s = lp.process_line(line)
-            tid, dummy = ltgen_import.process_line(l_w, l_s)
+            pline = lp.process_line(strutil.add_esc(msg))
+            tid, dummy = ltgen_import.process_line(pline)
             if tid is not None:
                 # recorded in imported definition, ignore
                 pass
             else:
-                tpl = ltgen_crf.estimate_tpl(l_w, l_s)
+                tpl = ltgen_crf.estimate_tpl(pline["words"], pline["symbols"])
                 s_tpl.add(tuple(tpl))
 
     _logger.info("processing {0} done".format(fp))

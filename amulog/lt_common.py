@@ -393,18 +393,17 @@ class LTGen(object):
                 self._table.replace(tid, new_tpl)
                 return self.state_changed
 
-    def process_init_data(self, lines):
+    def process_init_data(self, plines):
         """If there is no need of special process for init phase,
         this function simply call process_line multiple times.
         """
         d = {}
-        for mid, line in enumerate(lines):
-            l_w, l_s = line
-            tid, state = self.process_line(l_w, l_s)
+        for mid, pline in enumerate(plines):
+            tid, state = self.process_line(pline)
             d[mid] = tid
         return d
 
-    def process_line(self, l_w, l_s):
+    def process_line(self, pline):
         """Estimate log template for given message.
         This method works in incremental processing phase.
 
@@ -554,6 +553,9 @@ def init_ltgen(conf, table, method = None):
     elif lt_alg == "import":
         from . import lt_import
         ltgen = lt_import.init_ltgen_import(*args)
+    elif lt_alg == "import-ext":
+        from . import lt_import_ext
+        ltgen = lt_import_ext.init_ltgen_import_ext(*args)
     elif lt_alg == "crf":
         from . import lt_crf
         ltgen = lt_crf.init_ltgen_crf(*args)

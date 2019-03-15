@@ -135,6 +135,7 @@ labeled_variable_symbol_footer = *
 
 
 [log_template_import]
+# for import and import_ext
 
 # Log template definition file path
 def_path = 
@@ -143,6 +144,9 @@ def_path =
 # [plain] is available
 # plain : without headers(datetime and host)
 mode = plain
+
+# for import_ext
+hash_strlen = 5
 
 
 [log_template_va]
