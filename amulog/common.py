@@ -332,7 +332,7 @@ class Timer():
         lap_dt = datetime.datetime.now()
         self.lap_dt.append(lap_dt)
         self._output("{0} lap({1}) ({2})".format(self.header, name,
-                                                 self.lap_dt - self.start_dt))
+                                                 lap_dt - self.start_dt))
 
     def stop(self):
         if self.start_dt is None:
