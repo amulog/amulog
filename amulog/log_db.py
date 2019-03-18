@@ -1003,7 +1003,7 @@ def _iter_files(targets):
                 raise IOError("File {0} not found".format(fp))
             with open(fp, 'r', encoding='utf-8') as f:
                 _logger.info("log_db processing file {0}".format(fp))
-                return f
+                yield f
 
 
 def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
