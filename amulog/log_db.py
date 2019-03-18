@@ -1093,8 +1093,7 @@ def process_files(conf, targets, reset_db, isnew_check = False,
     for line in _iter_line_from_files(targets):
         process_line(line, ld, lp, ha, isnew_check, latest, drop_undefhost,
                      lid_header)
-
-    ld.commit_db()
+        ld.commit_db()
 
 
 def process_init_data(conf, targets, isnew_check = False,
