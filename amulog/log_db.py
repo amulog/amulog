@@ -991,7 +991,7 @@ def _load_log2seq(conf):
         return log2seq.init_parser(rules)
 
 
-def _iter_line_from_files(targets):
+def _iter_files(targets):
     for fp in targets:
         if os.path.isdir(fp):
             sys.stderr.write(
@@ -1003,8 +1003,7 @@ def _iter_line_from_files(targets):
                 raise IOError("File {0} not found".format(fp))
             with open(fp, 'r', encoding='utf-8') as f:
                 _logger.info("log_db processing file {0}".format(fp))
-                for line in f:
-                    yield line
+                return f
 
 
 def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
@@ -1090,9 +1089,10 @@ def process_files(conf, targets, reset_db, isnew_check = False,
     latest = ld.dt_term()[1] if isnew_check else None
     drop_undefhost = conf.getboolean("database", "undefined_host")
 
-    for line in _iter_line_from_files(targets):
-        process_line(line, ld, lp, ha, isnew_check, latest, drop_undefhost,
-                     lid_header)
+    for f in _iter_files(targets):
+        for line in f:
+            process_line(line, ld, lp, ha, isnew_check, latest,
+                         drop_undefhost, lid_header)
         ld.commit_db()
 
 
@@ -1125,39 +1125,40 @@ def process_init_data(conf, targets, isnew_check = False,
 
     l_line = []
     l_data = []
-    for msg in _iter_line_from_files(targets):
-        if lid_header:
-            lidstr, _, msg = msg.partition(" ")
-            lid = int(lidstr)
-        else:
-            lid = None
-        parsed_line = lp.process_line(strutil.add_esc(msg))
-        dt = parsed_line["timestamp"]
-        org_host = parsed_line["host"]
-        if latest is not None and dt < latest:
-            _logger.debug(
-                "pass message with excluded timestamp {0}".format(dt))
-            continue
-        try:
-            l_w = parsed_line["words"]
-            l_s = parsed_line["symbols"]
-        except KeyError:
-            _logger.debug("pass empty message {0}".format(str(l_w)))
-            return None
-        if len(l_w) == 0:
-            _logger.debug("pass empty message {0}".format(str(l_w)))
-            continue
-        host = ha.resolve_host(org_host)
-        if host is None:
-            if drop_undefhost:
-                ld.ltm.failure_output(line)
-                continue
+    for f in _iter_files(targets):
+        for msg in f:
+            if lid_header:
+                lidstr, _, msg = msg.partition(" ")
+                lid = int(lidstr)
             else:
-                host = org_host
-        pline["host"] = host
+                lid = None
+            parsed_line = lp.process_line(strutil.add_esc(msg))
+            dt = parsed_line["timestamp"]
+            org_host = parsed_line["host"]
+            if latest is not None and dt < latest:
+                _logger.debug(
+                    "pass message with excluded timestamp {0}".format(dt))
+                continue
+            try:
+                l_w = parsed_line["words"]
+                l_s = parsed_line["symbols"]
+            except KeyError:
+                _logger.debug("pass empty message {0}".format(str(l_w)))
+                return None
+            if len(l_w) == 0:
+                _logger.debug("pass empty message {0}".format(str(l_w)))
+                continue
+            host = ha.resolve_host(org_host)
+            if host is None:
+                if drop_undefhost:
+                    ld.ltm.failure_output(line)
+                    continue
+                else:
+                    host = org_host
+            pline["host"] = host
 
-        l_line.append(pline)
-        l_data.append((lid, dt, host))
+            l_line.append(pline)
+            l_data.append((lid, dt, host))
 
     for ltline, pline, data in zip(ld.ltm.process_init_data(l_line),
                                    l_line, l_data):
