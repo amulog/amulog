@@ -310,10 +310,11 @@ def mprocess_queueing(l_pq, pal):
 
 class Timer():
 
-    def __init__(self, header, output = None):
+    def __init__(self, header, output = None, timestr_func = None):
         self.start_dt = None
         self.lap_dt = []
         self.header = header
+        self.timestr_func = None
         self.output = output
 
     def _output(self, string):
@@ -321,6 +322,12 @@ class Timer():
             self.output.info(string)
         else:
             print(string)
+
+    def timestr(self, td):
+        if self.timestr_func is None:
+            return td.total_seconds()
+        else:
+            return self.timestr_func(td)
 
     def start(self):
         self.start_dt = datetime.datetime.now()
@@ -331,15 +338,15 @@ class Timer():
             raise AssertionError("call start() before lap()")
         lap_dt = datetime.datetime.now()
         self.lap_dt.append(lap_dt)
-        self._output("{0} lap({1}) ({2})".format(self.header, name,
-                                                 lap_dt - self.start_dt))
+        t = self.timestr(lap_dt - self.start_dt)
+        self._output("{0} lap({1}) ({2})".format(self.header, name, t))
 
     def stop(self):
         if self.start_dt is None:
             raise AssertionError("call start() before stop()")
         self.end_dt = datetime.datetime.now()
-        self._output("{0} done ({1})".format(self.header,
-                                             self.end_dt - self.start_dt))
+        t = self.timestr(self.end_dt - self.start_dt)
+        self._output("{0} done ({1})".format(self.header, t))
 
 
 # visualization
