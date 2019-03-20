@@ -123,6 +123,10 @@ def getdur(conf, section, name):
         return str2dur(ret)
 
 
+def getname(conf):
+    return conf.get(LOAD_SECTION, LOAD_OPTION)
+
+
 def str2dur(string):
     """
     Note:
