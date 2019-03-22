@@ -101,8 +101,8 @@ def lt_from_data(ns):
     targets = get_targets_opt(ns, conf)
     check_import = ns.check_import
 
-    from . import lt_common
-    s_tpl = lt_common.generate_lt(conf, targets, check_import)
+    from . import lt_misc
+    s_tpl = lt_misc.generate_lt(conf, targets, check_import)
     for tpl in s_tpl:
         print(" ".join(tpl))
 
