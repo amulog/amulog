@@ -94,6 +94,19 @@ def data_from_data(ns):
     log_db.data_from_data(conf, targets, dirname, method, reset)
 
 
+def lt_from_data(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger = _logger, lv = lv)
+    targets = get_targets_opt(ns, conf)
+    check_import = ns.check_import
+
+    from . import lt_common
+    s_tpl = lt_common.generate_lt(conf, targets, check_import)
+    for tpl in s_tpl:
+        print(" ".join(tpl))
+
+
 def db_make(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -488,18 +501,18 @@ def make_crf_model_ideal(ns):
     print("> {0}".format(fn))
 
 
-def make_lt_mp(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
-    from . import lt_crf
-    targets = get_targets_opt(ns, conf)
-    check_import = ns.check_import
-
-    s_tpl = lt_crf.generate_lt_mprocess(conf, targets,
-                                        check_import, pal = ns.pal)
-    for tpl in s_tpl:
-        print(" ".join(tpl))
+#def make_lt_mp(ns):
+#    conf = config.open_config(ns.conf_path)
+#    lv = logging.DEBUG if ns.debug else logging.INFO
+#    config.set_common_logging(conf, logger = _logger, lv = lv)
+#    from . import lt_crf
+#    targets = get_targets_opt(ns, conf)
+#    check_import = ns.check_import
+#
+#    s_tpl = lt_crf.generate_lt_mprocess(conf, targets,
+#                                        check_import, pal = ns.pal)
+#    for tpl in s_tpl:
+#        print(" ".join(tpl))
 
 
 def parse_condition(conditions):
@@ -787,6 +800,14 @@ DICT_ARGSET = {
                         "help": "reset log file directory before processing"}],
                       ],
                      data_from_data],
+    "lt-from-data": ["Generate log templates (not using DB).",
+                     [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
+                      [["-i", "--import"],
+                       {"dest": "check_import", "action": "store_true",
+                        "help": ("ignore messages corresponding to "
+                                 "imported log template definition "
+                                 "(i.e., process only unknown messages)")}],],
+                     lt_from_data],
     "db-make": [("Initialize database and add log data. "
                  "This fuction works incrementaly."),
                 [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_LID, ARG_FILES_OPT],
@@ -1000,46 +1021,46 @@ DICT_ARGSET = {
                                          "if omitted use all log templates")}],
                               ],
                              make_crf_model_ideal],
-    "make-lt-mp": [("Generate log templates with CRF "
-                    "in multiprocessing."),
-                   [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
-                    [["-p", "--pal"],
-                     {"dest": "pal", "action": "store",
-                      "type": int, "default": 1,
-                      "help": "number of processes"}],
-                    [["-i", "--import"],
-                     {"dest": "check_import", "action": "store_true",
-                      "help": ("ignore messages corresponding to "
-                               "imported log template definition "
-                               "(i.e., process only unknown messages)")}],],
-                   make_lt_mp],
-    "measure-crf": ["Measure accuracy of CRF-based log template estimation.",
-                    [OPT_DEBUG,
-                     [["-f", "--failure"],
-                      {"dest": "failure", "action": "store",
-                       "help": "output failure report"}],
-                     [["-c", "--config"],
-                      {"dest": "conf_path", "metavar": "CONFIG",
-                       "action": "store", "default": None,
-                       "help": "extended config file for measure-lt"}],],
-                    measure_crf],
-    "measure-crf-multi": ["Multiprocessing of measure-crf.",
-                          [OPT_DEBUG, OPT_CONFIG_SET,
-                           [["-p", "--pal"],
-                            {"dest": "pal", "action": "store",
-                             "type": int, "default": 1,
-                             "help": "number of processes"}],
-                           [["-d", "--diff"],
-                            {"dest": "diff", "action": "append",
-                             "default": [],
-                             "help": ("check configs that given option values "
-                                      "are all different. This option can "
-                                      "be specified multiple times. "
-                                      "Example: -d general.import -d ...")}],
-                           [["confs"],
-                            {"metavar": "CONFIG", "nargs": "*",
-                             "help": "configuration files"}]],
-                          measure_crf_multi],
+#    "make-lt-mp": [("Generate log templates with CRF "
+#                    "in multiprocessing."),
+#                   [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
+#                    [["-p", "--pal"],
+#                     {"dest": "pal", "action": "store",
+#                      "type": int, "default": 1,
+#                      "help": "number of processes"}],
+#                    [["-i", "--import"],
+#                     {"dest": "check_import", "action": "store_true",
+#                      "help": ("ignore messages corresponding to "
+#                               "imported log template definition "
+#                               "(i.e., process only unknown messages)")}],],
+#                   make_lt_mp],
+#    "measure-crf": ["Measure accuracy of CRF-based log template estimation.",
+#                    [OPT_DEBUG,
+#                     [["-f", "--failure"],
+#                      {"dest": "failure", "action": "store",
+#                       "help": "output failure report"}],
+#                     [["-c", "--config"],
+#                      {"dest": "conf_path", "metavar": "CONFIG",
+#                       "action": "store", "default": None,
+#                       "help": "extended config file for measure-lt"}],],
+#                    measure_crf],
+#    "measure-crf-multi": ["Multiprocessing of measure-crf.",
+#                          [OPT_DEBUG, OPT_CONFIG_SET,
+#                           [["-p", "--pal"],
+#                            {"dest": "pal", "action": "store",
+#                             "type": int, "default": 1,
+#                             "help": "number of processes"}],
+#                           [["-d", "--diff"],
+#                            {"dest": "diff", "action": "append",
+#                             "default": [],
+#                             "help": ("check configs that given option values "
+#                                      "are all different. This option can "
+#                                      "be specified multiple times. "
+#                                      "Example: -d general.import -d ...")}],
+#                           [["confs"],
+#                            {"metavar": "CONFIG", "nargs": "*",
+#                             "help": "configuration files"}]],
+#                          measure_crf_multi],
     "conf-defaults": ["Show default configurations.",
                      [],
                      conf_defaults],
