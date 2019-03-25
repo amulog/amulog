@@ -43,6 +43,8 @@ class LTGenImportExternal(lt_common.LTGen):
                     mes = line.partition(" ")[2].strip()
                 else:
                     raise ValueError("invalid import_mode {0}".format(mode))
+                if len(mes) == 0:
+                    continue
                 l_tpl.append(mes)
         return l_tpl
 

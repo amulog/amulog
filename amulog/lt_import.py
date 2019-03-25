@@ -37,6 +37,8 @@ class LTGenImport(lt_common.LTGen):
                 else:
                     raise ValueError("invalid import_mode {0}".format(
                             self.mode))
+                if len(mes) == 0:
+                    continue
                 ltw, lts = self._lp.process_message(mes)
                 defid = self._d_def.add(ltw)
                 self.searchtree.add(defid, ltw)
