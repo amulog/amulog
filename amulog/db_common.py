@@ -206,6 +206,13 @@ class sqlite3(database):
             cursor.execute(sql, args)
         return cursor
 
+    def executemany(self, sql, iter_args):
+        if self.connect is None:
+            self._open()
+        cursor = self.connect.cursor()
+        cursor.executemany(sql, iter_args)
+        return cursor
+
     def get_table_names(self):
         sql = "select name from sqlite_master"
         cursor = self.execute(sql)
@@ -299,6 +306,13 @@ class mysql(database):
             cursor.execute(sql)
         else:
             cursor.execute(sql, args)
+        return cursor
+
+    def executemany(self, sql, iter_args):
+        if self.connect is None:
+            self._open()
+        cursor = self.connect.cursor()
+        cursor.executemany(sql, iter_args)
         return cursor
 
     def get_table_names(self):

@@ -86,7 +86,7 @@ class GroupDef():
 def gettuple(conf, section, name):
     ret = conf.get(section, name)
     return tuple(e.strip() for e in ret.split(",")
-                if not e.strip() == "")
+                 if not e.strip() == "")
 
 
 def getlist(conf, section, name):
@@ -96,6 +96,17 @@ def getlist(conf, section, name):
     else:
         return [e.strip() for e in ret.split(",")
                 if not e.strip() == ""]
+
+
+def getdict(conf, section, name):
+    val = conf.get(section, name)
+    ret = {}
+    for e in ret.split(","):
+        e = e.strip()
+        assert "=" in e
+        k, _, v = e.partition("=")
+        ret[k] = v
+    return ret
 
 
 def getdt(conf, section, name):
