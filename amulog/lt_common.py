@@ -530,7 +530,7 @@ class VariableLabelHost(VariableLabelRule):
 
     def __init__(self, conf):
         from . import host_alias
-        self.ha = host_alias.HostAlias(conf)
+        self.ha = host_alias.init_hostalias(conf)
 
     def replace_word(self, w):
         return self.ha.get_group(w)

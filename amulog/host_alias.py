@@ -16,14 +16,15 @@ class HostAlias(object):
         in log templates.
     """
 
-    def __init__(self, conf):
-        self.fn = conf.get("database", "host_alias_filename")
+    def __init__(self, fn):
+        self._fn = fn
+        #self.fn = conf.get("database", "host_alias_filename")
         self._d_alias = defaultdict(list) # key = alias, val = List[host]
         self._d_ralias = {} # key = host, val = alias
         self._d_group = defaultdict(list) # key = group, val = List[host]
         self._d_rgroup = {} # key = host, val = group
         self._l_net = []
-        self._open(self.fn)
+        self._open(self._fn)
 
     def _open(self, fn):
         group = "default"
@@ -151,6 +152,12 @@ class HostAlias(object):
                 return None
 
 
+def init_hostalias(conf):
+    ha_fn = conf.get("database", "host_alias_filename")
+    ha = host_alias.HostAlias(ha_fn)
+    return ha
+
+
 def test_hostalias(conf):
     names = ["192.168.0.1",
             "www.TEST.localdomain",
@@ -161,7 +168,8 @@ def test_hostalias(conf):
             "10.100.1.254",
             "8.8.6.0"]
     #conf.set("database", "host_alias_filename", "host_alias_test.txt")
-    ha = HostAlias(conf)
+    ha = host_alias.HostAlias(ha_fn)
+    #ha = HostAlias(conf)
     ha.print_definitions()
     print()
     print("[test aliasing]")

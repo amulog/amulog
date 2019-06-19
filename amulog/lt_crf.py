@@ -10,7 +10,6 @@ from collections import defaultdict
 import pycrfsuite
 
 from . import lt_common
-from . import host_alias
 from .crf import items
 from .crf import convert
 from .crf import midlabel

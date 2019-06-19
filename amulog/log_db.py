@@ -1085,7 +1085,8 @@ def process_files(conf, targets, reset_db, isnew_check = False,
     lp = _load_log2seq(conf)
     #lp = logsplit.LogSplit(conf)
     #lp = logparser.LogParser(conf)
-    ha = host_alias.HostAlias(conf)
+    #ha = host_alias.HostAlias(conf)
+    ha = host_alias.init_hostalias(conf)
     latest = ld.dt_term()[1] if isnew_check else None
     drop_undefhost = conf.getboolean("database", "undefined_host")
 
@@ -1119,7 +1120,7 @@ def process_init_data(conf, targets, isnew_check = False,
     lp = _load_log2seq(conf)
     #lp = logsplit.LogSplit(conf)
     #lp = logparser.LogParser(conf)
-    ha = host_alias.HostAlias(conf)
+    ha = host_alias.init_hostalias(conf)
     latest = ld.dt_term()[1] if isnew_check else None
     drop_undefhost = conf.getboolean("database", "undefined_host")
 
