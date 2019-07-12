@@ -166,6 +166,20 @@ def str2dur(string):
         raise ValueError("Duration string invalid")
 
 
+def dur2str(td):
+    samples = [("m", 60), ("h", 60), ("d", 24), ("w", 7)]
+    
+    footer = "s"
+    val = int(td.total_seconds())
+    for tmp_footer, mod in samples:
+        if val % mod == 0:
+            footer = tmp_footer
+            val = val // mod
+        else:
+            break
+    return str(val) + footer
+
+
 def load_defaults(ex_conf = None):
     l_fn = [DEFAULT_CONFIG]
     if not ex_conf is None and len(ex_conf) > 0:
