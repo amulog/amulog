@@ -351,6 +351,22 @@ class Timer():
 
 # visualization
 
+def show_repr(iterable, head, foot, strfunc=str):
+    data = list(iterable)
+    if (head <= 0 and foot <= 0) or \
+            (len(data) <= head + foot):
+        buf = [strfunc(e) for e in data]
+    else:
+        buf = []
+        if head > 0:
+            buf += [strfunc(e) for e in data[:head]]
+        buf += ["..."]
+        if foot > 0:
+            buf += [strfunc(e) for e in data[-foot:]]
+        buf.append("({0})".format(len(data)))
+    return "\n".join(buf)
+
+
 def cli_table(table, spl = " ", fill = " ", align = "left"):
     """
     Args:

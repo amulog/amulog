@@ -9,7 +9,6 @@ and grouping definitions.
 import sys
 import os
 import datetime
-import sqlite3
 import logging
 from collections import defaultdict
 import log2seq
@@ -18,8 +17,8 @@ from . import common
 from . import config
 from . import strutil
 from . import db_common
-#from . import logparser
-#from . import logsplit
+# from . import logparser
+# from . import logsplit
 from . import lt_common
 from . import host_alias
 
@@ -40,7 +39,7 @@ class LogMessage():
         l_w (List(str)): A sequence of words in this message.
 
     """
-    
+
     def __init__(self, lid, lt, dt, host, l_w):
         """
         Args:
@@ -59,8 +58,8 @@ class LogMessage():
 
     def __str__(self):
         """str: Show attributes in 1 string."""
-        return " ".join((str(self.dt), self.host, str(self.lt.ltid),\
-                str(self.l_w)))
+        return " ".join((str(self.dt), self.host, str(self.lt.ltid),
+                         str(self.l_w)))
 
     def get(self, name):
         """Return value for given attribute."""
@@ -93,9 +92,9 @@ class LogMessage():
         except headers (timestamp and hostname).
         """
         return " ".join((str(self.dt), str(self.host),
-                self.restore_message()))
+                         self.restore_message()))
 
-    #def restore_line_lid(self):
+    # def restore_line_lid(self):
     #    """str: Get original log message contents
     #    except headers (timestamp and hostname).
     #    """
@@ -103,7 +102,6 @@ class LogMessage():
 
 
 class LogData():
-
     """Interface to get, add or edit log messages in DB.
 
     Attributes:
@@ -113,7 +111,7 @@ class LogData():
         ltm (lt_common.LTManager): Log template classifier object.
     """
 
-    def __init__(self, conf, edit = False, reset_db = False):
+    def __init__(self, conf, edit=False, reset_db=False):
         """
         Args:
             conf (config.ExtendedConfigParser): A common configuration object.
@@ -127,9 +125,9 @@ class LogData():
         self.conf = conf
         self._reset_db = reset_db
         sym = conf.get("log_template", "variable_symbol")
-        self.lttable = lt_common.LTTable(sym) # lt_common.LTTable
-        self.db = LogDB(conf, self.lttable, edit, reset_db) # log_db.LogDB
-        self.ltm = None # lt_common.LTManager
+        self.lttable = lt_common.LTTable(sym)  # lt_common.LTTable
+        self.db = LogDB(conf, self.lttable, edit, reset_db)  # log_db.LogDB
+        self.ltm = None  # lt_common.LTManager
         from . import lt_label
         self.ll = lt_label.init_ltlabel(conf)
 
@@ -140,7 +138,7 @@ class LogData():
         """
         if self.ltm is None:
             self.ltm = lt_common.init_ltmanager(self.conf, self.db,
-                    self.lttable, self._reset_db)
+                                                self.lttable, self._reset_db)
 
     def get_line(self, lid):
         return self.db.get_line(lid)
@@ -169,47 +167,9 @@ class LogData():
                 which satisfies all given conditions.
         """
         _logger.debug("iter_lines called ({0})".format(" ".join(
-                ["{0}:{1}".format(k, v) for k, v in kargs.items()
-                if v is not None])))
+            ["{0}:{1}".format(k, v) for k, v in kargs.items()
+             if v is not None])))
         return self.db.iter_lines(**kargs)
-
-    def show_log_repr(self, head = 0, foot = 0,
-            ltid = None, ltgid = None,
-            top_dt = None, end_dt = None, host = None, area = None):
-        """Show representative log messages in DB
-        that satisfy conditions given in arguments.
-        Arguments except 'limit' are defaults to None, and ignored.
-        Results will be shown in Standard Output.
-
-        Args:
-            head (Optional[int]): Show leading lines of log messages.
-            foot (Optional[int]): Show trailing lines of log messages.
-                if both head and foot are 0, all lines are shown.
-            lid (Optional[int]): A message identifier in DB.
-            ltid (Optional[int]): A log template identifier.
-            ltgid (Optional[int]): A log template grouping identifier.
-            top_dt (Optional[datetime.datetime]): Condition for timestamp.
-                Messages output after 'top_dt' will be yielded.
-            end_dt (Optional[datetime.datetime]): Condition for timestamp.
-                Messages output before 'end_dt' will be yielded.
-            host (Optional[str]): A source hostname of the message.
-            area (Optional[str]): An area name of source hostname.
-        """
-        l_line = sorted([line for line in self.iter_lines(lid = None,
-            ltid = ltid, ltgid = ltgid, top_dt = top_dt, end_dt = end_dt,
-            host = host, area = area)], key = lambda x: x.dt)
-        if (head <= 0 and foot <= 0) or \
-                (len(l_line) <= head + foot):
-            buf = [line.restore_line() for line in l_line]
-        else:
-            buf = []
-            if head > 0:
-                buf += [line.restore_line() for line in l_line[:head]]
-            buf += ["..."]
-            if foot > 0:
-                buf += [line.restore_line() for line in l_line[-foot:]]
-            buf.append("({0})".format(len(l_line)))
-        return "\n".join(buf)
 
     def count_lines(self):
         """int: Number of all messages in DB."""
@@ -228,27 +188,27 @@ class LogData():
         top_dt, end_dt = self.db.dt_term()
         top_dt = datetime.datetime.combine(top_dt.date(), datetime.time())
         end_dt = datetime.datetime.combine(end_dt.date(), datetime.time()) + \
-                datetime.timedelta(days = 1)
+                 datetime.timedelta(days=1)
         return top_dt, end_dt
 
-    def whole_host_lt(self, top_dt = None, end_dt = None, area = None):
+    def whole_host_lt(self, top_dt=None, end_dt=None, area=None):
         """List[str, str]: Sequence of all combinations of 
         hostname and ltids in DB."""
-        return self.db.whole_host_lt(top_dt = top_dt, end_dt = end_dt,
-                                     area = area)
+        return self.db.whole_host_lt(top_dt=top_dt, end_dt=end_dt,
+                                     area=area)
 
-    def whole_host_ltg(self, top_dt = None, end_dt = None, area = None):
+    def whole_host_ltg(self, top_dt=None, end_dt=None, area=None):
         """List[str, str]: Sequence of all combinations of 
         hostname and ltgids in DB."""
         ret = set()
-        for host, ltid in self.whole_host_lt(top_dt = top_dt, end_dt = end_dt,
-                                             area = area):
-            ret.add((host, self.ltgid_from_ltid(ltid))) 
+        for host, ltid in self.whole_host_lt(top_dt=top_dt, end_dt=end_dt,
+                                             area=area):
+            ret.add((host, self.ltgid_from_ltid(ltid)))
         return list(set(ret))
 
-    def whole_host(self, top_dt = None, end_dt = None):
+    def whole_host(self, top_dt=None, end_dt=None):
         """List[str]: Sequence of all source hostname in DB."""
-        return self.db.whole_host(top_dt = top_dt, end_dt = end_dt)
+        return self.db.whole_host(top_dt=top_dt, end_dt=end_dt)
 
     def count_lt(self):
         """int: Number of all log templates."""
@@ -280,7 +240,6 @@ class LogData():
             return [lt.ltid for lt in self.iter_lt()]
         elif gid_name == "ltgid":
             return self.iter_ltgid()
-
 
     def iter_ltgid(self):
         """Yields int: Get all identifiers of log template groups."""
@@ -318,7 +277,7 @@ class LogData():
     @staticmethod
     def _str_ltline(ltline):
         return " ".join((str(ltline.ltid), "({0})".format(ltline.ltgid),
-                str(ltline), "({0})".format(ltline.cnt)))
+                         str(ltline), "({0})".format(ltline.cnt)))
 
     def show_template_table(self):
         """For debugging"""
@@ -388,13 +347,13 @@ class LogData():
             ltline = self.lttable[ltid]
             cnt += ltline.cnt
             buf.append(self._str_ltline(ltline))
-        
+
         buf = ["[ltgroup {0} ({1}, {2})] # {3}({4})".format(gid, length,
                                                             cnt, group,
                                                             label)] + buf
         return "\n".join(buf)
 
-    def add_line(self, ltid, dt, host, l_w, lid = None):
+    def add_line(self, ltid, dt, host, l_w, lid=None):
         """Add a log message to DB.
 
         Args:
@@ -406,7 +365,7 @@ class LogData():
         Returns:
             LogMessage: An annotated log message instance.
         """
-        new_lid = self.db.add_line(ltid, dt, host, l_w, lid = lid)
+        new_lid = self.db.add_line(ltid, dt, host, l_w, lid=lid)
         return LogMessage(new_lid, self.lttable[ltid], dt, host, l_w)
 
     def update_area(self):
@@ -450,7 +409,7 @@ class LogDB():
             self.db = db_common.mysql(host, dbname, user, passwd)
         else:
             raise ValueError("invalid database type ({0})".format(
-                    db_type))
+                db_type))
 
         if edit:
             if self.db.db_exists():
@@ -464,10 +423,10 @@ class LogDB():
             else:
                 if reset_db == True:
                     _logger.warning(
-                            "Requested to reset DB, but database not found")
+                        "Requested to reset DB, but database not found")
                 self._init_tables()
                 self._init_area()
-        else: 
+        else:
             if self.db.db_exists():
                 self._line_cnt = self.count_lines()
                 self._init_lttable()
@@ -477,8 +436,8 @@ class LogDB():
     def _init_tables(self):
         table_name = "log"
         l_key = [db_common.tablekey("lid", "integer",
-                    #("primary_key", "auto_increment", "not_null")),
-                    ("primary_key", "not_null")),
+                                    # ("primary_key", "auto_increment", "not_null")),
+                                    ("primary_key", "not_null")),
                  db_common.tablekey("ltid", "integer"),
                  db_common.tablekey("dt", "datetime"),
                  db_common.tablekey("host", "text"),
@@ -502,7 +461,7 @@ class LogDB():
 
         table_name = "area"
         l_key = [db_common.tablekey("defid", "integer",
-                    ("primary_key", "auto_increment", "not_null")),
+                                    ("primary_key", "auto_increment", "not_null")),
                  db_common.tablekey("host", "text"),
                  db_common.tablekey("area", "text")]
         sql = self.db.create_table_sql(table_name, l_key)
@@ -518,35 +477,35 @@ class LogDB():
         l_key = [db_common.tablekey("lid", "integer"),
                  db_common.tablekey("ltid", "integer"),
                  db_common.tablekey("dt", "datetime"),
-                 db_common.tablekey("host", "text", (100, ))]
+                 db_common.tablekey("host", "text", (100,))]
         if not index_name in l_table_name:
             sql = self.db.create_index_sql(table_name, index_name, l_key)
             self.db.execute(sql)
-            
+
         table_name = "ltg"
         index_name = "ltg_index"
         l_key = [db_common.tablekey("ltgid", "integer")]
         if not index_name in l_table_name:
             sql = self.db.create_index_sql(table_name, index_name, l_key)
             self.db.execute(sql)
-        
+
         table_name = "area"
         index_name = "area_index"
-        l_key = [db_common.tablekey("area", "text", (100, ))]
+        l_key = [db_common.tablekey("area", "text", (100,))]
         if not index_name in l_table_name:
             sql = self.db.create_index_sql(table_name, index_name, l_key)
             self.db.execute(sql)
 
     def commit(self):
         self.db.commit()
-    
-    def add_line(self, ltid, dt, host, l_w, lid = None):
+
+    def add_line(self, ltid, dt, host, l_w, lid=None):
         table_name = "log"
         d_val = {
-            "ltid" : ltid,
-            "dt" : self.db.strftime(dt),
-            "host" : host,
-            "words" : self._splitter.join(l_w),
+            "ltid": ltid,
+            "dt": self.db.strftime(dt),
+            "host": host,
+            "words": self._splitter.join(l_w),
         }
 
         self._line_cnt += 1
@@ -561,8 +520,8 @@ class LogDB():
 
         return d_val["lid"]
 
-    def iter_lines(self, lid = None, ltid = None, ltgid = None, top_dt = None,
-                   end_dt = None, host = None, area = None):
+    def iter_lines(self, lid=None, ltid=None, ltgid=None, top_dt=None,
+                   end_dt=None, host=None, area=None):
         d_cond = {}
         if lid is not None: d_cond["lid"] = lid
         if ltid is not None: d_cond["ltid"] = ltid
@@ -591,8 +550,8 @@ class LogDB():
                 l_w = strutil.split_igesc(row[4], self._splitter)
             yield LogMessage(lid, self.lttable[ltid], dt, host, l_w)
 
-    def iter_words(self, lid = None, ltid = None, ltgid = None, top_dt = None,
-                   end_dt = None, host = None, area = None):
+    def iter_words(self, lid=None, ltid=None, ltgid=None, top_dt=None,
+                   end_dt=None, host=None, area=None):
         d_cond = {}
         if lid is not None: d_cond["lid"] = lid
         if ltid is not None: d_cond["ltid"] = ltid
@@ -620,11 +579,11 @@ class LogDB():
         for c in d_cond.keys():
             if c == "ltgid":
                 sql = self.db.select_sql("ltg", ["ltid"],
-                        [db_common.cond(c, "=", c)])
+                                         [db_common.cond(c, "=", c)])
                 l_cond.append(db_common.cond("ltid", "in", sql, False))
             elif c == "area":
                 sql = self.db.select_sql("area", ["host"],
-                        [db_common.cond(c, "=", c)])
+                                         [db_common.cond(c, "=", c)])
                 l_cond.append(db_common.cond("host", "in", sql, False))
             elif c == "top_dt":
                 l_cond.append(db_common.cond("dt", ">=", c))
@@ -666,26 +625,26 @@ class LogDB():
 
     def update_log(self, d_cond, d_update):
         if len(d_cond) == 0:
-            _logger.warn("called update with empty condition")
-            #raise ValueError("called update with empty condition")
+            _logger.warning("called update with empty condition")
+            # raise ValueError("called update with empty condition")
         args = d_cond.copy()
 
         table_name = "log"
         l_ss = []
         for k, v in d_update.items():
-            #assert k in ("ltid", "top_dt", "end_dt", "host")
+            # assert k in ("ltid", "top_dt", "end_dt", "host")
             keyname = "update_" + k
             l_ss.append(db_common.setstate(k, keyname))
             args[keyname] = v
         l_cond = []
         for c in d_cond.keys():
             if c == "ltgid":
-                sql= self.db.select_sql("ltg", ["ltid"],
-                        [db_common.cond(c, "=", c)])
+                sql = self.db.select_sql("ltg", ["ltid"],
+                                         [db_common.cond(c, "=", c)])
                 l_cond.append(db_common.cond("ltid", "in", sql, False))
             elif c == "area":
-                sql= self.db.select_sql("area", ["host"],
-                        [db_common.cond(c, "=", c)])
+                sql = self.db.select_sql("area", ["host"],
+                                         [db_common.cond(c, "=", c)])
                 l_cond.append(db_common.cond("host", "in", sql, False))
             elif c == "top_dt":
                 l_cond.append(db_common.cond("dt", ">=", c))
@@ -719,18 +678,18 @@ class LogDB():
             raise ValueError("No data found in DB")
         return self.db.datetime(top_dtstr), self.db.datetime(end_dtstr)
 
-    def whole_host_lt(self, top_dt = None, end_dt = None, area = None):
+    def whole_host_lt(self, top_dt=None, end_dt=None, area=None):
         table_name = "log"
         l_key = ["host", "ltid"]
         l_cond = []
         args = {}
         if top_dt is not None:
             l_cond.append(db_common.cond("dt", ">=", "top_dt"))
-            #args["top_dt"] = top_dt
+            # args["top_dt"] = top_dt
             args["top_dt"] = self.db.strftime(top_dt)
         if end_dt is not None:
             l_cond.append(db_common.cond("dt", "<", "end_dt"))
-            #args["end_dt"] = end_dt
+            # args["end_dt"] = end_dt
             args["end_dt"] = self.db.strftime(end_dt)
         if area is None or area == "all":
             pass
@@ -743,11 +702,11 @@ class LogDB():
             l_cond.append(db_common.cond("host", "in", temp_sql, False))
             args["area"] = area
 
-        sql = self.db.select_sql(table_name, l_key, l_cond, opt = ["distinct"])
+        sql = self.db.select_sql(table_name, l_key, l_cond, opt=["distinct"])
         cursor = self.db.execute(sql, args)
         return [(row[0], row[1]) for row in cursor]
 
-    def whole_host(self, top_dt = None, end_dt = None, area = None):
+    def whole_host(self, top_dt=None, end_dt=None, area=None):
         table_name = "log"
         l_key = ["host"]
         l_cond = []
@@ -755,12 +714,12 @@ class LogDB():
         if top_dt is not None:
             l_cond.append(db_common.cond("dt", ">=", "top_dt"))
             args["top_dt"] = self.db.strftime(top_dt)
-            #args["top_dt"] = top_dt
+            # args["top_dt"] = top_dt
         if end_dt is not None:
             l_cond.append(db_common.cond("dt", "<", "end_dt"))
-            #args["end_dt"] = end_dt
+            # args["end_dt"] = end_dt
             args["end_dt"] = self.db.strftime(end_dt)
-        sql = self.db.select_sql(table_name, l_key, l_cond, opt = ["distinct"])
+        sql = self.db.select_sql(table_name, l_key, l_cond, opt=["distinct"])
         cursor = self.db.execute(sql, args)
         return [row[0] for row in cursor]
 
@@ -776,10 +735,10 @@ class LogDB():
         else:
             lts = self._splitter.join(ltline.lts)
         args = {
-            "ltid" : ltline.ltid,
-            "ltw" : self._splitter.join(ltline.ltw),
-            "lts" : lts,
-            "count" : ltline.cnt,
+            "ltid": ltline.ltid,
+            "ltw": self._splitter.join(ltline.ltw),
+            "lts": lts,
+            "count": ltline.cnt,
         }
         sql = self.db.insert_sql(table_name, l_ss)
         self.db.execute(sql, args)
@@ -791,7 +750,7 @@ class LogDB():
         l_ss = []
         l_ss.append(db_common.setstate("ltid", "ltid"))
         l_ss.append(db_common.setstate("ltgid", "ltgid"))
-        args = {"ltid" : ltid, "ltgid" : ltgid}
+        args = {"ltid": ltid, "ltgid": ltgid}
         sql = self.db.insert_sql(table_name, l_ss)
         self.db.execute(sql, args)
 
@@ -815,7 +774,7 @@ class LogDB():
         self.db.execute(sql, args)
 
     def remove_lt(self, ltid):
-        args = {"ltid" : ltid}
+        args = {"ltid": ltid}
 
         # remove from lt
         table_name = "lt"
@@ -831,7 +790,7 @@ class LogDB():
 
     def _init_lttable(self):
         table_name = self.db.join_sql("left outer",
-                "lt", "ltg", "ltid", "ltid")
+                                      "lt", "ltg", "ltid", "ltid")
         l_key = ("lt.ltid", "ltg.ltgid", "lt.ltw", "lt.lts", "lt.count")
         sql = self.db.select_sql(table_name, l_key)
         cursor = self.db.execute(sql)
@@ -873,7 +832,7 @@ class LogDB():
     def iter_ltgid(self):
         table_name = "ltg"
         l_key = ["ltgid"]
-        sql = self.db.select_sql(table_name, l_key, opt = ["distinct"])
+        sql = self.db.select_sql(table_name, l_key, opt=["distinct"])
         cursor = self.db.execute(sql)
         for row in cursor:
             ltgid = row[0]
@@ -883,7 +842,7 @@ class LogDB():
         table_name = "ltg"
         l_key = ["ltid"]
         l_cond = [db_common.cond("ltgid", "=", "ltgid")]
-        args = {"ltgid" : ltgid}
+        args = {"ltgid": ltgid}
         sql = self.db.select_sql(table_name, l_key, l_cond)
         cursor = self.db.execute(sql, args)
         return [int(row[0]) for row in cursor]
@@ -902,8 +861,8 @@ class LogDB():
         sql = self.db.insert_sql(table_name, l_ss)
         for area, host in areadict.iter_def():
             args = {
-                "host" : host,
-                "area" : area
+                "host": host,
+                "area": area
             }
             self.db.execute(sql, args)
         self.commit()
@@ -914,10 +873,10 @@ class LogDB():
         self.db.execute(sql)
 
     def host_area(self, host):
-        table_name = area
+        table_name = "area"
         l_key = ["area"]
         l_cond = [db_common.cond("host", "=", "host")]
-        args = {"host" : host}
+        args = {"host": host}
         sql = self.db.select_sql(table_name, l_key, l_cond)
         cursor = self.db.execute(sql, args)
         return [row[0] for row in cursor]
@@ -925,8 +884,8 @@ class LogDB():
 
 class RestoreOriginalData(object):
 
-    def __init__(self, dirname, style = "date", method = "commit",
-                 reset = False):
+    def __init__(self, dirname, style="date", method="commit",
+                 reset=False):
         self.style = style
         self.method = method
         self.dirname = dirname
@@ -970,7 +929,7 @@ class RestoreOriginalData(object):
             self.write_all()
 
     def write_line(self, linestr, fn):
-        with open("/".join((self.dirname, fn)), 
+        with open("/".join((self.dirname, fn)),
                   "a", encoding='utf-8') as f:
             f.write(linestr + "\n")
 
@@ -995,9 +954,9 @@ def _iter_files(targets):
     for fp in targets:
         if os.path.isdir(fp):
             sys.stderr.write(
-                    "{0} is a directory, fail to process\n".format(fp))
+                "{0} is a directory, fail to process\n".format(fp))
             sys.stderr.write(
-                    "Use -r if you need to search log data recursively\n")
+                "Use -r if you need to search log data recursively\n")
         else:
             if not os.path.isfile(fp):
                 raise IOError("File {0} not found".format(fp))
@@ -1006,8 +965,8 @@ def _iter_files(targets):
                 yield f
 
 
-def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
-            drop_undefhost = False, lid_header = False):
+def process_line(msg, ld, lp, ha, isnew_check=False, latest=None,
+                 drop_undefhost=False, lid_header=False):
     """Add a log message to DB.
     
     Args:
@@ -1033,7 +992,7 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
     parsed_line = lp.process_line(strutil.add_esc(msg))
     dt = parsed_line["timestamp"]
     org_host = parsed_line["host"]
-    #dt, org_host, l_w, l_s = lp.process_line(msg)
+    # dt, org_host, l_w, l_s = lp.process_line(msg)
     if latest is not None and dt < latest:
         _logger.debug(
             "pass message with excluded timestamp {0}".format(dt))
@@ -1041,10 +1000,10 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
     try:
         l_w = parsed_line["words"]
     except KeyError:
-        _logger.debug("pass empty message {0}".format(str(l_w)))
+        _logger.debug("pass empty message {0}".format(parsed_line["message"]))
         return None
     if len(l_w) == 0:
-        _logger.debug("pass empty message {0}".format(str(l_w)))
+        _logger.debug("pass empty message {0}".format(parsed_line["message"]))
         return None
     host = ha.resolve_host(org_host)
     if host is None:
@@ -1061,12 +1020,12 @@ def process_line(msg, ld, lp, ha, isnew_check = False, latest = None,
         return None
     else:
         _logger.debug("Template [{0}]".format(ltline))
-        line = ld.add_line(ltline.ltid, dt, host, l_w, lid = lid)
+        line = ld.add_line(ltline.ltid, dt, host, l_w, lid=lid)
     return line
 
 
-def process_files(conf, targets, reset_db, isnew_check = False,
-                  lid_header = False):
+def process_files(conf, targets, reset_db, isnew_check=False,
+                  lid_header=False):
     """Add log messages to DB from files.
 
     Args:
@@ -1080,12 +1039,12 @@ def process_files(conf, targets, reset_db, isnew_check = False,
     Raises:
         IOError: If a file in targets not found.
     """
-    ld = LogData(conf, edit = True, reset_db = reset_db)
+    ld = LogData(conf, edit=True, reset_db=reset_db)
     ld.init_ltmanager()
     lp = _load_log2seq(conf)
-    #lp = logsplit.LogSplit(conf)
-    #lp = logparser.LogParser(conf)
-    #ha = host_alias.HostAlias(conf)
+    # lp = logsplit.LogSplit(conf)
+    # lp = logparser.LogParser(conf)
+    # ha = host_alias.HostAlias(conf)
     ha = host_alias.init_hostalias(conf)
     latest = ld.dt_term()[1] if isnew_check else None
     drop_undefhost = conf.getboolean("database", "undefined_host")
@@ -1097,8 +1056,8 @@ def process_files(conf, targets, reset_db, isnew_check = False,
         ld.commit_db()
 
 
-def process_init_data(conf, targets, isnew_check = False,
-                      lid_header = False):
+def process_init_data(conf, targets, isnew_check=False,
+                      lid_header=False):
     """Add log messages to DB from files. This function do NOT process
     messages incrementally. Use this to avoid bad-start problem of
     log template generation with clustering or training methods.
@@ -1115,11 +1074,11 @@ def process_init_data(conf, targets, isnew_check = False,
     Raises:
         IOError: If a file in targets not found.
     """
-    ld = LogData(conf, edit = True, reset_db = True)
+    ld = LogData(conf, edit=True, reset_db=True)
     ld.init_ltmanager()
     lp = _load_log2seq(conf)
-    #lp = logsplit.LogSplit(conf)
-    #lp = logparser.LogParser(conf)
+    # lp = logsplit.LogSplit(conf)
+    # lp = logparser.LogParser(conf)
     ha = host_alias.init_hostalias(conf)
     latest = ld.dt_term()[1] if isnew_check else None
     drop_undefhost = conf.getboolean("database", "undefined_host")
@@ -1144,28 +1103,28 @@ def process_init_data(conf, targets, isnew_check = False,
                 l_w = parsed_line["words"]
                 l_s = parsed_line["symbols"]
             except KeyError:
-                _logger.debug("pass empty message {0}".format(str(l_w)))
+                _logger.debug("pass empty message {0}".format(parsed_line["message"]))
                 return None
             if len(l_w) == 0:
-                _logger.debug("pass empty message {0}".format(str(l_w)))
+                _logger.debug("pass empty message {0}".format(parsed_line["message"]))
                 continue
             host = ha.resolve_host(org_host)
             if host is None:
                 if drop_undefhost:
-                    ld.ltm.failure_output(line)
+                    ld.ltm.failure_output(msg)
                     continue
                 else:
                     host = org_host
-            pline["host"] = host
+            parsed_line["host"] = host
 
-            l_line.append(pline)
+            l_line.append(parsed_line)
             l_data.append((lid, dt, host))
 
     for ltline, pline, data in zip(ld.ltm.process_init_data(l_line),
                                    l_line, l_data):
         l_w = pline["words"]
         lid, dt, host = data
-        ld.add_line(ltline.ltid, dt, host, l_w, lid = lid)
+        ld.add_line(ltline.ltid, dt, host, l_w, lid=lid)
 
     ld.commit_db()
 
@@ -1194,7 +1153,7 @@ def info_term(conf, top_dt, end_dt):
     s_host = set()
 
     ld = LogData(conf)
-    for line in ld.iter_lines(top_dt = top_dt, end_dt = end_dt):
+    for line in ld.iter_lines(top_dt=top_dt, end_dt=end_dt):
         cnt_line += 1
         s_ltid.add(line.lt.ltid)
         s_gid.add(line.lt.ltgid)
@@ -1237,13 +1196,13 @@ def dump_template_table(conf):
     print(ld.dump_template_table())
 
 
-def show_all_host(conf, top_dt = None, end_dt = None):
+def show_all_host(conf, top_dt=None, end_dt=None):
     ld = LogData(conf)
     for host in ld.whole_host():
         print(host)
 
 
-def agg_words(conf, target = "all"):
+def agg_words(conf, target="all"):
     """Return dict of words in all log messages and their counts. 
 
     Args:
@@ -1282,55 +1241,55 @@ def agg_words(conf, target = "all"):
     ld = LogData(conf)
     top_dt, end_dt = ld.dt_term()
     d = defaultdict(int)
-    for lm in ld.iter_lines(top_dt = top_dt, end_dt = end_dt):
+    for lm in ld.iter_lines(top_dt=top_dt, end_dt=end_dt):
         func(d, lm)
 
     return d
 
 
 def migrate(conf):
-    ld = LogData(conf, edit = True)
+    ld = LogData(conf, edit=True)
     ld.db._init_index()
     ld.update_area()
     ld.commit_db()
-    
+
 
 def remake_ltgroup(conf):
-    ld = LogData(conf, edit = True)
+    ld = LogData(conf, edit=True)
     ld.init_ltmanager()
     ld.ltm.remake_ltg()
     ld.commit_db()
 
 
 def reload_area(conf):
-    ld = LogData(conf, edit = True)
+    ld = LogData(conf, edit=True)
     ld.init_ltmanager()
     ld.update_area()
     ld.commit_db()
 
 
 def anonymize(conf):
-    ld = LogData(conf, edit = True)
+    ld = LogData(conf, edit=True)
     d_cond = {}
-    d_update = {"words" : ""}
+    d_update = {"words": ""}
     ld.db.update_log(d_cond, d_update)
     ld.commit_db()
 
 
 def data_from_db(conf, dirname, method, reset):
-    rod = RestoreOriginalData(dirname, method = method, reset = reset)
+    rod = RestoreOriginalData(dirname, method=method, reset=reset)
     ld = LogData(conf)
     top_dt, end_dt = ld.whole_term()
-    for lm in ld.iter_lines(top_dt = top_dt, end_dt = end_dt):
+    for lm in ld.iter_lines(top_dt=top_dt, end_dt=end_dt):
         rod.add(lm)
     rod.commit()
 
 
 def data_from_data(conf, targets, dirname, method, reset):
-    rod = RestoreOriginalData(dirname, method = method, reset = reset)
+    rod = RestoreOriginalData(dirname, method=method, reset=reset)
     lp = _load_log2seq(conf)
-    #lp = logsplit.LogSplit(conf)
-    #lp = logparser.LogParser(conf)
+    # lp = logsplit.LogSplit(conf)
+    # lp = logparser.LogParser(conf)
     for fp in targets:
         with open(fp, 'r', encoding='utf-8') as f:
             for line in f:
@@ -1339,8 +1298,7 @@ def data_from_data(conf, targets, dirname, method, reset):
                 rod.add_str(dt, linestr)
     rod.commit()
 
-
-#def _get_targets(conf, args, recur):
+# def _get_targets(conf, args, recur):
 #    if len(args) == 0:
 #        if conf.getboolean("general", "src_recur") or recur:
 #            targets = common.recur_dir(config.getlist(conf, "general",
@@ -1356,11 +1314,11 @@ def data_from_data(conf, targets, dirname, method, reset):
 #    return targets
 #
 #
-#if __name__ == "__main__":
+# if __name__ == "__main__":
 #
 #    usage = """
-#usage: {0} [options] args...
-#args:
+# usage: {0} [options] args...
+# args:
 #  make : initialize DB and add log data given in config
 #  make FILES : initialize DB and add log data in FILES
 #  add FILES : add all log data in FILES to existing DB
@@ -1461,5 +1419,3 @@ def data_from_data(conf, targets, dirname, method, reset):
 #    else:
 #        sys.exit("Invalid argument")
 #
-
-

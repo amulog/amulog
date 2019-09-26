@@ -153,8 +153,8 @@ class HostAlias(object):
 
 
 def init_hostalias(conf):
-    ha_fn = conf.get("database", "host_alias_filename")
-    ha = host_alias.HostAlias(ha_fn)
+    ha_fn = conf["database"]["host_alias_filename"]
+    ha = HostAlias(ha_fn)
     return ha
 
 
@@ -168,7 +168,7 @@ def test_hostalias(conf):
             "10.100.1.254",
             "8.8.6.0"]
     #conf.set("database", "host_alias_filename", "host_alias_test.txt")
-    ha = host_alias.HostAlias(ha_fn)
+    ha = init_hostalias(conf)
     #ha = HostAlias(conf)
     ha.print_definitions()
     print()
