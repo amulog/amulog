@@ -6,6 +6,7 @@ import datetime
 import logging
 import configparser
 from collections import defaultdict
+import dateutil
 
 DEFAULT_CONFIG = "/".join((os.path.dirname(__file__),
                            "data/config.conf.default"))
@@ -16,7 +17,6 @@ IMPORT_OPTION = 'import'
 
 
 class GroupDef():
-
     """
     Define grouping by external text
     Rules:
@@ -25,7 +25,7 @@ class GroupDef():
         other lines add elements in the group set with GROUP_NAME line
     """
 
-    def __init__(self, fn, default_val = None):
+    def __init__(self, fn, default_val=None):
         self.gdict = {}
         self.rgdict = {}
         self.default = default_val
@@ -49,7 +49,7 @@ class GroupDef():
                 else:
                     if group is None:
                         raise ValueError("no group definition before value")
-                    val = line 
+                    val = line
                     self.gdict.setdefault(group, []).append(val)
                     self.rgdict.setdefault(val, []).append(group)
 
@@ -101,7 +101,7 @@ def getlist(conf, section, name):
 def getdict(conf, section, name):
     val = conf.get(section, name)
     ret = {}
-    for e in ret.split(","):
+    for e in val.split(","):
         e = e.strip()
         assert "=" in e
         k, _, v = e.partition("=")
@@ -114,16 +114,22 @@ def getdt(conf, section, name):
     if ret == "":
         return None
     else:
-        return datetime.datetime.strptime(ret.strip(), "%Y-%m-%d %H:%M:%S")
+        dt = datetime.datetime.strptime(ret.strip(), "%Y-%m-%d %H:%M:%S")
+        dt = dt.replace(tzinfo=dateutil.tz.tzlocal())
+        return dt
 
 
 def getterm(conf, section, name):
-    ret = conf.get(section, name)
-    if ret == "":
+    val = conf.get(section, name)
+    if val == "":
         return None
     else:
-        return tuple(datetime.datetime.strptime(e.strip(), "%Y-%m-%d %H:%M:%S")
-                     for e in ret.split(","))
+        ret = []
+        for e in val.split(","):
+            dt = datetime.datetime.strptime(e.strip(), "%Y-%m-%d %H:%M:%S")
+            dt = dt.replace(tzinfo=dateutil.tz.tzlocal())
+            ret.append(dt)
+        return ret
 
 
 def getdur(conf, section, name):
@@ -141,34 +147,34 @@ def getname(conf):
 def str2dur(string):
     """
     Note:
-        \d+s: \d seconds
-        \d+m: \d minutes
-        \d+h: \d hours
-        \d+d: \d days
-        \d+w: \d * 7 days
+        \\d+s: \\d seconds
+        \\d+m: \\d minutes
+        \\d+h: \\d hours
+        \\d+d: \\d days
+        \\d+w: \\d * 7 days
     """
     if "s" in string:
         num = int(string.partition("s")[0])
-        return datetime.timedelta(seconds = num)
+        return datetime.timedelta(seconds=num)
     elif "m" in string:
         num = int(string.partition("m")[0])
-        return datetime.timedelta(minutes = num)
+        return datetime.timedelta(minutes=num)
     elif "h" in string:
         num = int(string.partition("h")[0])
-        return datetime.timedelta(hours = num)
+        return datetime.timedelta(hours=num)
     elif "d" in string:
         num = int(string.partition("d")[0])
-        return datetime.timedelta(days = num)
+        return datetime.timedelta(days=num)
     elif "w" in string:
         num = int(string.partition("w")[0])
-        return datetime.timedelta(days = num * 7)
+        return datetime.timedelta(days=num * 7)
     else:
         raise ValueError("Duration string invalid")
 
 
 def dur2str(td):
     samples = [("m", 60), ("h", 60), ("d", 24), ("w", 7)]
-    
+
     footer = "s"
     val = int(td.total_seconds())
     for tmp_footer, mod in samples:
@@ -180,7 +186,7 @@ def dur2str(td):
     return str(val) + footer
 
 
-def load_defaults(ex_conf = None):
+def load_defaults(ex_conf=None):
     l_fn = [DEFAULT_CONFIG]
     if not ex_conf is None and len(ex_conf) > 0:
         l_fn = [DEFAULT_CONFIG] + ex_conf
@@ -193,8 +199,8 @@ def load_defaults(ex_conf = None):
     return temp_conf
 
 
-def open_config(fn = None, ex_defaults = None,
-                nodefault = False, noimport = False):
+def open_config(fn=None, ex_defaults=None,
+                nodefault=False, noimport=False):
     """
     Args:
         fn (str): Configuration file path.
@@ -241,7 +247,7 @@ def open_config(fn = None, ex_defaults = None,
     return conf
 
 
-def show_default_config(ex_defaults = None):
+def show_default_config(ex_defaults=None):
     conf = load_defaults(ex_defaults)
     for section in conf.sections():
         print("[{0}]".format(section))
@@ -250,7 +256,7 @@ def show_default_config(ex_defaults = None):
         print()
 
 
-def show_config_diff(l_conf_name, l_conf = None, ex_defaults = None):
+def show_config_diff(l_conf_name, l_conf=None, ex_defaults=None):
     from . import common
     if l_conf is None:
         l_conf = [open_config(conf_path, ex_defaults)
@@ -259,7 +265,7 @@ def show_config_diff(l_conf_name, l_conf = None, ex_defaults = None):
     def iter_secopt(conf):
         for sec in conf.sections():
             for opt in conf.options(sec):
-                yield (sec, opt) 
+                yield (sec, opt)
 
     keys = set()
     for conf in l_conf:
@@ -279,14 +285,14 @@ def show_config_diff(l_conf_name, l_conf = None, ex_defaults = None):
                 d_keys[sec].append(opt)
 
     for sec, l_opt in d_keys.items():
-        print("[{0}]".format(sec))      
+        print("[{0}]".format(sec))
         for opt in l_opt:
             print("{0} = ...".format(opt))
             buf = []
             for name, conf in zip(l_conf_name, l_conf):
                 if conf.has_option(sec, opt):
                     buf.append([name, conf[sec][opt]])
-            print(common.cli_table(buf, spl = ": "))
+            print(common.cli_table(buf, spl=": "))
         print()
 
 
@@ -295,8 +301,7 @@ def write(name, conf):
         conf.write(f)
 
 
-def minimize(conf, ex_defaults = None):
-    
+def minimize(conf, ex_defaults=None):
     def add_opt(conf, sec, opt, val):
         if not sec in conf:
             conf[sec] = {}
@@ -331,7 +336,7 @@ def minimize(conf, ex_defaults = None):
     return new_conf
 
 
-def config_minimum(fn, ex_defaults = None):
+def config_minimum(fn, ex_defaults=None):
     conf = open_config(fn, ex_defaults)
     default_conf = open_config(None)
 
@@ -351,9 +356,9 @@ def config_minimum(fn, ex_defaults = None):
             print()
 
 
-def config_group_edit(l_conf_name, d_rule, l_conf = None):
+def config_group_edit(l_conf_name, d_rule, l_conf=None):
     if l_conf is None:
-        l_conf = [open_config(conf_path, nodefault = True, noimport = True)
+        l_conf = [open_config(conf_path, nodefault=True, noimport=True)
                   for conf_path in l_conf_name]
     for key, l_val in d_rule.items():
         if isinstance(key, str):
@@ -372,8 +377,8 @@ def config_group_edit(l_conf_name, d_rule, l_conf = None):
         write(name, conf)
 
 
-def config_shadow(n = 1, cond = None, incr = None, fn = None, output = None,
-                  ignore_overwrite = False, ex_defaults = None):
+def config_shadow(n=1, cond=None, incr=None, fn=None, output=None,
+                  ignore_overwrite=False, ex_defaults=None):
     if cond is None:
         cond = {}
     if incr is None:
@@ -381,7 +386,7 @@ def config_shadow(n = 1, cond = None, incr = None, fn = None, output = None,
 
     l_ret = []
     for i in range(n):
-        conf = open_config(fn, ex_defaults, noimport = True)
+        conf = open_config(fn, ex_defaults, noimport=True)
         for key, val in cond.items():
             sec, opt = key.split(".")
             conf[sec][opt] = val
@@ -411,7 +416,7 @@ def config_shadow(n = 1, cond = None, incr = None, fn = None, output = None,
     return l_ret
 
 
-def check_all_diff(l_conf_name, keys, l_conf = None):
+def check_all_diff(l_conf_name, keys, l_conf=None):
     """Return True if all configs have different values in given keys."""
     if l_conf is None:
         l_conf = [open_config(conf_name) for conf_name in l_conf_name]
@@ -445,7 +450,7 @@ def read_config_group(cgroup_path):
     return ret
 
 
-def load_config_group(cgroup_path, ex_defaults = None):
+def load_config_group(cgroup_path, ex_defaults=None):
     l_conf = []
     for fp in read_config_group(cgroup_path):
         if os.path.exists(fp):
@@ -461,9 +466,42 @@ def dump_config_group(cgroup_name, l_conf_name):
         f.write("\n".join(l_conf_name))
 
 
+def set_logging_stdio(logger=None, logger_name=None,
+                      lv=logging.INFO):
+    fmt = logging.Formatter(
+        fmt="%(asctime)s %(levelname)s (%(processName)s) %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S")
+    ch = logging.StreamHandler()
+    ch.setFormatter(fmt)
+    ch.setLevel(lv)
+
+    temp_loggers = []
+    if logger is None:
+        pass
+    elif isinstance(logger, list):
+        temp_loggers += logger
+    elif isinstance(logger, logging.Logger):
+        temp_loggers.append(logger)
+    else:
+        raise TypeError
+    if logger_name is None:
+        pass
+    elif isinstance(logger_name, list):
+        temp_loggers += [logging.getLogger(ln) for ln in logger_name]
+    elif isinstance(logger_name, str):
+        temp_loggers.append(logging.getLogger(logger_name))
+    else:
+        raise TypeError
+
+    for l in temp_loggers:
+        l.setLevel(lv)
+        l.addHandler(ch)
+    return ch
+
+
 # common objects for logging
-def set_common_logging(conf, logger = None, logger_name = None,
-        lv = logging.INFO):
+def set_common_logging(conf, logger=None, logger_name=None,
+                       lv=logging.INFO):
     """
     Args:
         conf
@@ -475,9 +513,9 @@ def set_common_logging(conf, logger = None, logger_name = None,
     """
     fn = conf.get("general", "logging")
     fmt = logging.Formatter(
-            fmt = "%(asctime)s %(levelname)s (%(processName)s) %(message)s", 
-            datefmt = "%Y-%m-%d %H:%M:%S")
-    #lv = logging.INFO
+        fmt="%(asctime)s %(levelname)s (%(processName)s) %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S")
+    # lv = logging.INFO
     if fn == "":
         ch = logging.StreamHandler()
     else:
@@ -509,7 +547,7 @@ def set_common_logging(conf, logger = None, logger_name = None,
     return ch
 
 
-def release_common_logging(ch, logger = None, logger_name = None):
+def release_common_logging(ch, logger=None, logger_name=None):
     temp_loggers = []
     if logger is None:
         pass
@@ -539,10 +577,8 @@ def test_config(conf_name):
         for option, value in conf.items(section):
             print("{0} = {1}".format(option, value))
 
-
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        sys.exit("usage : {0} config".format(sys.argv[0]))
-    conf = sys.argv[1]
-    test_config(conf)
-
+# if __name__ == "__main__":
+#    if len(sys.argv) < 2:
+#        sys.exit("usage : {0} config".format(sys.argv[0]))
+#    conf = sys.argv[1]
+#    test_config(conf)

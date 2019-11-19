@@ -237,19 +237,19 @@ def mprocess(l_process, pal):
             job.join()
 
 
-def mprocess_queueing(l_pq, pal):
+def mprocess_queueing(l_pq, n_process):
     """
     Same as mprocess, but this function yields
     returned values of every processes with multiprocessing.Queue.
 
     Args:
-        l_pq (List[multiprocessing.Process, multiprocessingQueue])
-        pal (int): Maximum number of processes executed at once.
+        l_pq (List[multiprocessing.Process, multiprocessing.Queue])
+        n_process (int): Maximum number of processes executed at once.
     """
 
     l_job = []
     while len(l_pq) > 0:
-        if len(l_job) < pal:
+        if len(l_job) < n_process:
             process, queue = l_pq.pop(0)
             process.start()
             l_job.append((process, queue))

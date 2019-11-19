@@ -30,7 +30,7 @@ class LTGenCRF(lt_common.LTGen):
         super(LTGenCRF, self).__init__(table, sym)
         self.model = model
         self.verbose = verbose
-        #self._middle = middle
+        # self._middle = middle
         self._template = template
 
         self.trainer = None
@@ -38,18 +38,18 @@ class LTGenCRF(lt_common.LTGen):
         self.converter = convert.FeatureExtracter(self._template,
                                                   [self.POS_UNKNOWN], ig_val)
         self.lwobj = lwobj
-        #if self._middle == "re":
+        # if self._middle == "re":
         #    self._lwobj = LabelWord(conf)
-        #elif len(self._middle) > 0 :
+        # elif len(self._middle) > 0 :
         #    raise NotImplementedError
 
     def _middle_label(self, w):
         return self.lwobj.label(w)
 
-    def init_trainer(self, alg = "lbfgs", verbose = False):
-        self.trainer = pycrfsuite.Trainer(verbose = verbose)
+    def init_trainer(self, alg="lbfgs", verbose=False):
+        self.trainer = pycrfsuite.Trainer(verbose=verbose)
         self.trainer.select(alg, "crf1d")
-        d = {} # for parameter tuning, edit this
+        d = {}  # for parameter tuning, edit this
         if len(d) > 0:
             self.trainer.set_params(d)
 
@@ -71,19 +71,19 @@ class LTGenCRF(lt_common.LTGen):
         self.tagger.open(self.model)
 
     def close_tagger(self):
-        if not self.tagger is None:
+        if self.tagger is not None:
             self.tagger.close()
 
     def label_line(self, lineitems):
         if self.tagger is None:
             self.init_tagger()
         fset = self.converter.feature(lineitems)
-        l_label = self.tagger.tag(fset)        
+        l_label = self.tagger.tag(fset)
         return l_label
 
     def estimate_tpl(self, l_w, l_s):
-        lineitems = items.line2items(l_w, midlabel_func = self._middle_label,
-                                     dummy_label = self.LABEL_DUMMY)
+        lineitems = items.line2items(l_w, midlabel_func=self._middle_label,
+                                     dummy_label=self.LABEL_DUMMY)
         l_label = self.label_line(lineitems)
         tpl = []
         for w, label in zip(l_w, l_label):
@@ -111,7 +111,7 @@ class LTGenCRF(lt_common.LTGen):
 
 class MeasureAccuracy():
 
-    def __init__(self, conf, s_ltid = None):
+    def __init__(self, conf, s_ltid=None):
         """
         Args:
             conf
@@ -128,7 +128,7 @@ class MeasureAccuracy():
             conf.get("measure_lt", "sample_rules"))
         self.trials = conf.getint("measure_lt", "train_trials")
         self.results = []
-        
+
         if self.sample_from == "cross":
             self.cross_k = conf.getint("measure_lt", "cross_k")
             assert self.trials <= self.cross_k, "trials is larger than k"
@@ -169,7 +169,7 @@ class MeasureAccuracy():
             elif key == "end_date":
                 assert not "end_dt" in ret
                 ret["end_dt"] = datetime.datetime.strptime(
-                    val, "%Y-%m-%d") + datetime.timedelta(days = 1)
+                    val, "%Y-%m-%d") + datetime.timedelta(days=1)
             elif key == "end_dt":
                 assert not "end_dt" in ret
                 ret["end_dt"] = datetime.datetime.strptime(val,
@@ -207,7 +207,7 @@ class MeasureAccuracy():
                     new_d[ltid] += d[ltid]
             return new_d
 
-        l_labeled = [] # (ltid, train)
+        l_labeled = []  # (ltid, train)
         for line in self.ld.iter_lines(**self.sample_rules):
             l_labeled.append((line.lt.ltid, items.line2train(line)))
         random.shuffle(l_labeled)
@@ -216,7 +216,7 @@ class MeasureAccuracy():
         l_group_ltidlist = []
         basenum = 0
         for size in divide_size(len(l_labeled), self.cross_k):
-            l_ltid, l_lm = zip(*l_labeled[basenum:basenum+size])
+            l_ltid, l_lm = zip(*l_labeled[basenum:basenum + size])
             l_group.append(l_lm)
             l_group_ltidlist.append(l_ltid)
             basenum += size
@@ -228,7 +228,7 @@ class MeasureAccuracy():
             l_test = []
             l_test_ltidlist = []
             for gid, group, ltidlist in zip(range(self.cross_k),
-                                           l_group, l_group_ltidlist):
+                                            l_group, l_group_ltidlist):
                 if gid == trial:
                     assert l_train is None
                     l_train = group
@@ -236,7 +236,7 @@ class MeasureAccuracy():
                 else:
                     l_test += group
                     test_ltidlist += ltidlist
-            #test_ltidmap = agg_dict(l_test_ltidlist)
+            # test_ltidmap = agg_dict(l_test_ltidlist)
 
             l_train, train_ltidlist = self._filter_train(l_train,
                                                          train_ltidlist)
@@ -248,7 +248,7 @@ class MeasureAccuracy():
 
         l_test, test_ltidlist = self._load_test_diff()
 
-        l_train_all = [] # (ltid, lineitems)
+        l_train_all = []  # (ltid, lineitems)
         for line in self.ld.iter_lines(**self.sample_train_rules):
             l_train_all.append(line)
 
@@ -436,7 +436,7 @@ class MeasureAccuracy():
 
         return "\n".join(buf)
 
-    def failure_report(self, ld = None):
+    def failure_report(self, ld=None):
 
         def _failure_place(ld, ltid, wid):
             if ld is None:
@@ -465,8 +465,8 @@ class MeasureAccuracy():
                     d_average[key] += 1.0 * d_fail[key] / len(self.results)
 
         d_ltid = self.results[0]["dict_ltid"]
-        for key, cnt in sorted(d_average.items(), key = lambda x: x[1],
-                               reverse = True):
+        for key, cnt in sorted(d_average.items(), key=lambda x: x[1],
+                               reverse=True):
             ltid, wid = key
             ratio = 1.0 * cnt / d_ltid[ltid]
             buf.append([ltid, wid, ":", int(cnt), "({0})".format(ratio)])
@@ -496,7 +496,7 @@ def train_sample_random(l_lm, size):
 
 def va_preprocess(conf, l_lm):
     table = lt_common.TemplateTable()
-    ltgen_va = lt_common.init_ltgen(conf, table, method = "va")
+    ltgen_va = lt_common.init_ltgen(conf, table, method="va")
     ret_va = ltgen_va.process_init_data(
         [(lm.l_w, lm.lt.lts) for lm in l_lm])
     return ltgen_va, ret_va
@@ -519,8 +519,8 @@ def train_sample_random_va(l_lm, size, ltgen_va, ret_va):
                 l_sampled.append(group.pop())
         else:
             for group in sorted(d_group.values(),
-                                key = lambda x: len(x),
-                                reverse = True)[:temp]:
+                                key=lambda x: len(x),
+                                reverse=True)[:temp]:
                 assert len(group) > 0
                 l_sampled.append(group.pop())
         for key in [key for key, val in d_group.items() if len(val) == 0]:
@@ -553,8 +553,8 @@ def init_ltgen_crf(conf, table, sym):
     return LTGenCRF(table, sym, model, verbose, template, ig_val, lwobj)
 
 
-def make_crf_train(conf, iterobj, size = 1000, method = "all",
-                   return_ltidlist = False):
+def make_crf_train(conf, iterobj, size=1000, method="all",
+                   return_ltidlist=False):
     l_train_all = iterobj
     if method == "all":
         l_train = [items.line2train(lm) for lm in l_train_all]
@@ -574,9 +574,9 @@ def make_crf_train(conf, iterobj, size = 1000, method = "all",
         return l_train
 
 
-def make_crf_model(conf, iterobj, size = 1000, method = "all"):
+def make_crf_model(conf, iterobj, size=1000, method="all"):
     l_train, train_ltidlist = make_crf_train(conf, iterobj, size, method,
-                                             return_ltidlist = True)
+                                             return_ltidlist=True)
     table = lt_common.TemplateTable()
     ltgen = lt_common.init_ltgen(conf, table, "crf")
     ltgen.init_trainer()
@@ -585,11 +585,11 @@ def make_crf_model(conf, iterobj, size = 1000, method = "all"):
     return ltgen.model
 
 
-def make_crf_model_ideal(conf, ld, size = None):
+def make_crf_model_ideal(conf, ld, size=None):
     l_train = []
     train_ltidlist = []
     for lt in ld.iter_lt():
-        iterobj = ld.iter_lines(ltid = lt.ltid)
+        iterobj = ld.iter_lines(ltid=lt.ltid)
         lm = iterobj.__next__()
         l_train.append(items.line2train(lm))
         train_ltidlist.append(lt.ltid)
@@ -608,7 +608,7 @@ def make_crf_model_ideal(conf, ld, size = None):
     return ltgen.model
 
 
-def generate_lt_mprocess(conf, targets, check_import = False, pal = 1):
+def generate_lt_mprocess(conf, targets, check_import=False, pal=1):
     """Generate log templates for all given log messages.
     This function does not generate DB,
     but instead of that this function can be processed in multiprocessing.
@@ -625,16 +625,16 @@ def generate_lt_mprocess(conf, targets, check_import = False, pal = 1):
         target_func = generate_lt_file
         method = "without import"
     timer = common.Timer("generate_lt ({0}) task".format(method),
-                         output = _logger)
+                         output=_logger)
     timer.start()
     l_args = generate_lt_args(conf, targets)
     l_queue = [multiprocessing.Queue() for args in l_args]
-    l_process = [multiprocessing.Process(name = args[-1],
-                                         target = target_func,
-                                         args = [queue] + args)
+    l_process = [multiprocessing.Process(name=args[-1],
+                                         target=target_func,
+                                         args=[queue] + args)
                  for args, queue in zip(l_args, l_queue)]
     l_pq = list(zip(l_process, l_queue))
-    
+
     s_tpl = set()
     for ret in common.mprocess_queueing(l_pq, pal):
         s_tpl = s_tpl | ret
@@ -686,4 +686,3 @@ def generate_lt_import_file(queue, conf, fp):
 
     _logger.info("processing {0} done".format(fp))
     queue.put(s_tpl)
-
