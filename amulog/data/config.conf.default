@@ -145,7 +145,10 @@ def_path =
 # plain : without headers(datetime and host)
 mode = plain
 
+search_method = tree
+
 # for import_ext
+ext_seatch_method = table
 hash_strlen = 5
 
 

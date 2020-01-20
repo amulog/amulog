@@ -6,7 +6,7 @@ import datetime
 import logging
 import configparser
 from collections import defaultdict
-import dateutil
+from dateutil.tz import tzlocal
 
 DEFAULT_CONFIG = "/".join((os.path.dirname(__file__),
                            "data/config.conf.default"))
@@ -115,7 +115,7 @@ def getdt(conf, section, name):
         return None
     else:
         dt = datetime.datetime.strptime(ret.strip(), "%Y-%m-%d %H:%M:%S")
-        dt = dt.replace(tzinfo=dateutil.tz.tzlocal())
+        dt = dt.replace(tzinfo=tzlocal())
         return dt
 
 
@@ -127,7 +127,7 @@ def getterm(conf, section, name):
         ret = []
         for e in val.split(","):
             dt = datetime.datetime.strptime(e.strip(), "%Y-%m-%d %H:%M:%S")
-            dt = dt.replace(tzinfo=dateutil.tz.tzlocal())
+            dt = dt.replace(tzinfo=tzlocal())
             ret.append(dt)
         return ret
 

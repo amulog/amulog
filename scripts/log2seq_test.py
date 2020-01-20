@@ -11,7 +11,7 @@ if len(sys.argv) < 3:
     sys.exit("usage: {0} config targets".format(sys.argv[0]))
 conf = config.open_config(sys.argv[1])
 
-lp = log_db._load_log2seq(conf)
+lp = log_db.load_log2seq(conf)
 for fp in common.rep_dir(sys.argv[2:]):
     with open(fp) as f:
         for line in f:

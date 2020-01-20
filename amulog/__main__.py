@@ -51,7 +51,7 @@ def generate_testdata(ns):
 def data_filter(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     targets = get_targets_opt(ns, conf)
     dirname = ns.dirname
     if ns.incr:
@@ -60,13 +60,13 @@ def data_filter(ns):
         method = "commit"
     from . import lt_import
 
-    lt_import.filter_org(conf, targets, dirname, method = method)
+    lt_import.filter_org(conf, targets, dirname, method=method)
 
 
 def data_from_db(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     dirname = ns.dirname
     if ns.incr:
         method = "incremental"
@@ -81,7 +81,7 @@ def data_from_db(ns):
 def data_from_data(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     dirname = ns.dirname
     targets = get_targets_opt(ns, conf)
     if ns.incr:
@@ -97,7 +97,7 @@ def data_from_data(ns):
 def lt_from_data(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     targets = get_targets_opt(ns, conf)
     check_import = ns.check_import
 
@@ -110,63 +110,65 @@ def lt_from_data(ns):
 def db_make(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     targets = get_targets_opt(ns, conf)
+    dry = ns.dry
     from . import log_db
 
-    timer = common.Timer("db-make", output = _logger)
+    timer = common.Timer("db-make", output=_logger)
     timer.start()
-    log_db.process_files(conf, targets, True, lid_header = ns.lid_header)
+    log_db.process_files(conf, targets, True,
+                         lid_header=ns.lid_header, dry=dry)
     timer.stop()
 
 
 def db_make_init(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     targets = get_targets_opt(ns, conf)
     from . import log_db
 
-    timer = common.Timer("db-make-init", output = _logger)
+    timer = common.Timer("db-make-init", output=_logger)
     timer.start()
-    log_db.process_init_data(conf, targets, lid_header = ns.lid_header)
+    log_db.process_init_data(conf, targets, lid_header=ns.lid_header)
     timer.stop()
 
 
 def db_add(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     targets = get_targets(ns, conf)
     from . import log_db
 
-    timer = common.Timer("db-add", output = _logger)
+    timer = common.Timer("db-add", output=_logger)
     timer.start()
-    log_db.process_files(conf, targets, False, lid_header = ns.lid_header)
+    log_db.process_files(conf, targets, False, lid_header=ns.lid_header)
     timer.stop()
 
 
 def db_update(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     targets = get_targets(ns, conf)
     from . import log_db
 
-    timer = common.Timer("db-update", output = _logger)
+    timer = common.Timer("db-update", output=_logger)
     timer.start()
-    log_db.process_files(conf, targets, False, diff = True,
-                         lid_header = ns.lid_header)
+    log_db.process_files(conf, targets, False, diff=True,
+                         lid_header=ns.lid_header)
     timer.stop()
 
 
 def db_anonymize(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
-    
-    timer = common.Timer("db-anonymize", output = _logger)
+
+    timer = common.Timer("db-anonymize", output=_logger)
     timer.start()
     log_db.anonymize(conf)
     timer.stop()
@@ -175,7 +177,7 @@ def db_anonymize(ns):
 def reload_area(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     log_db.reload_area(conf)
 
@@ -183,7 +185,7 @@ def reload_area(ns):
 def show_db_info(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
 
     log_db.info(conf)
@@ -192,17 +194,17 @@ def show_db_info(ns):
 def show_lt(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
 
     simple = ns.simple
-    log_db.show_lt(conf, simple = simple)
+    log_db.show_lt(conf, simple=simple)
 
 
 def show_ltg(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
 
     kwargs = {}
@@ -214,17 +216,25 @@ def show_ltg(ns):
 def show_lt_import(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
 
-    log_db.show_lt_import(conf)
+    external = ns.external
+    ld = log_db.LogData(conf)
+    for ltobj in ld.iter_lt():
+        if external:
+            # unsegmented, with escape
+            print(ltobj.restore_message(None, esc=True))
+        else:
+            # segmented, with escape
+            print(" ".join(ltobj.ltw))
 
 
 def show_lt_import_exception(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
-    from . import log_db
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
     form = ns.format
     assert form in ("log", "message")
     targets = get_targets(ns, conf)
@@ -236,23 +246,23 @@ def show_lt_import_exception(ns):
 def show_lt_words(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
 
-    d = log_db.agg_words(conf, target = "all")
-    print(common.cli_table(sorted(d.items(), key = lambda x: x[1],
-                                  reverse = True)))
+    d = log_db.agg_words(conf, target="all")
+    print(common.cli_table(sorted(d.items(), key=lambda x: x[1],
+                                  reverse=True)))
 
 
 def show_lt_descriptions(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
 
-    d = log_db.agg_words(conf, target = "description")
-    print(common.cli_table(sorted(d.items(), key = lambda x: x[1],
-                                  reverse = True)))
+    d = log_db.agg_words(conf, target="description")
+    print(common.cli_table(sorted(d.items(), key=lambda x: x[1],
+                                  reverse=True)))
 
 
 def show_lt_variables(ns):
@@ -268,23 +278,22 @@ def show_lt_variables(ns):
             else:
                 d[new_k] += d.pop(k)
 
-
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
 
-    d = log_db.agg_words(conf, target = "variable")
+    d = log_db.agg_words(conf, target="variable")
     if ns.repld:
         repl_var(d)
-    print(common.cli_table(sorted(d.items(), key = lambda x: x[1],
-                                  reverse = True)))
+    print(common.cli_table(sorted(d.items(), key=lambda x: x[1],
+                                  reverse=True)))
 
 
 def show_lt_breakdown(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     from . import lt_tool
 
@@ -298,15 +307,15 @@ def show_lt_breakdown(ns):
 def show_lt_vstable(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     from . import lt_tool
 
     ld = log_db.LogData(conf)
-    lt_tool.search_stable_variable(ld, th = 1)
+    lt_tool.search_stable_variable(ld, th=1)
 
 
-#def show_lt_vstable_rule(ns):
+# def show_lt_vstable_rule(ns):
 #    conf = config.open_config(ns.conf_path)
 #    lv = logging.DEBUG if ns.debug else logging.INFO
 #    config.set_common_logging(conf, logger = _logger, lv = lv)
@@ -321,7 +330,7 @@ def show_lt_vstable(ns):
 def lttool_merge(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     from . import lt_tool
 
@@ -334,7 +343,7 @@ def lttool_merge(ns):
 def lttool_separate(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     from . import lt_tool
 
@@ -348,7 +357,7 @@ def lttool_separate(ns):
 def lttool_split(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     from . import lt_tool
 
@@ -361,7 +370,7 @@ def lttool_split(ns):
 def lttool_fix(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     from . import lt_tool
 
@@ -374,7 +383,7 @@ def lttool_fix(ns):
 def lttool_free(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     from . import lt_tool
 
@@ -387,7 +396,7 @@ def lttool_free(ns):
 def lttool_fix_search(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     from . import lt_tool
 
@@ -400,7 +409,7 @@ def lttool_fix_search(ns):
 def lttool_free_search(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     from . import lt_tool
 
@@ -413,7 +422,7 @@ def lttool_free_search(ns):
 def show_ltg_label(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import lt_label
 
     lt_label.list_ltlabel(conf)
@@ -422,7 +431,7 @@ def show_ltg_label(ns):
 def show_log_label(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import lt_label
 
     lt_label.count_ltlabel(conf)
@@ -431,7 +440,7 @@ def show_log_label(ns):
 def show_host(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
 
     log_db.show_all_host(conf)
@@ -440,7 +449,7 @@ def show_host(ns):
 def show_log(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     lidflag = ns.lid
 
@@ -456,7 +465,7 @@ def show_log(ns):
 def make_crf_train(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     from . import lt_crf
 
@@ -465,14 +474,14 @@ def make_crf_train(ns):
     d = parse_condition(ns.conditions)
     ld = log_db.LogData(conf)
     iterobj = ld.iter_lines(**d)
-    l_train = lt_crf.make_crf_train(conf, l_lm, size, method)
+    l_train = lt_crf.make_crf_train(conf, iterobj, size, method)
     print("\n\n".join(l_train))
 
 
 def make_crf_model(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     from . import lt_crf
 
@@ -488,10 +497,10 @@ def make_crf_model(ns):
 def make_crf_model_ideal(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
     from . import lt_crf
-    
+
     if int(ns.train_size) <= 0:
         size = None
     else:
@@ -501,7 +510,7 @@ def make_crf_model_ideal(ns):
     print("> {0}".format(fn))
 
 
-#def make_lt_mp(ns):
+# def make_lt_mp(ns):
 #    conf = config.open_config(ns.conf_path)
 #    lv = logging.DEBUG if ns.debug else logging.INFO
 #    config.set_common_logging(conf, logger = _logger, lv = lv)
@@ -538,7 +547,7 @@ def parse_condition(conditions):
         elif key == "date":
             date_string = arg.partition("=")[-1]
             d["top_dt"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
-            d["end_dt"] = d["top_dt"] + datetime.timedelta(days = 1)
+            d["end_dt"] = d["top_dt"] + datetime.timedelta(days=1)
         elif key == "host":
             d["host"] = arg.partition("=")[-1]
         elif key == "area":
@@ -547,14 +556,14 @@ def parse_condition(conditions):
 
 
 def measure_crf(ns):
-    ex_defaults = ["/".join((os.path.dirname(__file__), 
+    ex_defaults = ["/".join((os.path.dirname(__file__),
                              "data/measure_crf.conf.default"))]
     conf = config.open_config(ns.conf_path, ex_defaults)
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger = _logger, lv = lv)
+    config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import lt_crf
 
-    timer = common.Timer("measure-crf", output = _logger)
+    timer = common.Timer("measure-crf", output=_logger)
     timer.start()
     ma = lt_crf.MeasureAccuracy(conf)
     if len(ma.results) == 0:
@@ -588,8 +597,7 @@ def measure_crf_multi(ns):
         print("> {0}".format(output))
         _logger.info("process {0} finished".format(conf_name))
 
-
-    ex_defaults = ["/".join((os.path.dirname(__file__), 
+    ex_defaults = ["/".join((os.path.dirname(__file__),
                              "data/measure_crf.conf.default"))]
     l_conf = [config.open_config(conf_path, ex_defaults)
               for conf_path in ns.confs]
@@ -610,16 +618,15 @@ def measure_crf_multi(ns):
         print("Option value check failed, so exited")
         sys.exit()
 
-
     lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(l_conf[0], logger = _logger, lv = lv)
+    config.set_common_logging(l_conf[0], logger=_logger, lv=lv)
 
     import multiprocessing
-    timer = common.Timer("measure-crf-multi task", output = _logger)
+    timer = common.Timer("measure-crf-multi task", output=_logger)
     timer.start()
-    l_process = [multiprocessing.Process(name = args[1],
-                                         target = process_measure_crf,
-                                         args = args)
+    l_process = [multiprocessing.Process(name=args[1],
+                                         target=process_measure_crf,
+                                         args=args)
                  for args in zip(l_conf, l_conf_name)]
     common.mprocess_queueing(l_process, ns.pal)
     timer.stop()
@@ -637,7 +644,7 @@ def conf_diff(ns):
 
 
 def conf_minimum(ns):
-    conf = config.open_config(ns.conf_path, nodefault = True, noimport = True)
+    conf = config.open_config(ns.conf_path, nodefault=True, noimport=True)
     conf = config.minimize(conf)
     config.write(ns.conf_path, conf)
     print("rewrite {0}".format(ns.conf_path))
@@ -694,9 +701,9 @@ def conf_shadow(ns):
             cond[key] = val
         else:
             incr.append(rule)
-    l_conf_name = config.config_shadow(n = ns.number, cond = cond, incr = incr,
-                                       fn = ns.conf_path, output = ns.output,
-                                       ignore_overwrite = ns.force)
+    l_conf_name = config.config_shadow(n=ns.number, cond=cond, incr=incr,
+                                       fn=ns.conf_path, output=ns.output,
+                                       ignore_overwrite=ns.force)
 
     if ns.configset is not None:
         config.dump_config_group(ns.configset, l_conf_name)
@@ -709,7 +716,7 @@ OPT_DEBUG = [["--debug"],
               "help": "set logging level to debug (default: info)"}]
 OPT_CONFIG = [["-c", "--config"],
               {"dest": "conf_path", "metavar": "CONFIG", "action": "store",
-               #"default": config.DEFAULT_CONFIG,
+               # "default": config.DEFAULT_CONFIG,
                "default": None,
                "help": "configuration file path for amulog"}]
 OPT_CONFIG_SET = [["-s", "--configset"],
@@ -719,17 +726,20 @@ OPT_CONFIG_SET = [["-s", "--configset"],
 OPT_RECUR = [["-r", "--recur"],
              {"dest": "recur", "action": "store_true",
               "help": "recursively search files to process"}]
+OPT_DRY = [["-d", "--dry"],
+             {"dest": "dry", "action": "store_true",
+              "help": "do not store data into db"}]
 OPT_TERM = [["-t", "--term"],
             {"dest": "dt_range",
              "metavar": "DATE1 DATE2", "nargs": 2,
              "help": ("datetime range, start and end in %Y-%M-%d style."
                       "(optional; defaultly use all data in database)")}]
 OPT_LID = [["-l", "--lid"],
-             {"dest": "lid_header", "action": "store_true",
-              "help": "parse lid from head part of log message"}]
+           {"dest": "lid_header", "action": "store_true",
+            "help": "parse lid from head part of log message"}]
 ARG_FILE = [["file"],
-             {"metavar": "PATH", "action": "store",
-              "help": "filepath to output"}]
+            {"metavar": "PATH", "action": "store",
+             "help": "filepath to output"}]
 ARG_FILES = [["files"],
              {"metavar": "PATH", "nargs": "+",
               "help": "files or directories as input"}]
@@ -743,7 +753,6 @@ ARG_DBSEARCH = [["conditions"],
                           "Example: MODE gid=24 date=2012-10-10 ..., "
                           "Keys: ltid, gid, date, top_date, end_date, "
                           "host, area")}]
-
 
 # argument settings for each modes
 # description, List[args, kwargs], func
@@ -787,30 +796,31 @@ DICT_ARGSET = {
                       ],
                      data_from_db],
     "data-from-data": ["Re-arrange log file, splitting messages by date.",
-                     [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
-                      [["-d", "--dirname"],
-                       {"dest": "dirname", "metavar": "DIRNAME",
-                        "action": "store",
-                        "help": "directory name to output"}],
-                      [["-i", "--incr"],
-                       {"dest": "incr", "action": "store_true",
-                        "help": "output incrementally, use with small memory"}],
-                      [["--reset"],
-                       {"dest": "reset", "action": "store_true",
-                        "help": "reset log file directory before processing"}],
-                      ],
-                     data_from_data],
+                       [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
+                        [["-d", "--dirname"],
+                         {"dest": "dirname", "metavar": "DIRNAME",
+                          "action": "store",
+                          "help": "directory name to output"}],
+                        [["-i", "--incr"],
+                         {"dest": "incr", "action": "store_true",
+                          "help": "output incrementally, use with small memory"}],
+                        [["--reset"],
+                         {"dest": "reset", "action": "store_true",
+                          "help": "reset log file directory before processing"}],
+                        ],
+                       data_from_data],
     "lt-from-data": ["Generate log templates (not using DB).",
                      [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
                       [["-i", "--import"],
                        {"dest": "check_import", "action": "store_true",
                         "help": ("ignore messages corresponding to "
                                  "imported log template definition "
-                                 "(i.e., process only unknown messages)")}],],
+                                 "(i.e., process only unknown messages)")}], ],
                      lt_from_data],
     "db-make": [("Initialize database and add log data. "
                  "This fuction works incrementaly."),
-                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_LID, ARG_FILES_OPT],
+                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_LID, OPT_DRY,
+                 ARG_FILES_OPT],
                 db_make],
     "db-make-init": [("Initialize database and add log data "
                       "for given dataset. "
@@ -849,7 +859,10 @@ DICT_ARGSET = {
                     "help": "show members of given labeling group"}]],
                  show_ltg],
     "show-lt-import": ["Output log template definitions in lt_import format.",
-                       [OPT_CONFIG, OPT_DEBUG,],
+                       [OPT_CONFIG, OPT_DEBUG,
+                        [["-e", "--external"],
+                         {"dest": "external", "action": "store_true",
+                          "help": "output in external format (for RE)"}]],
                        show_lt_import],
     "show-lt-import-exception": [("Output log messages in a file "
                                   "that is not defined "
@@ -917,7 +930,7 @@ DICT_ARGSET = {
                         "help": "first log template to merge"}],
                       [["ltid2"],
                        {"metavar": "LTID2", "action": "store", "type": int,
-                        "help": "second log template to merge"}],],
+                        "help": "second log template to merge"}], ],
                      lttool_merge],
     "lttool-separate": ["Separate messages satisfying the given condition "
                         "and make it a new log template.",
@@ -996,7 +1009,7 @@ DICT_ARGSET = {
                          {"dest": "method", "action": "store",
                           "default": "all",
                           "help": "train data sampling method name. "
-                                  "[all, random, random-va] is available."}],],
+                                  "[all, random, random-va] is available."}], ],
                        make_crf_train],
     "make-crf-model": ["Output CRF trained model file for given conditions.",
                        [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,
@@ -1008,7 +1021,7 @@ DICT_ARGSET = {
                          {"dest": "method", "action": "store",
                           "default": "all",
                           "help": "train data sampling method name. "
-                                  "[all, random, random-va] is available."}],],
+                                  "[all, random, random-va] is available."}], ],
                        make_crf_model],
     "make-crf-model-ideal": [("Output CRF trained model file "
                               "in ideal situation "
@@ -1021,55 +1034,55 @@ DICT_ARGSET = {
                                          "if omitted use all log templates")}],
                               ],
                              make_crf_model_ideal],
-#    "make-lt-mp": [("Generate log templates with CRF "
-#                    "in multiprocessing."),
-#                   [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
-#                    [["-p", "--pal"],
-#                     {"dest": "pal", "action": "store",
-#                      "type": int, "default": 1,
-#                      "help": "number of processes"}],
-#                    [["-i", "--import"],
-#                     {"dest": "check_import", "action": "store_true",
-#                      "help": ("ignore messages corresponding to "
-#                               "imported log template definition "
-#                               "(i.e., process only unknown messages)")}],],
-#                   make_lt_mp],
-#    "measure-crf": ["Measure accuracy of CRF-based log template estimation.",
-#                    [OPT_DEBUG,
-#                     [["-f", "--failure"],
-#                      {"dest": "failure", "action": "store",
-#                       "help": "output failure report"}],
-#                     [["-c", "--config"],
-#                      {"dest": "conf_path", "metavar": "CONFIG",
-#                       "action": "store", "default": None,
-#                       "help": "extended config file for measure-lt"}],],
-#                    measure_crf],
-#    "measure-crf-multi": ["Multiprocessing of measure-crf.",
-#                          [OPT_DEBUG, OPT_CONFIG_SET,
-#                           [["-p", "--pal"],
-#                            {"dest": "pal", "action": "store",
-#                             "type": int, "default": 1,
-#                             "help": "number of processes"}],
-#                           [["-d", "--diff"],
-#                            {"dest": "diff", "action": "append",
-#                             "default": [],
-#                             "help": ("check configs that given option values "
-#                                      "are all different. This option can "
-#                                      "be specified multiple times. "
-#                                      "Example: -d general.import -d ...")}],
-#                           [["confs"],
-#                            {"metavar": "CONFIG", "nargs": "*",
-#                             "help": "configuration files"}]],
-#                          measure_crf_multi],
+    #    "make-lt-mp": [("Generate log templates with CRF "
+    #                    "in multiprocessing."),
+    #                   [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
+    #                    [["-p", "--pal"],
+    #                     {"dest": "pal", "action": "store",
+    #                      "type": int, "default": 1,
+    #                      "help": "number of processes"}],
+    #                    [["-i", "--import"],
+    #                     {"dest": "check_import", "action": "store_true",
+    #                      "help": ("ignore messages corresponding to "
+    #                               "imported log template definition "
+    #                               "(i.e., process only unknown messages)")}],],
+    #                   make_lt_mp],
+    #    "measure-crf": ["Measure accuracy of CRF-based log template estimation.",
+    #                    [OPT_DEBUG,
+    #                     [["-f", "--failure"],
+    #                      {"dest": "failure", "action": "store",
+    #                       "help": "output failure report"}],
+    #                     [["-c", "--config"],
+    #                      {"dest": "conf_path", "metavar": "CONFIG",
+    #                       "action": "store", "default": None,
+    #                       "help": "extended config file for measure-lt"}],],
+    #                    measure_crf],
+    #    "measure-crf-multi": ["Multiprocessing of measure-crf.",
+    #                          [OPT_DEBUG, OPT_CONFIG_SET,
+    #                           [["-p", "--pal"],
+    #                            {"dest": "pal", "action": "store",
+    #                             "type": int, "default": 1,
+    #                             "help": "number of processes"}],
+    #                           [["-d", "--diff"],
+    #                            {"dest": "diff", "action": "append",
+    #                             "default": [],
+    #                             "help": ("check configs that given option values "
+    #                                      "are all different. This option can "
+    #                                      "be specified multiple times. "
+    #                                      "Example: -d general.import -d ...")}],
+    #                           [["confs"],
+    #                            {"metavar": "CONFIG", "nargs": "*",
+    #                             "help": "configuration files"}]],
+    #                          measure_crf_multi],
     "conf-defaults": ["Show default configurations.",
-                     [],
-                     conf_defaults],
+                      [],
+                      conf_defaults],
     "conf-diff": ["Show differences of 2 configuration files.",
                   [OPT_CONFIG_SET,
                    [["files"],
                     {"metavar": "FILENAME", "nargs": "*",
                      "help": "configuration file"}]],
-                   conf_diff],
+                  conf_diff],
     "conf-minimum": ["Remove default options and comments.",
                      [[["-o", "--overwrite"],
                        {"dest": "overwrite", "action": "store_true",
@@ -1077,27 +1090,27 @@ DICT_ARGSET = {
                       [["conf_path"],
                        {"metavar": "PATH",
                         "help": "config filepath to load"}]],
-                      conf_minimum],
-    "conf-group-edit" : ["Edit configuration files in a config group.",
-                         [[["configset"],
-                           {"metavar": "CONFIG_SET",
-                            "help": "config group definition file to use"}],
-                          [["key"],
-                           {"metavar": "KEY",
-                            "help": "\"SECTION.OPTION\" to edit"}],
-                          [["rule"],
-                           {"metavar": "RULE",
-                            "help": ("Value specification rule "
-                                     "defined in function-like format. "
-                                     "Example: \"List(1,10,100,1000)\" "
-                                     "Available format: "
-                                     "list(values for each config), "
-                                     "range(START,STEP), "
-                                     "power(START,STEP), "
-                                     "withconf(NAME),"
-                                     "namerange(NAME)."
-                                     "Note that 1 rule for 1 execution.")}]],
-                         conf_set_edit],
+                     conf_minimum],
+    "conf-group-edit": ["Edit configuration files in a config group.",
+                        [[["configset"],
+                          {"metavar": "CONFIG_SET",
+                           "help": "config group definition file to use"}],
+                         [["key"],
+                          {"metavar": "KEY",
+                           "help": "\"SECTION.OPTION\" to edit"}],
+                         [["rule"],
+                          {"metavar": "RULE",
+                           "help": ("Value specification rule "
+                                    "defined in function-like format. "
+                                    "Example: \"List(1,10,100,1000)\" "
+                                    "Available format: "
+                                    "list(values for each config), "
+                                    "range(START,STEP), "
+                                    "power(START,STEP), "
+                                    "withconf(NAME),"
+                                    "namerange(NAME)."
+                                    "Note that 1 rule for 1 execution.")}]],
+                        conf_set_edit],
     "conf-shadow": ["Copy configuration files.",
                     [OPT_CONFIG,
                      [["-f", "--force"],
@@ -1130,7 +1143,7 @@ USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])
                             for key, val in sorted(DICT_ARGSET.items())])
 USAGE = ("usage: {0} MODE [options and arguments] ...\n\n"
          "mode:\n".format(
-        sys.argv[0])) + USAGE_COMMANDS
+    sys.argv[0])) + USAGE_COMMANDS
 
 if __name__ == "__main__":
     if len(sys.argv) < 1:
@@ -1141,10 +1154,9 @@ if __name__ == "__main__":
     commandline = sys.argv[2:]
 
     desc, l_argset, func = DICT_ARGSET[mode]
-    ap = argparse.ArgumentParser(prog = " ".join(sys.argv[0:2]),
-                                 description = desc)
+    ap = argparse.ArgumentParser(prog=" ".join(sys.argv[0:2]),
+                                 description=desc)
     for args, kwargs in l_argset:
         ap.add_argument(*args, **kwargs)
     ns = ap.parse_args(commandline)
     func(ns)
-

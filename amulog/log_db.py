@@ -941,7 +941,7 @@ class RestoreOriginalData(object):
                 f.write("\n".join(l_buf))
 
 
-def _load_log2seq(conf):
+def load_log2seq(conf):
     fp = conf.get("database", "parser_script")
     if len(fp.strip()) == 0:
         return log2seq.init_parser()
@@ -966,7 +966,7 @@ def _iter_files(targets):
 
 
 def process_line(msg, ld, lp, ha, isnew_check=False, latest=None,
-                 drop_undefhost=False, lid_header=False):
+                 drop_undefhost=False, lid_header=False, dry=False):
     """Add a log message to DB.
     
     Args:
@@ -982,14 +982,16 @@ def process_line(msg, ld, lp, ha, isnew_check=False, latest=None,
         LogMessage: An annotated log message instance.
             Same as lines given with LogData.iterlines.
     """
-    line = None
-
     if lid_header:
         lidstr, _, msg = msg.partition(" ")
         lid = int(lidstr)
     else:
         lid = None
-    parsed_line = lp.process_line(strutil.add_esc(msg))
+    try:
+        parsed_line = lp.process_line(strutil.add_esc(msg))
+    except SyntaxError as e:
+        _logger.info(str(e))
+        return
     dt = parsed_line["timestamp"]
     org_host = parsed_line["host"]
     # dt, org_host, l_w, l_s = lp.process_line(msg)
@@ -1018,6 +1020,8 @@ def process_line(msg, ld, lp, ha, isnew_check=False, latest=None,
     if ltline is None:
         ld.ltm.failure_output(msg)
         return None
+    elif dry:
+        return
     else:
         _logger.debug("Template [{0}]".format(ltline))
         line = ld.add_line(ltline.ltid, dt, host, l_w, lid=lid)
@@ -1025,7 +1029,7 @@ def process_line(msg, ld, lp, ha, isnew_check=False, latest=None,
 
 
 def process_files(conf, targets, reset_db, isnew_check=False,
-                  lid_header=False):
+                  lid_header=False, dry=False):
     """Add log messages to DB from files.
 
     Args:
@@ -1041,7 +1045,7 @@ def process_files(conf, targets, reset_db, isnew_check=False,
     """
     ld = LogData(conf, edit=True, reset_db=reset_db)
     ld.init_ltmanager()
-    lp = _load_log2seq(conf)
+    lp = load_log2seq(conf)
     # lp = logsplit.LogSplit(conf)
     # lp = logparser.LogParser(conf)
     # ha = host_alias.HostAlias(conf)
@@ -1052,7 +1056,7 @@ def process_files(conf, targets, reset_db, isnew_check=False,
     for f in _iter_files(targets):
         for line in f:
             process_line(line, ld, lp, ha, isnew_check, latest,
-                         drop_undefhost, lid_header)
+                         drop_undefhost, lid_header, dry)
         ld.commit_db()
 
 
@@ -1076,7 +1080,7 @@ def process_init_data(conf, targets, isnew_check=False,
     """
     ld = LogData(conf, edit=True, reset_db=True)
     ld.init_ltmanager()
-    lp = _load_log2seq(conf)
+    lp = load_log2seq(conf)
     # lp = logsplit.LogSplit(conf)
     # lp = logparser.LogParser(conf)
     ha = host_alias.init_hostalias(conf)
@@ -1092,7 +1096,11 @@ def process_init_data(conf, targets, isnew_check=False,
                 lid = int(lidstr)
             else:
                 lid = None
-            parsed_line = lp.process_line(strutil.add_esc(msg))
+            try:
+                parsed_line = lp.process_line(strutil.add_esc(msg))
+            except SyntaxError as e:
+                _logger.info(str(e))
+                continue
             dt = parsed_line["timestamp"]
             org_host = parsed_line["host"]
             if latest is not None and dt < latest:
@@ -1287,7 +1295,7 @@ def data_from_db(conf, dirname, method, reset):
 
 def data_from_data(conf, targets, dirname, method, reset):
     rod = RestoreOriginalData(dirname, method=method, reset=reset)
-    lp = _load_log2seq(conf)
+    lp = load_log2seq(conf)
     # lp = logsplit.LogSplit(conf)
     # lp = logparser.LogParser(conf)
     for fp in targets:

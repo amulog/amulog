@@ -7,9 +7,28 @@ from collections import defaultdict
 from . import tpl_match
 
 
-class RegexHashTable():
+class RegexTable:
 
-    def __init__(self, l_tpl, l_regex, headlen = 5):
+    def __init__(self, l_tpl, l_regex):
+        assert len(l_tpl) == len(l_regex)
+        self.l_tpl = l_tpl
+        self.table = self._make_table(l_tpl, l_regex)
+
+    def _make_table(self, l_tpl, l_regex):
+        return [(tplid, reobj) for tplid, reobj in enumerate(l_regex)]
+
+    def search(self, mes):
+        for tplid, reobj in self.table:
+            matchobj = reobj.match(mes)
+            if matchobj:
+                return tplid, matchobj
+        else:
+            return None
+
+
+class RegexHashTable(RegexTable):
+
+    def __init__(self, l_tpl, l_regex, headlen=5):
         assert len(l_tpl) == len(l_regex)
         assert isinstance(headlen, int)
         self.headlen = headlen
@@ -37,14 +56,15 @@ class RegexHashTable():
 
     def search(self, mes):
         key = mes[:self.headlen]
-        if not key in self.table:
+        if key not in self.table:
             key = None
 
         for tplid, reobj in self.table[key]:
             matchobj = reobj.match(mes)
             if matchobj:
                 return tplid, matchobj
-        else:
-            return None
-
-
+        for tplid, reobj in self.table[None]:
+            matchobj = reobj.match(mes)
+            if matchobj:
+                return tplid, matchobj
+        return None

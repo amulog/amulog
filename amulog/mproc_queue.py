@@ -14,6 +14,20 @@ class WorkerProcess(multiprocessing.Process):
         self._timeout = timeout
         _logger.debug("process {0} ready".format(self._name))
 
+    def run_current_proc(self):
+        _logger.info("mproc_queue runs in no multiprocessing mode")
+        while True:
+            try:
+                next_task = self.task_queue.get_nowait()
+                if next_task is None:
+                     break
+                else:
+                    ret = self._target(next_task, *self._args, **self._kwargs)
+                    self.result_queue.put_nowait(ret)
+                    self.task_queue.task_done()
+            except queue.Empty:
+                break
+
     def run(self):
         try:
             while True:
@@ -48,9 +62,10 @@ class Manager(object):
         self._l_worker = [WorkerProcess(self.task_queue, self.result_queue,
                                         timeout, target=target, name=namer(i),
                                         args=args, kwargs=kwargs)
-                          for i in range(n_proc)]
-        for w in self._l_worker:
-            w.start()
+                          for i in range(max(n_proc, 1))]
+        if self._n_proc > 0:
+            for w in self._l_worker:
+                w.start()
 
     def add(self, task):
         self.task_queue.put(task)
@@ -60,7 +75,11 @@ class Manager(object):
             self.task_queue.put(task)
 
     def join(self):
-        self.task_queue.join()
+        if self._n_proc > 0:
+            self.task_queue.join()
+        else:
+            # debug without multiprocessing
+            self._l_worker[0].run_current_proc()
 
     def get(self, block=False, timeout=1):
         return self.result_queue.get(block, timeout)
@@ -83,8 +102,11 @@ class Manager(object):
         assert self.result_queue.empty()
 
     def close(self):
-        for _ in self._l_worker:
-            self.task_queue.put(None)
-        self.task_queue.join()
+        if self._n_proc > 0:
+            for _ in self._l_worker:
+                self.task_queue.put(None)
+            self.task_queue.join()
+        else:
+            pass
 
 

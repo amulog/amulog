@@ -269,10 +269,14 @@ class LogTemplate():
     def var_location(self):
         return [i for i, w_lt in enumerate(self.ltw) if w_lt == self.sym]
 
-    def restore_message(self, l_w):
-        if len(l_w) == 0:
+    def restore_message(self, l_w, esc=False):
+        if l_w is None or len(l_w) == 0:
             l_w = self.ltw
-        l_w = [strutil.restore_esc(w) for w in l_w]
+        if esc:
+            l_w = [w for w in l_w]
+        else:
+            l_w = [strutil.restore_esc(w) for w in l_w]
+
         if self.lts is None:
             return "".join(l_w)
         else:

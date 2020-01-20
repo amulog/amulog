@@ -1,15 +1,40 @@
-#!/usr/bin/env python
+    #!/usr/bin/env python
 # coding: utf-8
 
+from collections import deque
 import logging
 
-from . import common
 from . import lt_common
 
 _logger = logging.getLogger(__package__)
 
 
-class LTSearchTree():
+class LTSearch(object):
+
+    def __init__(self, sym):
+        self.sym = sym
+        self._d_lt = {}
+
+    def add(self, ltid, l_w, l_s):
+        self._d_lt[ltid] = l_w
+
+    def search(self, l_w, l_s):
+        for ltid, tmp_l_w in self._d_lt.items():
+            if len(l_w) == len(tmp_l_w):
+                for w1, w2 in zip(l_w, tmp_l_w):
+                    if w1 == w2:
+                        pass
+                    elif w2 == self.sym:
+                        pass
+                    else:
+                        break
+                else:
+                    return ltid
+        else:
+            return None
+
+
+class LTSearchTree(LTSearch):
     # Search tree for un-incremental lt generation algorithms
 
     def __init__(self, sym):
@@ -21,7 +46,8 @@ class LTSearchTree():
 
         def print_children(point, depth, l_sparent):
             word = point.word
-            if word is None: word = "**"
+            if word is None:
+                word = self.sym
 
             cnt = point.child_num()
             if cnt == 1:
@@ -43,8 +69,8 @@ class LTSearchTree():
 
         point = self.root
         l_buf.append("<head of log template search tree>")
-        for word in point.windex.keys():
-            print_children(point.windex[word], 0, [])
+        for w in point.windex.keys():
+            print_children(point.windex[w], 0, [])
         if point.wild is not None:
             print_children(point.wild, 0, [])
         return "\n".join(l_buf)
@@ -53,9 +79,9 @@ class LTSearchTree():
     def _new_node(parent = None, word = None):
         return LTSearchTreeNode(parent, word)
 
-    def add(self, ltid, ltwords):
+    def add(self, ltid, l_w, l_s):
         point = self.root
-        for w in ltwords:
+        for w in l_w:
             if w == self.sym:
                 if point.wild is None:
                     point.wild = self._new_node(point, w)
@@ -70,13 +96,13 @@ class LTSearchTree():
     def _trace(self, ltwords):
         _logger.debug("tracing message {0}".format(ltwords))
         point = self.root
-        temp_ltwords = ltwords[:]
+        tmp_ltwords = deque(ltwords)
         check_points = []
             # points with 2 candidates to go, for example "word" and "**"
             # [(node, len(left_words)), ...]
             # use as stack
         while True:
-            w = temp_ltwords.pop(0)
+            w = tmp_ltwords.popleft()
             if w == self.sym:
                 # w is sym (only if input is template)
                 # go wild node
@@ -89,47 +115,47 @@ class LTSearchTree():
                 # go the word node
                 # also go to wild node, when check_points poped
                 if point.wild is not None:
-                    check_points.append((point, len(temp_ltwords)))
-                    _logger.debug("# add checkpoint ({0} (+{1}))".format(point, len(temp_ltwords) + 1))
-                _logger.debug("{0} (+{1}) -> goto {2}".format(point, len(temp_ltwords) + 1, w))
+                    check_points.append((point, deque(tmp_ltwords)))
+                    _logger.debug("# add checkpoint ({0} (+{1}))".format(point, len(tmp_ltwords) + 1))
+                _logger.debug("{0} (+{1}) -> goto {2}".format(point, len(tmp_ltwords) + 1, w))
                 point = point.windex[w]
             elif point.wild is not None:
                 # w is not in windex, but have wild node
-                _logger.debug("{0} (+{1}) -> goto {2}".format(point, len(temp_ltwords) + 1, self.sym))
+                _logger.debug("{0} (+{1}) -> goto {2}".format(point, len(tmp_ltwords) + 1, self.sym))
                 point = point.wild
             else:
-                _logger.debug("{0} (+{1}) : no available children".format(point, len(temp_ltwords) + 1))
                 # no template to process w, go back or end
+                _logger.debug("{0} (+{1}) : no available children".format(point, len(tmp_ltwords) + 1))
                 if len(check_points) == 0:
                     _logger.debug("template not found")
                     return None
                 else:
-                    p, left_wlen = check_points.pop(-1)
-                    temp_ltwords = ltwords[-left_wlen:] if left_wlen > 0 else []
-                        # +1 : for one **(wild) node
+                    p, tmp_ltwords = check_points.pop()
+                    #tmp_ltwords = deque(ltwords[-left_wlen:]) if left_wlen > 0 else []
+                    #    # +1 : for one **(wild) node
                     point = p.wild
-                    _logger.debug("go back to a stacked branch : {0} (+{1})".format(point, len(temp_ltwords)))
-                    _logger.debug("remaining words : {0}".format(temp_ltwords))
+                    _logger.debug("go back to a stacked branch : {0} (+{1})".format(point, len(tmp_ltwords)))
+                    _logger.debug("remaining words : {0}".format(tmp_ltwords))
 
-            while len(temp_ltwords) == 0:
+            while len(tmp_ltwords) == 0:
                 if point.end is None:
-                    _logger.debug("{0} (+{1}) : no template in this node".format(point, len(temp_ltwords)))
+                    _logger.debug("{0} (+{1}) : no template in this node".format(point, len(tmp_ltwords)))
                     if len(check_points) == 0:
                         _logger.debug("all ends are empty(no templates)")
                         return None
                     else:
-                        p, left_wlen = check_points.pop(-1)
-                        temp_ltwords = ltwords[-left_wlen:] if left_wlen > 0 else []
+                        p, tmp_ltwords = check_points.pop()
+                        #tmp_ltwords = deque(ltwords[-left_wlen:]) if left_wlen > 0 else []
                         point = p.wild
-                        _logger.debug("go back to a stacked branch : {0} (+{1})".format(point, len(temp_ltwords)))
-                        _logger.debug("remaining words : {0}".format(temp_ltwords))
+                        _logger.debug("go back to a stacked branch : {0} (+{1})".format(point, len(tmp_ltwords)))
+                        _logger.debug("remaining words : {0}".format(tmp_ltwords))
                 else:
                     _logger.debug("done (tpl: {0}, id: {1})".format(point, point.end))
                     return point
 
-    def remove(self, ltid, ltwords):
-        node = self._trace(ltwords)
-        if node is None:
+    def remove(self, ltid, l_w):
+        point = self._trace(l_w)
+        if point is None:
             _logger.warning(
                     "LTSearchTree : Failed to remove ltid {0}".format(ltid))
         point.remove_ltid(ltid)
@@ -144,8 +170,8 @@ class LTSearchTree():
             if self.root is None:
                 self.root = self._new_node()
 
-    def search(self, ltwords):
-        node = self._trace(ltwords)
+    def search(self, l_w, l_s):
+        node = self._trace(l_w)
         if node is None:
             return None
         else:
@@ -211,6 +237,42 @@ class LTSearchTreeNode():
                 (self.end is None)
 
 
+class LTSearchRegex():
+
+    def __init__(self, sym):
+        self._d_regex = {}
+        self.sym = sym
+        pass
+
+    @staticmethod
+    def _restore_tpl(l_w, l_s):
+        return "".join([s + w for w, s in zip(l_w + [""], l_s)])
+
+    def add(self, ltid, l_w, l_s):
+        tpl = self._restore_tpl(l_w, l_s)
+
+        from .external import tpl_match
+        self._d_regex[ltid] = tpl_match.generate_regex(tpl)
+
+    def search(self, l_w, l_s):
+        message = self._restore_tpl(l_w, l_s)
+        for ltid, reobj in self._d_regex.items():
+            m = reobj.match(message)
+            if m:
+                return ltid
+        else:
+            return None
+
+
+def init_ltsearcher(name, sym):
+    if name == "tree":
+        return LTSearchTree(sym)
+    elif name == "re":
+        return LTSearchRegex(sym)
+    elif name == "table":
+        return LTSearch(sym)
+
+
 class LTGroupFuzzyHash(lt_common.LTGroup):
 
     """Classify templates based on ssdeep, an implementation of fuzzy hashing.
@@ -262,7 +324,7 @@ class LTGroupFuzzyHash(lt_common.LTGroup):
         else:
             for lt_temp in self._lttable:
                 ltid = lt_temp.ltid
-                score = hash_score(str(lt_new), str(lt_temp))
+                score = ssdeep.hash_score(str(lt_new), str(lt_temp))
                 ret.append((ltid, score))
         return ret
 
@@ -270,7 +332,7 @@ class LTGroupFuzzyHash(lt_common.LTGroup):
 def generate_lt(conf, targets, check_import = False):
     from . import strutil
     from . import log_db
-    lp = log_db._load_log2seq(conf)
+    lp = log_db.load_log2seq(conf)
     table = lt_common.TemplateTable()
     ltgen_import = lt_common.init_ltgen(conf, table, "import")
     ltgen = lt_common.init_ltgen(conf, table)
