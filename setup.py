@@ -17,11 +17,11 @@ data_dir = "/".join((package_name, "data"))
 data_files = ["/".join((data_dir, fn)) for fn in os.listdir(data_dir)]
 
 setup(name='amulog',
-    version='0.0.1',
+    version='0.0.2',
     description='',
     long_description=read_md('README.md'),
     author='Satoru Kobayashi',
-    author_email='sat@hongo.wide.ad.jp',
+    author_email='sat@nii.ac.jp',
     url='https://github.com/cpflat/amulog/',
     install_requires=['numpy>=1.9.2',
                       'python-dateutil>=2.8.0',
@@ -31,12 +31,11 @@ setup(name='amulog',
         'Environment :: Console',
         'Intended Audience :: Information Technology',
         'Intended Audience :: Science/Research',
-        ('License :: OSI Approved :: '
-         'GNU General Public License v2 or later (GPLv2+)'),
+        'License :: OSI Approved :: BSD License',
         'Programming Language :: Python :: 3.4.3',
         'Topic :: Scientific/Engineering :: Information Analysis',
         'Topic :: Software Development :: Libraries :: Python Modules'],
-    license='GNU General Public License v2 or later (GPLv2+)',
+    license='The 3-Clause BSD License',
     
     packages=['amulog'],
     package_data={'amulog' : data_files},
