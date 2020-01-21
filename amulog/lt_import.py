@@ -65,7 +65,7 @@ class LTGenImport(lt_common.LTGen):
 
 def init_ltgen_import(conf, table, sym):
     fn = conf.get("log_template_import", "def_path")
-    mode = conf.get("log_template_import", "mode")
+    mode = conf.get("log_template_import", "import_format")
     ltmap = conf.get("log_template_import", "search_method")
     from . import log_db
     lp = log_db.load_log2seq(conf)

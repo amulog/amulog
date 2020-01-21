@@ -4,8 +4,6 @@
 
 from collections import defaultdict
 
-from . import tpl_match
-
 
 class RegexTable:
 
@@ -47,7 +45,8 @@ class RegexHashTable(RegexTable):
 
     @staticmethod
     def _head_isstable(tpl, headlen):
-        replacer = tpl_match.REPLACER
+        from amulog import lt_common
+        replacer = lt_common.REPLACER_REGEX
         matchobj = replacer.search(tpl)
         if matchobj:
             return matchobj.start() >= headlen

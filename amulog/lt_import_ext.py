@@ -4,10 +4,7 @@
 import os
 import logging
 
-from . import common
-from . import strutil
 from . import lt_common
-from . import lt_misc
 from .external import tpl_match
 from .external import mod_tplseq
 from .external import regexhash
@@ -17,12 +14,12 @@ _logger = logging.getLogger(__package__)
 
 class LTGenImportExternal(lt_common.LTGen):
 
-    def __init__(self, table, sym, filename, mode, lp, ltmap, head):
+    def __init__(self, table, sym, filename, mode, mode_esc, ltmap, head):
         super(LTGenImportExternal, self).__init__(table, sym)
         self._table = table
         self._fp = filename
         self.sym = sym
-        self._l_tpl = self._load_tpl(self._fp, mode)
+        self._l_tpl = self._load_tpl(self._fp, mode, mode_esc)
         self._l_regex = [tpl_match.generate_regex(tpl)
                          for tpl in self._l_tpl]
         if ltmap == "hash":
@@ -34,7 +31,7 @@ class LTGenImportExternal(lt_common.LTGen):
             raise NotImplementedError
 
     @staticmethod
-    def _load_tpl(fp, mode):
+    def _load_tpl(fp, mode, mode_esc):
         l_tpl = []
         if not os.path.exists(fp):
             errmes = ("log_template_import.def_path"
@@ -51,7 +48,10 @@ class LTGenImportExternal(lt_common.LTGen):
                     raise ValueError("invalid import_mode {0}".format(mode))
                 if len(mes) == 0:
                     continue
-                l_tpl.append(mes)
+                if mode_esc:
+                    l_tpl.append(mes)
+                else:
+                    l_tpl.append(tpl_match.add_esc_external(mes))
         return l_tpl
 
     def process_line(self, pline):
@@ -76,11 +76,12 @@ class LTGenImportExternal(lt_common.LTGen):
 
 
 def init_ltgen_import_ext(conf, table, sym):
-    fn = conf.get("log_template_import", "def_path")
-    mode = conf.get("log_template_import", "mode")
+    fn = conf.get("log_template_import", "def_path_ext")
+    mode = conf.get("log_template_import", "import_format_ext")
+    if fn == "":
+        fn = conf.get("log_template_import", "def_path")
+    mode_esc = conf.getboolean("log_template_import", "import_format_ext_esc")
     ltmap = conf.get("log_template_import", "ext_search_method")
     head = conf.getint("log_template_import", "hash_strlen")
 
-    from . import log_db
-    lp = log_db.load_log2seq(conf)
-    return LTGenImportExternal(table, sym, fn, mode, lp, ltmap, head)
+    return LTGenImportExternal(table, sym, fn, mode, mode_esc, ltmap, head)

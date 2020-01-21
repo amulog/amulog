@@ -2,12 +2,16 @@
 # coding: utf-8
 
 import os
+import re
 import pickle
 from collections import defaultdict
 
 from . import common
 from . import config
 from . import strutil
+
+REPLACER = "**"
+REPLACER_REGEX = re.compile(r"\*[A-Z]*?\*") # shortest match
 
 
 class LTManager(object):

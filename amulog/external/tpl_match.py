@@ -8,7 +8,22 @@ import re
 from collections import defaultdict
 
 # shortest match
-REPLACER = re.compile(r"\\\*[A-Z]*?\\\*")
+REPLACER_REGEX_ESCAPED = re.compile(r"\\\*[A-Z]*?\\\*")
+
+
+def add_esc_external(tpl):
+    """Add escape sequence for imported external templates.
+    It fails if the template has some statement that cannot
+    be distinguished with variable replacers (e.g., *****).
+    In that case, use option log_template_import.import_format_ext_esc
+    and add escape sequences manually (or with another way).
+    """
+    from amulog import strutil
+    from amulog import lt_common
+    l_wild = lt_common.REPLACER_REGEX.findall(tpl)
+    l_others = [strutil.add_esc(tmp)
+                for tmp in lt_common.REPLACER_REGEX.split(tpl)]
+    return "".join([other + wild for other, wild in zip(l_others, l_wild + [""])])
 
 
 def generate_regex(tpl):
@@ -24,7 +39,7 @@ def generate_regex(tpl):
         return regexstr
 
     regex_base = r"^" + re.escape(tpl) + r"$"
-    tmp = REPLACER.sub(_replace_wildcard, regex_base, count=0)
+    tmp = REPLACER_REGEX_ESCAPED.sub(_replace_wildcard, regex_base, count=0)
     return re.compile(tmp)
 
 

@@ -59,7 +59,7 @@ mysql_passwd = test
 # use symbol that will not appear in raw log messages
 split_symbol = @@
 
-# Script to parse log messages (See data/default_logparser_regex.py)
+# Script for log2seq
 parser_script = 
 
 # Network area groups of host names
@@ -87,10 +87,6 @@ undefined_host = false
 # For example:
 # default_year = 2112
 default_year = 
-
-# !!!!! Not used in logsplit, 
-remove_header_filename = 
-header_size = 5
 
 
 [log_template]
@@ -140,14 +136,30 @@ labeled_variable_symbol_footer = *
 # Log template definition file path
 def_path = 
 
-# Log template definition file style
-# [plain] is available
-# plain : without headers(datetime and host)
-mode = plain
+# Log template definition file format for "import"
+# [plain, ids]
+# plain: without headers(datetime and host)
+# ids: the top word is ignored as template identifier
+import_format = plain
 
+# Log template matching algorithm
+# [tree, table]
 search_method = tree
 
-# for import_ext
+
+# Log template definition file path
+# If empty, log_template_import.def_path is used
+def_path_ext =
+
+# Log template definition file format for "import-ext"
+import_format_ext = plain
+
+# If the templates has * or @ symbol strings (except wildcards),
+# escape them (\* or \@) and use import_format_ext_esc = true
+import_format_ext_esc = false
+
+# Log template matching algorithm
+# [hash, table]
 ext_seatch_method = table
 hash_strlen = 5
 
