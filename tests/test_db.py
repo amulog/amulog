@@ -27,7 +27,7 @@ class TestDB(unittest.TestCase):
             targets = common.recur_dir(l_path)
         else:
             targets = common.rep_dir(l_path)
-        log_db.process_files(conf, targets, True)
+        log_db.process_files_online(conf, targets, True)
 
         ld = log_db.LogData(conf)
         num = ld.count_lines()

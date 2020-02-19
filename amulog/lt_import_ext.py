@@ -14,11 +14,10 @@ _logger = logging.getLogger(__package__)
 
 class LTGenImportExternal(lt_common.LTGen):
 
-    def __init__(self, table, sym, filename, mode, mode_esc, ltmap, head):
-        super(LTGenImportExternal, self).__init__(table, sym)
+    def __init__(self, table, filename, mode, mode_esc, ltmap, head):
+        super(LTGenImportExternal, self).__init__(table)
         self._table = table
         self._fp = filename
-        self.sym = sym
         self._l_tpl = self._load_tpl(self._fp, mode, mode_esc)
         self._l_regex = [tpl_match.generate_regex(tpl)
                          for tpl in self._l_tpl]
@@ -54,28 +53,41 @@ class LTGenImportExternal(lt_common.LTGen):
                     l_tpl.append(tpl_match.add_esc_external(mes))
         return l_tpl
 
-    def process_line(self, pline):
+    def generate_tpl(self, pline):
         mes = pline["message"]
         ret = self._rtable.search(mes)
         if ret is None:
             _logger.debug(
                 "No log template found for message : {0}".format(mes))
-            return None, None
+            return None
         else:
             tplid, matchobj = ret
             tpl = self._rtable.l_tpl[tplid]
-            new_tpl = mod_tplseq.redefine_tpl(tpl, pline, self.sym,
-                                              matchobj=matchobj)
+            new_tpl = mod_tplseq.redefine_tpl(tpl, pline, matchobj=matchobj)
+            return new_tpl
 
-            if self._table.exists(new_tpl):
-                tid = self._table.get_tid(new_tpl)
-                return tid, self.state_unchanged
-            else:
-                tid = self._table.add(new_tpl)
-                return tid, self.state_added
+    #def process_line(self, pline):
+    #    mes = pline["message"]
+    #    ret = self._rtable.search(mes)
+    #    if ret is None:
+    #        _logger.debug(
+    #            "No log template found for message : {0}".format(mes))
+    #        return None, None
+    #    else:
+    #        tplid, matchobj = ret
+    #        tpl = self._rtable.l_tpl[tplid]
+    #        new_tpl = mod_tplseq.redefine_tpl(tpl, pline, self.sym,
+    #                                          matchobj=matchobj)
+
+    #        if self._table.exists(new_tpl):
+    #            tid = self._table.get_tid(new_tpl)
+    #            return tid, self.state_unchanged
+    #        else:
+    #            tid = self._table.add(new_tpl)
+    #            return tid, self.state_added
 
 
-def init_ltgen_import_ext(conf, table, sym):
+def init_ltgen_import_ext(conf, table):
     fn = conf.get("log_template_import", "def_path_ext")
     mode = conf.get("log_template_import", "import_format_ext")
     if fn == "":
@@ -84,4 +96,4 @@ def init_ltgen_import_ext(conf, table, sym):
     ltmap = conf.get("log_template_import", "ext_search_method")
     head = conf.getint("log_template_import", "hash_strlen")
 
-    return LTGenImportExternal(table, sym, fn, mode, mode_esc, ltmap, head)
+    return LTGenImportExternal(table, fn, mode, mode_esc, ltmap, head)

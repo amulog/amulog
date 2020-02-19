@@ -85,17 +85,20 @@ class GroupDef():
 
 def gettuple(conf, section, name):
     ret = conf.get(section, name)
-    return tuple(e.strip() for e in ret.split(",")
-                 if not e.strip() == "")
+    if ret.strip() == "":
+        return tuple()
+    else:
+        return tuple(e.strip() for e in ret.split(",")
+                     if not len(e.strip()) == 0)
 
 
 def getlist(conf, section, name):
     ret = conf.get(section, name)
-    if ret == "":
+    if ret.strip() == "":
         return []
     else:
         return [e.strip() for e in ret.split(",")
-                if not e.strip() == ""]
+                if not len(e.strip()) == 0]
 
 
 def getdict(conf, section, name):

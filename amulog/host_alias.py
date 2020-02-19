@@ -8,7 +8,6 @@ from . import config
 
 
 class HostAlias(object):
-
     """
     Note:
         1 host can not belong to multiple host groups, because
@@ -18,11 +17,11 @@ class HostAlias(object):
 
     def __init__(self, fn):
         self._fn = fn
-        #self.fn = conf.get("database", "host_alias_filename")
-        self._d_alias = defaultdict(list) # key = alias, val = List[host]
-        self._d_ralias = {} # key = host, val = alias
-        self._d_group = defaultdict(list) # key = group, val = List[host]
-        self._d_rgroup = {} # key = host, val = group
+        # self.fn = conf.get("database", "host_alias_filename")
+        self._d_alias = defaultdict(list)  # key = alias, val = List[host]
+        self._d_ralias = {}  # key = host, val = alias
+        self._d_group = defaultdict(list)  # key = group, val = List[host]
+        self._d_rgroup = {}  # key = host, val = group
         self._l_net = []
         self._open(self._fn)
 
@@ -42,14 +41,14 @@ class HostAlias(object):
                     l_temp = line.strip("<").partition(">")
                     alias = l_temp[0]
                     names = [alias] + l_temp[2].strip().rstrip("\n").split()
-                    self._add_def(names, alias = alias, group = group)
+                    self._add_def(names, alias=alias, group=group)
                 else:
                     names = line.rstrip("\n").split()
                     if len(names) == 0:
                         continue
-                    self._add_def(names, group = group)
+                    self._add_def(names, group=group)
 
-    def _add_def(self, l_name, alias = None, group = None):
+    def _add_def(self, l_name, alias=None, group=None):
 
         def add_alias(name, alias):
             if alias is not None:
@@ -160,16 +159,16 @@ def init_hostalias(conf):
 
 def test_hostalias(conf):
     names = ["192.168.0.1",
-            "www.TEST.localdomain",
-            "localhost",
-            "www",
-            "www3",
-            "hoge",
-            "10.100.1.254",
-            "8.8.6.0"]
-    #conf.set("database", "host_alias_filename", "host_alias_test.txt")
+             "www.TEST.localdomain",
+             "localhost",
+             "www",
+             "www3",
+             "hoge",
+             "10.100.1.254",
+             "8.8.6.0"]
+    # conf.set("database", "host_alias_filename", "host_alias_test.txt")
     ha = init_hostalias(conf)
-    #ha = HostAlias(conf)
+    # ha = HostAlias(conf)
     ha.print_definitions()
     print()
     print("[test aliasing]")
@@ -184,11 +183,11 @@ def test_hostalias(conf):
 if __name__ == "__main__":
     usage = ""
     import optparse
+
     op = optparse.OptionParser(usage)
     op.add_option("-c", "--config", action="store",
-            dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
-            help="configuration file path")
+                  dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
+                  help="configuration file path")
     options, args = op.parse_args()
     conf = config.open_config(options.conf)
     test_hostalias(conf)
-

@@ -17,8 +17,6 @@ from . import common
 from . import config
 from . import strutil
 from . import db_common
-# from . import logparser
-# from . import logsplit
 from . import lt_common
 from . import host_alias
 
@@ -101,7 +99,7 @@ class LogMessage():
     #    return " ".join((str(self.lid), self.restore_line()))
 
 
-class LogData():
+class LogData:
     """Interface to get, add or edit log messages in DB.
 
     Attributes:
@@ -124,8 +122,7 @@ class LogData():
         """
         self.conf = conf
         self._reset_db = reset_db
-        sym = conf.get("log_template", "variable_symbol")
-        self.lttable = lt_common.LTTable(sym)  # lt_common.LTTable
+        self.lttable = lt_common.LTTable()  # lt_common.LTTable
         self.db = LogDB(conf, self.lttable, edit, reset_db)  # log_db.LogDB
         self.ltm = None  # lt_common.LTManager
         from . import lt_label
@@ -353,20 +350,25 @@ class LogData():
                                                             label)] + buf
         return "\n".join(buf)
 
-    def add_line(self, ltid, dt, host, l_w, lid=None):
+    def add_line(self, ltid, pline):
         """Add a log message to DB.
 
         Args:
             ltid (int): A log template identifier.
-            dt (datetime.datetime): A timestamp.
-            host (str): A source hostname of log message.
-            l_w (List[str]): A sequence of log message contents.
+            pline (dict): A parsed log message with log2seq.
 
         Returns:
             LogMessage: An annotated log message instance.
         """
-        new_lid = self.db.add_line(ltid, dt, host, l_w, lid=lid)
-        return LogMessage(new_lid, self.lttable[ltid], dt, host, l_w)
+        kwargs = {"ltid" : ltid,
+                  "dt": pline["timestamp"],
+                  "host": pline["host"],
+                  "l_w": pline["words"]}
+        if "lid" in pline:
+            kwargs["lid"] = pline["lid"]
+        new_lid = self.db.add_line(**kwargs)
+        return LogMessage(new_lid, self.lttable[ltid],
+                          pline["timestamp"], pline["host"], pline["words"])
 
     def update_area(self):
         self.db._remove_area()
@@ -380,7 +382,7 @@ class LogData():
             self.ltm.dump()
 
 
-class LogDB():
+class LogDB:
     """Interface of DB transaction for log data.
     
     Note:
@@ -894,7 +896,7 @@ class RestoreOriginalData(object):
             _logger.info("RestoreOriginalData was requested to reset files")
             common.rm_dirchild(dirname)
 
-        assert self.style in ("date")
+        assert self.style in ("date", )
         assert self.method in ("incremental", "commit")
         if self.method == "commit":
             self.buf = defaultdict(list)
@@ -941,7 +943,28 @@ class RestoreOriginalData(object):
                 f.write("\n".join(l_buf))
 
 
+class FailureLog:
+
+    def __init__(self, fp):
+        self._fp = fp
+
+    def add(self, msg):
+        with open(self._fp, 'a') as f:
+            f.write(msg)
+
+
 def load_log2seq(conf):
+    """Amulog accepts following additional keys extracted by log2seq.
+    - host: device hostname, mandatory
+    - lid: Log message identifier, optional
+
+    Args:
+        conf:
+
+    Returns:
+        log2seq.LogParser
+
+    """
     fp = conf.get("database", "parser_script")
     if len(fp.strip()) == 0:
         return log2seq.init_parser()
@@ -950,7 +973,11 @@ def load_log2seq(conf):
         return log2seq.init_parser(rules)
 
 
-def _iter_files(targets):
+def init_failure_log(conf):
+    return FailureLog(conf["general"]["fail_output"])
+
+
+def iter_files(targets):
     for fp in targets:
         if os.path.isdir(fp):
             sys.stderr.write(
@@ -965,8 +992,45 @@ def _iter_files(targets):
                 yield f
 
 
-def process_line(msg, ld, lp, ha, isnew_check=False, latest=None,
-                 drop_undefhost=False, lid_header=False, dry=False):
+def parse_line(msg, lp):
+    try:
+        parsed_line = lp.process_line(strutil.add_esc(msg))
+    except SyntaxError as e:
+        _logger.info(str(e))
+        return
+
+    try:
+        l_w = parsed_line["words"]
+    except KeyError:
+        _logger.debug("pass empty message {0}".format(parsed_line["message"]))
+        return None
+    if len(l_w) == 0:
+        _logger.debug("pass empty message {0}".format(parsed_line["message"]))
+        return None
+
+    return parsed_line
+
+
+def normalize_host(msg, pline, ha, fl, drop_undefhost=False):
+    if "lid" in pline:
+        pline["lid"] = int(pline["lid"])
+
+    org_host = pline["host"]
+    host = ha.resolve_host(org_host)
+    if host is None:
+        if drop_undefhost:
+            if fl is not None:
+                fl.add(msg)
+            return None
+        else:
+            host = org_host
+    pline["host"] = host
+
+    return pline
+
+
+def process_line(msg, ld, lp, ha, fl, isnew_check=False, latest=None,
+                 drop_undefhost=False, dry=False):
     """Add a log message to DB.
     
     Args:
@@ -982,54 +1046,34 @@ def process_line(msg, ld, lp, ha, isnew_check=False, latest=None,
         LogMessage: An annotated log message instance.
             Same as lines given with LogData.iterlines.
     """
-    if lid_header:
-        lidstr, _, msg = msg.partition(" ")
-        lid = int(lidstr)
-    else:
-        lid = None
-    try:
-        parsed_line = lp.process_line(strutil.add_esc(msg))
-    except SyntaxError as e:
-        _logger.info(str(e))
+    pline = parse_line(msg, lp)
+    if pline is None:
         return
-    dt = parsed_line["timestamp"]
-    org_host = parsed_line["host"]
-    # dt, org_host, l_w, l_s = lp.process_line(msg)
+
+    dt = pline["timestamp"]
     if latest is not None and dt < latest:
         _logger.debug(
             "pass message with excluded timestamp {0}".format(dt))
-        return None
-    try:
-        l_w = parsed_line["words"]
-    except KeyError:
-        _logger.debug("pass empty message {0}".format(parsed_line["message"]))
-        return None
-    if len(l_w) == 0:
-        _logger.debug("pass empty message {0}".format(parsed_line["message"]))
-        return None
-    host = ha.resolve_host(org_host)
-    if host is None:
-        if drop_undefhost:
-            ld.ltm.failure_output(msg)
-            return None
-        else:
-            host = org_host
+        return
+    pline = normalize_host(msg, pline, ha, fl, drop_undefhost)
+    if pline is None:
+        return
 
-    _logger.debug("Processing [{0}]".format(" ".join(l_w)))
-    ltline = ld.ltm.process_line(parsed_line)
+    _logger.debug("Processing [{0}]".format(" ".join(pline["words"])))
+    ltline = ld.ltm.process_line(pline)
     if ltline is None:
-        ld.ltm.failure_output(msg)
-        return None
+        fl.add(msg)
+        return
     elif dry:
         return
     else:
         _logger.debug("Template [{0}]".format(ltline))
-        line = ld.add_line(ltline.ltid, dt, host, l_w, lid=lid)
-    return line
+        line = ld.add_line(ltline.ltid, pline)
+        return line
 
 
-def process_files(conf, targets, reset_db, isnew_check=False,
-                  lid_header=False, dry=False):
+def process_files_online(conf, targets, reset_db, isnew_check=False,
+                         dry=False):
     """Add log messages to DB from files.
 
     Args:
@@ -1046,22 +1090,19 @@ def process_files(conf, targets, reset_db, isnew_check=False,
     ld = LogData(conf, edit=True, reset_db=reset_db)
     ld.init_ltmanager()
     lp = load_log2seq(conf)
-    # lp = logsplit.LogSplit(conf)
-    # lp = logparser.LogParser(conf)
-    # ha = host_alias.HostAlias(conf)
     ha = host_alias.init_hostalias(conf)
+    fl = init_failure_log(conf)
     latest = ld.dt_term()[1] if isnew_check else None
     drop_undefhost = conf.getboolean("database", "undefined_host")
 
-    for f in _iter_files(targets):
+    for f in iter_files(targets):
         for line in f:
-            process_line(line, ld, lp, ha, isnew_check, latest,
-                         drop_undefhost, lid_header, dry)
+            process_line(line, ld, lp, ha, fl, isnew_check, latest,
+                         drop_undefhost, dry)
         ld.commit_db()
 
 
-def process_init_data(conf, targets, isnew_check=False,
-                      lid_header=False):
+def process_files_offline(conf, targets, isnew_check=False):
     """Add log messages to DB from files. This function do NOT process
     messages incrementally. Use this to avoid bad-start problem of
     log template generation with clustering or training methods.
@@ -1081,58 +1122,31 @@ def process_init_data(conf, targets, isnew_check=False,
     ld = LogData(conf, edit=True, reset_db=True)
     ld.init_ltmanager()
     lp = load_log2seq(conf)
-    # lp = logsplit.LogSplit(conf)
-    # lp = logparser.LogParser(conf)
     ha = host_alias.init_hostalias(conf)
+    fl = init_failure_log(conf)
     latest = ld.dt_term()[1] if isnew_check else None
     drop_undefhost = conf.getboolean("database", "undefined_host")
 
     l_line = []
-    l_data = []
-    for f in _iter_files(targets):
+    for f in iter_files(targets):
         for msg in f:
-            if lid_header:
-                lidstr, _, msg = msg.partition(" ")
-                lid = int(lidstr)
-            else:
-                lid = None
-            try:
-                parsed_line = lp.process_line(strutil.add_esc(msg))
-            except SyntaxError as e:
-                _logger.info(str(e))
+            pline = parse_line(msg, lp)
+            if pline is None:
                 continue
-            dt = parsed_line["timestamp"]
-            org_host = parsed_line["host"]
+            dt = pline["timestamp"]
             if latest is not None and dt < latest:
                 _logger.debug(
                     "pass message with excluded timestamp {0}".format(dt))
                 continue
-            try:
-                l_w = parsed_line["words"]
-                l_s = parsed_line["symbols"]
-            except KeyError:
-                _logger.debug("pass empty message {0}".format(parsed_line["message"]))
-                return None
-            if len(l_w) == 0:
-                _logger.debug("pass empty message {0}".format(parsed_line["message"]))
+            pline = normalize_host(msg, pline, ha, fl, drop_undefhost)
+            if pline is None:
                 continue
-            host = ha.resolve_host(org_host)
-            if host is None:
-                if drop_undefhost:
-                    ld.ltm.failure_output(msg)
-                    continue
-                else:
-                    host = org_host
-            parsed_line["host"] = host
 
-            l_line.append(parsed_line)
-            l_data.append((lid, dt, host))
+            l_line.append(pline)
 
-    for ltline, pline, data in zip(ld.ltm.process_init_data(l_line),
-                                   l_line, l_data):
-        l_w = pline["words"]
-        lid, dt, host = data
-        ld.add_line(ltline.ltid, dt, host, l_w, lid=lid)
+    for ltline, pline, in zip(ld.ltm.process_init_data(l_line),
+                              l_line):
+        ld.add_line(ltline.ltid, pline)
 
     ld.commit_db()
 
@@ -1296,8 +1310,6 @@ def data_from_db(conf, dirname, method, reset):
 def data_from_data(conf, targets, dirname, method, reset):
     rod = RestoreOriginalData(dirname, method=method, reset=reset)
     lp = load_log2seq(conf)
-    # lp = logsplit.LogSplit(conf)
-    # lp = logparser.LogParser(conf)
     for fp in targets:
         with open(fp, 'r', encoding='utf-8') as f:
             for line in f:
@@ -1305,125 +1317,3 @@ def data_from_data(conf, targets, dirname, method, reset):
                 dt, org_host, l_w, l_s = lp.process_line(line)
                 rod.add_str(dt, linestr)
     rod.commit()
-
-# def _get_targets(conf, args, recur):
-#    if len(args) == 0:
-#        if conf.getboolean("general", "src_recur") or recur:
-#            targets = common.recur_dir(config.getlist(conf, "general",
-#                                                      "src_path"))
-#        else:
-#            targets = common.rep_dir(config.getlist(conf, "general",
-#                                                    "src_path"))
-#    else:
-#        if recur:
-#            targets = common.recur_dir(args)
-#        else:
-#            targets = common.rep_dir(args)
-#    return targets
-#
-#
-# if __name__ == "__main__":
-#
-#    usage = """
-# usage: {0} [options] args...
-# args:
-#  make : initialize DB and add log data given in config
-#  make FILES : initialize DB and add log data in FILES
-#  add FILES : add all log data in FILES to existing DB
-#  update FILES : add newer log data found in FILES to existing DB
-#  info : show abstruction of DB status
-#  show-lt : show all log templates in DB
-#  remake-area : reconstruct area definiton of hosts in DB
-#  remake-ltgroup : Remake ltgroup definition for existing log templates.
-#                   Ltgroups made with this process will be usually
-#                   different from that with incremental processing.
-#    """.strip().format(sys.argv[0])
-#
-#    import optparse
-#    op = optparse.OptionParser(usage)
-#    op.add_option("-c", "--config", action="store",
-#            dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
-#            help="configuration file path")
-#    op.add_option("-r", action="store_true", dest="recur",
-#            default=False, help="search log file recursively")
-#    op.add_option("--debug", action="store_true", dest="debug",
-#            default=False, help="set logging level to DEBUG")
-#    options, args = op.parse_args()
-#
-#    conf = config.open_config(options.conf)
-#    lv = logging.DEBUG if options.debug else logging.INFO
-#    config.set_common_logging(conf, _logger, 
-#            ["lt_common", "lt_shiso", "lt_va", "lt_import"], lv = lv)
-#
-#    if len(args) == 0:
-#        sys.exit(usage)
-#    mode = args.pop(0)
-#    if mode == "make":
-#        targets = _get_targets(conf, args, options.recur)
-#        timer = common.Timer("log_db make", output = _logger)
-#        timer.start()
-#        process_files(conf, targets, True)
-#        timer.stop()
-#    elif mode == "make-init":
-#        targets = _get_targets(conf, args, options.recur)
-#        timer = common.Timer("log_db make-init", output = _logger)
-#        timer.start()
-#        process_init_data(conf, targets)
-#        timer.stop()
-#    elif mode == "add":
-#        if len(args) == 0:
-#            sys.exit("give me filenames of log data to add to DB")
-#        else:
-#            if options.recur:
-#                targets = common.recur_dir(args)
-#            else:
-#                targets = common.rep_dir(args)
-#        timer = common.Timer("log_db add", output = _logger)
-#        timer.start()
-#        process_files(conf, targets, False)
-#        timer.stop()
-#    elif mode == "update":
-#        if len(args) == 0:
-#            sys.exit("give me filenames of log data to add to DB")
-#        else:
-#            if options.recur:
-#                targets = common.recur_dir(args)
-#            else:
-#                targets = common.rep_dir(args)
-#        timer = common.Timer("log_db update", output = _logger)
-#        timer.start()
-#        process_files(conf, targets, False, diff = True)
-#        timer.stop()
-#    elif mode == "info":
-#        info(conf)
-#    elif mode == "info-term":
-#        if len(args) < 2:
-#            sys.exit("give me 2 date string (top_dt, end_dt)")
-#        top_dt = datetime.datetime.strptime(args[0], "%Y-%m-%d")
-#        end_dt = datetime.datetime.strptime(args[1], "%Y-%m-%d")
-#        info_term(conf, top_dt, end_dt)
-#    elif mode == "show-lt":
-#        show_lt(conf)
-#    elif mode == "dump-lt":
-#        dump_lt(conf)
-#    elif mode == "show-tpl":
-#        show_template_table(conf)
-#    elif mode == "dump-tpl":
-#        dump_template_table(conf)
-#    elif mode == "show-lt-import":
-#        show_lt_import(conf)
-#    elif mode == "show-log-repr":
-#        show_repr(conf)
-#    elif mode == "all-host":
-#        show_all_host(conf)
-#    elif mode == "remake-area":
-#        remake_area(conf)
-#    elif mode == "remake-ltgroup":
-#        remake_ltgroup(conf)
-#    elif mode == "migrate":
-#        migrate(conf)
-#    elif mode == "anonym":
-#        anonymize(conf)
-#    else:
-#        sys.exit("Invalid argument")
-#

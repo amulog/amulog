@@ -18,8 +18,8 @@ class LTGenVA(lt_common.LTGen):
         with enough size of initial data.
     """
 
-    def __init__(self, table, sym, method, threshold):
-        super(LTGenVA, self).__init__(table, sym)
+    def __init__(self, table, method, threshold):
+        super(LTGenVA, self).__init__(table)
         self.method = method
         self.th = threshold
         self._d_wordcnt = defaultdict(int)
@@ -72,49 +72,60 @@ class LTGenVA(lt_common.LTGen):
     def _label2tpl(self, l_w, l_label):
         ret = []
         for w, label in zip(l_w, l_label):
-            if label == True:
+            if label is True:
                 ret.append(w)
-            elif label == False:
-                ret.append(self._sym)
+            elif label is False:
+                ret.append(lt_common.REPLACER)
             else:
                 raise ValueError
         return ret
 
-    def process_init_data(self, plines):
-        d = {}
+    #def process_init_data(self, plines):
+    #    d = {}
+    #    for pline in plines:
+    #        l_w = pline["words"]
+    #        self._add_dict(l_w)
+
+    #    for mid, pline in enumerate(plines):
+    #        l_w = pline["words"]
+    #        l_label = self._label(l_w)
+    #        tpl = self._label2tpl(l_w, l_label)
+
+    #        if self._table.exists(tpl):
+    #            tid = self._table.get_tid(tpl)
+    #        else:
+    #            tid = self._table.add(tpl)
+    #        d[mid] = tid
+    #    return d
+
+    def preprocess(self, plines):
         for pline in plines:
             l_w = pline["words"]
             self._add_dict(l_w)
 
-        for mid, pline in enumerate(plines):
-            l_w = pline["words"]
-            l_label = self._label(l_w)
-            tpl = self._label2tpl(l_w, l_label)
-
-            if self._table.exists(tpl):
-                tid = self._table.get_tid(tpl)
-            else:
-                tid = self._table.add(tpl)
-            d[mid] = tid
-        return d
-
-    def process_line(self, pline):
+    def generate_tpl(self, pline):
         l_w = pline["words"]
         self._add_dict(l_w)
         l_label = self._label(l_w)
-        tpl = self._label2tpl(l_w, l_label)
+        return self._label2tpl(l_w, l_label)
 
-        if self._table.exists(tpl):
-            tid = self._table.get_tid(tpl)
-            return tid, self.state_unchanged
-        else:
-            tid = self._table.add(tpl)
-            return tid, self.state_added
+    #def process_line(self, pline):
+    #    l_w = pline["words"]
+    #    self._add_dict(l_w)
+    #    l_label = self._label(l_w)
+    #    tpl = self._label2tpl(l_w, l_label)
+
+    #    if self._table.exists(tpl):
+    #        tid = self._table.get_tid(tpl)
+    #        return tid, self.state_unchanged
+    #    else:
+    #        tid = self._table.add(tpl)
+    #        return tid, self.state_added
 
 
-def init_ltgen_va(conf, table, sym):
+def init_ltgen_va(conf, table):
     method = conf.get("log_template_va", "method")
     threshold = conf.getfloat("log_template_va", "threshold")
-    return LTGenVA(table, sym, method, threshold)
+    return LTGenVA(table, method, threshold)
 
 

@@ -10,13 +10,12 @@ import os
 import datetime
 import logging
 import argparse
-from collections import namedtuple
-from collections import defaultdict
 
 from . import common
 from . import config
 
 _logger = logging.getLogger(__package__)
+SUBLIB = ["eval", "crf"]
 
 
 def get_targets(ns, conf):
@@ -117,8 +116,7 @@ def db_make(ns):
 
     timer = common.Timer("db-make", output=_logger)
     timer.start()
-    log_db.process_files(conf, targets, True,
-                         lid_header=ns.lid_header, dry=dry)
+    log_db.process_files_online(conf, targets, True, dry=dry)
     timer.stop()
 
 
@@ -131,7 +129,7 @@ def db_make_init(ns):
 
     timer = common.Timer("db-make-init", output=_logger)
     timer.start()
-    log_db.process_init_data(conf, targets, lid_header=ns.lid_header)
+    log_db.process_files_offline(conf, targets)
     timer.stop()
 
 
@@ -144,7 +142,7 @@ def db_add(ns):
 
     timer = common.Timer("db-add", output=_logger)
     timer.start()
-    log_db.process_files(conf, targets, False, lid_header=ns.lid_header)
+    log_db.process_files_online(conf, targets, False)
     timer.stop()
 
 
@@ -157,8 +155,7 @@ def db_update(ns):
 
     timer = common.Timer("db-update", output=_logger)
     timer.start()
-    log_db.process_files(conf, targets, False, diff=True,
-                         lid_header=ns.lid_header)
+    log_db.process_files_online(conf, targets, False, isnew_check=True)
     timer.stop()
 
 
@@ -734,9 +731,6 @@ OPT_TERM = [["-t", "--term"],
              "metavar": "DATE1 DATE2", "nargs": 2,
              "help": ("datetime range, start and end in %Y-%M-%d style."
                       "(optional; defaultly use all data in database)")}]
-OPT_LID = [["-l", "--lid"],
-           {"dest": "lid_header", "action": "store_true",
-            "help": "parse lid from head part of log message"}]
 ARG_FILE = [["file"],
             {"metavar": "PATH", "action": "store",
              "help": "filepath to output"}]
@@ -819,22 +813,22 @@ DICT_ARGSET = {
                      lt_from_data],
     "db-make": [("Initialize database and add log data. "
                  "This fuction works incrementaly."),
-                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_LID, OPT_DRY,
+                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_DRY,
                  ARG_FILES_OPT],
                 db_make],
     "db-make-init": [("Initialize database and add log data "
                       "for given dataset. "
                       "This function does not consider "
                       "to add other data afterwards."),
-                     [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_LID,
+                     [OPT_CONFIG, OPT_DEBUG, OPT_RECUR,
                       ARG_FILES_OPT],
                      db_make_init],
     "db-add": ["Add log data to existing database.",
-               [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_LID, ARG_FILES],
+               [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES],
                db_add],
     "db-update": [("Add newer log data (seeing timestamp range) "
                    "to existing database."),
-                  [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_LID, ARG_FILES],
+                  [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES],
                   db_update],
     "db-anonymize": [("Remove variables in log messages. "
                       "(Not anonymize hostnames; to be added)"),
@@ -1142,11 +1136,13 @@ DICT_ARGSET = {
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])
                             for key, val in sorted(DICT_ARGSET.items())])
 USAGE = ("usage: {0} MODE [options and arguments] ...\n\n"
-         "mode:\n".format(
-    sys.argv[0])) + USAGE_COMMANDS
+         "mode:\n".format(sys.argv[0])) + USAGE_COMMANDS + \
+        "\n\nsee \"{0} MODE -h\" to refer detailed usage".format(sys.argv[0]) + \
+        "\nalso see sub-liblary {0}".format(" ".join(["logdag.{0}".format(n)
+                                                      for n in SUBLIB]))
 
-if __name__ == "__main__":
-    if len(sys.argv) < 1:
+def _main():
+    if len(sys.argv) < 2:
         sys.exit(USAGE)
     mode = sys.argv[1]
     if mode in ("-h", "--help"):
@@ -1160,3 +1156,7 @@ if __name__ == "__main__":
         ap.add_argument(*args, **kwargs)
     ns = ap.parse_args(commandline)
     func(ns)
+
+
+if __name__ == "__main__":
+    _main()

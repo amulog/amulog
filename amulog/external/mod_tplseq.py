@@ -8,10 +8,9 @@ This script redifine templates by templates
 and their corresponding log messages.
 """
 
-import re
 import numpy as np
 
-import log2seq
+from amulog import lt_common
 
 
 def _get_variable_mask(mes, matchobj):
@@ -33,7 +32,7 @@ def _get_word_span(l_tpl_w, l_tpl_s):
     return ws
 
 
-def redefine_tpl(tpl, parsed_line, sym, matchobj = None):
+def redefine_tpl(tpl, parsed_line, matchobj=None):
     mes = parsed_line["message"]
     l_tpl_w = parsed_line["words"]
     l_tpl_s = parsed_line["symbols"]
@@ -52,9 +51,7 @@ def redefine_tpl(tpl, parsed_line, sym, matchobj = None):
     new_tpl = []
     for w, span in zip(l_tpl_w, ws):
         if True in vm[span[0]:span[1]]:
-            new_tpl.append(sym)
+            new_tpl.append(lt_common.REPLACER)
         else:
             new_tpl.append(w)
     return new_tpl
-
-

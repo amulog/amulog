@@ -6,40 +6,37 @@ import time
 import datetime
 import logging
 import subprocess  # for python3
-#import subprocess32 as subprocess  # for python2
-from collections import UserDict  # for python3
-#from UserDict import UserDict  # for python2
 
 
 # args
-json_args = {"ensure_ascii" : False,
-             "indent" : 4,
-             "sort_keys" : True}
+json_args = {"ensure_ascii": False,
+             "indent": 4,
+             "sort_keys": True}
 
 
 # classes
 
-class singleton(object):
+#class singleton(object):
+#
+#    def __new__(clsObj, *args, **kwargs):
+#        tmpInstance = None
+#        if not hasattr(clsObj, "_instanceDict"):
+#            clsObj._instanceDict = {}
+#            clsObj._instanceDict[str(hash(clsObj))] = \
+#                super(singleton, clsObj).__new__(clsObj, *args, **kwargs)
+#            tmpInstance = clsObj._instanceDict[str(hash(clsObj))]
+#        elif not hasattr(clsObj._instanceDict, str(hash(clsObj))):
+#            clsObj._instanceDict[str(hash(clsObj))] = \
+#                super(singleton, clsObj).__new__(clsObj, *args, **kwargs)
+#            tmpInstance = clsObj._instanceDict[str(hash(clsObj))]
+#        else:
+#            tmpInstance = clsObj._instanceDict[str(hash(clsObj))]
+#        return tmpInstance
 
-    def __new__(clsObj, *args, **kwargs):
-        tmpInstance = None
-        if not hasattr(clsObj, "_instanceDict"):
-            clsObj._instanceDict = {}
-            clsObj._instanceDict[str(hash(clsObj))] = \
-                    super(singleton, clsObj).__new__(clsObj, *args, **kwargs)
-            tmpInstance = clsObj._instanceDict[str(hash(clsObj))]
-        elif not hasattr(clsObj._instanceDict, str(hash(clsObj))):
-            clsObj._instanceDict[str(hash(clsObj))] = \
-                    super(singleton, clsObj).__new__(clsObj, *args, **kwargs)
-            tmpInstance = clsObj._instanceDict[str(hash(clsObj))]
-        else:
-            tmpInstance = clsObj._instanceDict[str(hash(clsObj))]
-        return tmpInstance
 
+class IDDict:
 
-class IDDict():
-
-    def __init__(self, keyfunc = None):
+    def __init__(self, keyfunc=None):
         self._d_obj = {}
         self._d_id = {}
         if keyfunc is None:
@@ -49,17 +46,20 @@ class IDDict():
 
     def _next_id(self):
         next_id = len(self._d_obj)
-        assert not next_id in self._d_obj
+        assert next_id not in self._d_obj
         return next_id
 
     def add(self, obj):
         if self.exists(obj):
             return self._d_id[self.keyfunc(obj)]
         else:
-            keyid = self._next_id()
-            self._d_obj[keyid] = obj
-            self._d_id[self.keyfunc(obj)] = keyid
-            return keyid
+            key = self._next_id()
+            self.set_item(key, obj)
+            return key
+
+    def set_item(self, key, obj):
+        self._d_obj[key] = obj
+        self._d_id[self.keyfunc(obj)] = key
 
     def exists(self, obj):
         return self.keyfunc(obj) in self._d_id
@@ -86,7 +86,7 @@ def rep_dir(args):
         for arg in args:
             if os.path.isdir(arg):
                 ret.extend(["/".join((arg, fn)) \
-                        for fn in sorted(os.listdir(arg))])
+                            for fn in sorted(os.listdir(arg))])
             else:
                 ret.append(arg)
         return ret
@@ -101,7 +101,6 @@ def rep_dir(args):
 
 
 def recur_dir(args):
-
     def open_path(path):
         if os.path.isdir(path):
             ret = []
@@ -140,8 +139,8 @@ def mkdir(path):
     if not os.path.exists(path):
         os.mkdir(path)
     elif not os.path.isdir(path):
-        raise OSError("something already exists on given path, " \
-                "and it is NOT a directory")
+        raise OSError("something already exists on given path, "
+                      "and it is NOT a directory")
     else:
         pass
 
@@ -159,7 +158,7 @@ def rm_dirchild(dirpath):
         os.remove(fpath)
 
 
-def last_modified(args, latest = False):
+def last_modified(args, latest=False):
     """Get the last modified time of a file or a set of files.
 
     Args:
@@ -171,6 +170,7 @@ def last_modified(args, latest = False):
         datetime.datetime
 
     """
+
     def file_timestamp(fn):
         stat = os.stat(fn)
         t = stat.st_mtime
@@ -202,7 +202,7 @@ def call_process(cmd):
     """
 
     p = subprocess.Popen(cmd, shell=True,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
     ret = p.returncode
     return ret, stdout, stderr
@@ -282,7 +282,7 @@ def mprocess_queueing(l_pq, n_process):
             l_job = l_temp
 
 
-#def mthread_queueing(l_thread, pal):
+# def mthread_queueing(l_thread, pal):
 #    """
 #    Args:
 #        l_thread (List[threading.Thread]): A sequence of thread objects.
@@ -302,7 +302,7 @@ def mprocess_queueing(l_pq, n_process):
 #            job.join()
 #
 #
-#def mprocess_queueing(l_process, pal):
+# def mprocess_queueing(l_process, pal):
 #    mthread_queueing(l_process, pal)
 
 
@@ -310,7 +310,7 @@ def mprocess_queueing(l_pq, n_process):
 
 class Timer():
 
-    def __init__(self, header, output = None, timestr_func = None):
+    def __init__(self, header, output=None, timestr_func=None):
         self.start_dt = None
         self.lap_dt = []
         self.header = header
@@ -367,7 +367,7 @@ def show_repr(iterable, head, foot, strfunc=str):
     return "\n".join(buf)
 
 
-def cli_table(table, spl = " ", fill = " ", align = "left"):
+def cli_table(table, spl=" ", fill=" ", align="left"):
     """
     Args:
         table (List[List[str]]): input data
@@ -414,5 +414,3 @@ def pickle_comp_args(comp):
     else:
         d = {}
     return d
-
-

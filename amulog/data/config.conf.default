@@ -21,6 +21,10 @@ logging = auto.log
 # Not supported (TODO)
 pickle_compatible = false
 
+# Output lines that are not stored into DB
+# Reasons: no_tpl, unknown_host
+fail_output = lt_fail.json
+
 # Another configparser filename, to add any options without warnings
 # Use this to define new options for private use
 # In imported configparser file, existing options in defaults will be ignored
@@ -111,10 +115,6 @@ post_alg = dummy
 # Do NOT share among multiple log template generation algorithms
 indata_filename = lt.dump
 
-# Output lines that fails to classify with existing log templates
-# This can appear only if method "import" used
-fail_output = lt_fail.log
-
 # Definition file of symbol strings to split log messages
 # If empty, use default rule (symdef.txt.sample)
 sym_filename = 
@@ -146,6 +146,10 @@ import_format = plain
 # [tree, table]
 search_method = tree
 
+# If true, newly generated templates with lt_alg methods (including lt_import_ext)
+# are added into the template candidates of lt_import.
+# This is valid only if the data is processed incrementally.
+online_update = true
 
 # Log template definition file path
 # If empty, log_template_import.def_path is used
@@ -199,6 +203,16 @@ ltgroup_th_distance = 0.85
 ltgroup_mem_ngram = true
 
 
+[log_template_re]
+variable_regex =
+
+
+[log_template_drain]
+depth = 3
+threshold = 0.3
+preprocess_rule =
+
+
 [log_template_crf]
 
 model_filename = crf_model
@@ -217,4 +231,8 @@ ltlabel =
 ltlabel_default_label = None
 ltlabel_default_group = None
 
+
+[eval]
+measure_ltgen_dir = measure_ltgen
+n_trial = 10
 

@@ -2,7 +2,8 @@
 # coding: utf-8
 
 
-ESC_LETTER = "*@" # including back slash
+ESC_LETTER = "*@"  # including back slash
+
 
 def split_igesc(string, spl):
     l_esc = ["\\" + w for w in "\\" + ESC_LETTER]
@@ -43,5 +44,3 @@ def fmatch(string, match):
     """
     assert len(string) >= len(match)
     return string[:len(match)] == match
-
-

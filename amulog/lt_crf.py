@@ -12,7 +12,6 @@ import pycrfsuite
 from . import lt_common
 from .crf import items
 from .crf import convert
-from .crf import midlabel
 
 _logger = logging.getLogger(__package__)
 DEFAULT_FEATURE_TEMPLATE = "/".join((os.path.dirname(__file__),
@@ -26,8 +25,8 @@ class LTGenCRF(lt_common.LTGen):
 
     POS_UNKNOWN = "unknown"
 
-    def __init__(self, table, sym, model, verbose, template, ig_val, lwobj):
-        super(LTGenCRF, self).__init__(table, sym)
+    def __init__(self, table, model, verbose, template, ig_val, vreobj):
+        super(LTGenCRF, self).__init__(table)
         self.model = model
         self.verbose = verbose
         # self._middle = middle
@@ -37,14 +36,14 @@ class LTGenCRF(lt_common.LTGen):
         self.tagger = None
         self.converter = convert.FeatureExtracter(self._template,
                                                   [self.POS_UNKNOWN], ig_val)
-        self.lwobj = lwobj
+        self._vre = vreobj
         # if self._middle == "re":
         #    self._lwobj = LabelWord(conf)
         # elif len(self._middle) > 0 :
         #    raise NotImplementedError
 
     def _middle_label(self, w):
-        return self.lwobj.label(w)
+        return self._vre.label(w)
 
     def init_trainer(self, alg="lbfgs", verbose=False):
         self.trainer = pycrfsuite.Trainer(verbose=verbose)
@@ -81,7 +80,8 @@ class LTGenCRF(lt_common.LTGen):
         l_label = self.tagger.tag(fset)
         return l_label
 
-    def estimate_tpl(self, l_w, l_s):
+    def generate_tpl(self, pline):
+        l_w = pline["words"]
         lineitems = items.line2items(l_w, midlabel_func=self._middle_label,
                                      dummy_label=self.LABEL_DUMMY)
         l_label = self.label_line(lineitems)
@@ -90,23 +90,12 @@ class LTGenCRF(lt_common.LTGen):
             if label == self.LABEL_DESC:
                 tpl.append(w)
             elif label == self.LABEL_VAR:
-                tpl.append(self._sym)
+                tpl.append(lt_common.REPLACER)
             elif label == self.LABEL_DUMMY:
                 raise ValueError("Some word labeled as DUMMY in LTGenCRF")
             else:
                 raise ValueError("Unknown labels in LTGenCRF")
         return tpl
-
-    def process_line(self, pline):
-        l_w = pline["words"]
-        l_s = pline["symbols"]
-        tpl = self.estimate_tpl(l_w, l_s)
-        if self._table.exists(tpl):
-            tid = self._table.get_tid(tpl)
-            return tid, self.state_unchanged
-        else:
-            tid = self._table.add(tpl)
-            return tid, self.state_added
 
 
 class MeasureAccuracy():
@@ -339,7 +328,7 @@ class MeasureAccuracy():
             return tpl
 
         table = self.ld.ltm._table
-        ltgen = lt_common.init_ltgen(self.conf, table, "crf")
+        ltgen = lt_common.init_ltgen_methods(self.conf, table, "crf")
         d_ltid_test = self._make_ltidmap(l_ltid_test)
 
         ltgen.init_trainer()
@@ -496,7 +485,7 @@ def train_sample_random(l_lm, size):
 
 def va_preprocess(conf, l_lm):
     table = lt_common.TemplateTable()
-    ltgen_va = lt_common.init_ltgen(conf, table, method="va")
+    ltgen_va = lt_common.init_ltgen_methods(conf, table, method="va")
     ret_va = ltgen_va.process_init_data(
         [(lm.l_w, lm.lt.lts) for lm in l_lm])
     return ltgen_va, ret_va
@@ -540,17 +529,17 @@ def train_sample_random_va(l_lm, size, ltgen_va, ret_va):
     return l_train, ltidlist
 
 
-def init_ltgen_crf(conf, table, sym):
+def init_ltgen_crf(conf, table):
     model = conf.get("log_template_crf", "model_filename")
     verbose = conf.getboolean("log_template_crf", "verbose")
-    template = conf.get("log_template_crf", "feature_template")
-    middle = conf.get("log_template_crf", "middle_label_rule")
+    feature_template = conf.get("log_template_crf", "feature_template")
     ig_val = conf.getfloat("log_template_crf", "unknown_key_weight")
-    if len(middle) > 0:
-        lwobj = midlabel.LabelWord(conf, middle, LTGenCRF.POS_UNKNOWN)
-    else:
-        lwobj = None
-    return LTGenCRF(table, sym, model, verbose, template, ig_val, lwobj)
+
+    from . import lt_regex
+    middle_fn = conf.get("log_template_crf", "middle_label_rule")
+    vreobj = lt_regex.VariableRegex(conf, middle_fn, LTGenCRF.POS_UNKNOWN)
+
+    return LTGenCRF(table, model, verbose, feature_template, ig_val, vreobj)
 
 
 def make_crf_train(conf, iterobj, size=1000, method="all",
@@ -578,7 +567,7 @@ def make_crf_model(conf, iterobj, size=1000, method="all"):
     l_train, train_ltidlist = make_crf_train(conf, iterobj, size, method,
                                              return_ltidlist=True)
     table = lt_common.TemplateTable()
-    ltgen = lt_common.init_ltgen(conf, table, "crf")
+    ltgen = lt_common.init_ltgen_methods(conf, table, "crf")
     ltgen.init_trainer()
     ltgen.train(l_train)
     assert os.path.exists(ltgen.model)
@@ -601,7 +590,7 @@ def make_crf_model_ideal(conf, ld, size=None):
         l_train, train_ltidlist = zip(*temp[:size])
 
     table = lt_common.TemplateTable()
-    ltgen = lt_common.init_ltgen(conf, table, "crf")
+    ltgen = lt_common.init_ltgen_methods(conf, table, "crf")
     ltgen.init_trainer()
     ltgen.train(l_train)
     assert os.path.exists(ltgen.model)
@@ -651,7 +640,7 @@ def generate_lt_file(queue, conf, fp):
     from . import logparser
     lp = logparser.LogParser(conf)
     table = lt_common.TemplateTable()
-    ltgen = lt_common.init_ltgen(conf, table, "crf")
+    ltgen = lt_common.init_ltgen_methods(conf, table, "crf")
     s_tpl = set()
 
     with open(fp, 'r') as f:
@@ -669,8 +658,8 @@ def generate_lt_import_file(queue, conf, fp):
     from . import logparser
     lp = logparser.LogParser(conf)
     table = lt_common.TemplateTable()
-    ltgen_import = lt_common.init_ltgen(conf, table, "import")
-    ltgen_crf = lt_common.init_ltgen(conf, table, "crf")
+    ltgen_import = lt_common.init_ltgen_methods(conf, table, "import")
+    ltgen_crf = lt_common.init_ltgen_methods(conf, table, "crf")
     s_tpl = set()
 
     with open(fp, 'r') as f:

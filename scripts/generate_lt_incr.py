@@ -11,7 +11,7 @@ from amulog import logparser
 def generate_lt_file(conf, fp):
     lp = logparser.LogParser(conf)
     table = lt_common.TemplateTable()
-    ltgen = lt_common.init_ltgen(conf, table, "crf")
+    ltgen = lt_common.init_ltgen_methods(conf, table, "crf")
 
     with open(fp, 'r') as f:
         for line in f:

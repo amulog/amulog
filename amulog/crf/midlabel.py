@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# OBSOLETED
+
 import sys
 import re
 import ipaddress
@@ -9,9 +11,9 @@ import configparser
 from amulog import host_alias
 
 
-class LabelWord():
+class LabelWord:
 
-    def __init__(self, conf, fn = None, pos_unknown = "unknown"):
+    def __init__(self, conf, fn=None, pos_unknown="unknown"):
         self._ext = {}
         self._re = {}
         self.pos_unknown = pos_unknown
@@ -44,6 +46,17 @@ class LabelWord():
                 temp.append(re.compile(restr))
             self._re[rule] = temp
 
+    def match(self, word):
+        for key, func in self._ext.items():
+            if func(word):
+                return True
+
+        for key, l_reobj in self._re.items():
+            for reobj in l_reobj:
+                if reobj.match(word):
+                    return True
+        return False
+
     def label(self, word):
         for key, func in self._ext.items():
             if func(word):
@@ -56,8 +69,8 @@ class LabelWord():
 
         return self.pos_unknown
 
-
-    def label_ipaddr(self, word):
+    @staticmethod
+    def label_ipaddr(word):
         try:
             ret = ipaddress.ip_address(str(word))
             if isinstance(ret, ipaddress.IPv4Address):
@@ -70,10 +83,10 @@ class LabelWord():
         except ValueError:
             return None
 
-
-    def label_ipnetwork(self, word):
+    @staticmethod
+    def label_ipnetwork(word):
         try:
-            ret = ipaddress.ip_network(str(word), strict = False)
+            ret = ipaddress.ip_network(str(word), strict=False)
             if isinstance(ret, ipaddress.IPv4Network):
                 return "IPv4NET"
             elif isinstance(ret, ipaddress.IPv6Network):
@@ -83,7 +96,6 @@ class LabelWord():
                         str(ret)))
         except ValueError:
             return None
-
 
     def label_host(self, word):
         if self._ha.isknown(word):
