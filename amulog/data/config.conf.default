@@ -234,5 +234,6 @@ ltlabel_default_group = None
 
 [eval]
 measure_ltgen_dir = measure_ltgen
-n_trial = 10
+n_trial_accuracy = 10
+n_trial_time = 5
 

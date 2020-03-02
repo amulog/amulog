@@ -123,7 +123,7 @@ class LTGenVA(lt_common.LTGen):
     #        return tid, self.state_added
 
 
-def init_ltgen_va(conf, table):
+def init_ltgen_va(conf, table, **kwargs):
     method = conf.get("log_template_va", "method")
     threshold = conf.getfloat("log_template_va", "threshold")
     return LTGenVA(table, method, threshold)

@@ -108,7 +108,7 @@ class LTSearchTree(LTSearch):
         while True:
             w = tmp_ltwords.popleft()
             if w == lt_common.REPLACER:
-                # w is sym (only if input is template)
+                # w is sym (This means the input is not a message but a template)
                 # go wild node
                 if point.wild is None:
                     return None

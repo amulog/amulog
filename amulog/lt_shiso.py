@@ -4,7 +4,7 @@
 """
 A log template generation algorithm proposed in [1].
 [1] Masayoshi Mizutani. Incremental Mining of System Log Format.
-in IEEE 10th International Conference on Services Computing, pp. 595–602, 2013.
+    in IEEE 10th International Conference on Services Computing, pp. 595–602, 2013.
 
 After editing log templates manually (with lt_tool),
 SHISO do not work correctly.
@@ -236,7 +236,7 @@ class LTGroupSHISO(lt_common.LTGroup):
         return None
 
 
-def init_ltgen_shiso(conf, table):
+def init_ltgen_shiso(conf, table, **kwargs):
     threshold = conf.getfloat("log_template_shiso", "ltgen_threshold")
     max_child = conf.getint("log_template_shiso", "ltgen_max_child")
     return LTGenSHISO(table, threshold, max_child)

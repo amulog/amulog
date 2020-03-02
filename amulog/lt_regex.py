@@ -138,7 +138,7 @@ class LTGenRegularExpression(lt_common.LTGen):
     #        return tid, self.state_added
 
 
-def init_ltgen_regex(conf, table, sym):
+def init_ltgen_regex(conf, table, **kwargs):
     fn = conf.get("log_template_re", "variable_rule")
     vreobj = VariableRegex(conf, fn)
-    return LTGenRegularExpression(table, sym, vreobj)
+    return LTGenRegularExpression(table, vreobj)

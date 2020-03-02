@@ -529,7 +529,7 @@ def train_sample_random_va(l_lm, size, ltgen_va, ret_va):
     return l_train, ltidlist
 
 
-def init_ltgen_crf(conf, table):
+def init_ltgen_crf(conf, table, **kwargs):
     model = conf.get("log_template_crf", "model_filename")
     verbose = conf.getboolean("log_template_crf", "verbose")
     feature_template = conf.get("log_template_crf", "feature_template")

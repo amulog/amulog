@@ -75,7 +75,7 @@ class LTGenDrain(lt_common.LTGen):
         return tid, state
 
 
-def init_ltgen_drain(conf, table):
+def init_ltgen_drain(conf, table, **kwargs):
     threshold = conf.getfloat("log_template_drain", "threshold")
     depth = conf.getint("log_template_drain", "depth")
 

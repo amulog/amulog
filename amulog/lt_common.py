@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+    #!/usr/bin/env python
 # coding: utf-8
 
 import os
@@ -625,44 +625,46 @@ class VariableLabelHost(VariableLabelRule):
         return self.ha.get_group(w)
 
 
-def init_ltgen_methods(conf, table, lt_methods=None):
+def init_ltgen_methods(conf, table, lt_methods=None, shuffle=False):
 
-    def _method2ltgen(args, method):
+    def _method2ltgen(kwargs, method):
         if method == "import":
             from . import lt_import
-            return lt_import.init_ltgen_import(*args)
+            return lt_import.init_ltgen_import(**kwargs)
         elif method == "import-ext":
             from . import lt_import_ext
-            return lt_import_ext.init_ltgen_import_ext(*args)
+            return lt_import_ext.init_ltgen_import_ext(**kwargs)
         elif method == "shiso":
             from . import lt_shiso
-            return lt_shiso.init_ltgen_shiso(*args)
+            return lt_shiso.init_ltgen_shiso(**kwargs)
         elif method == "drain":
             from . import lt_drain
-            return lt_drain.init_ltgen_drain(*args)
+            return lt_drain.init_ltgen_drain(**kwargs)
         elif method == "crf":
             from . import lt_crf
-            return lt_crf.init_ltgen_crf(*args)
+            return lt_crf.init_ltgen_crf(**kwargs)
         elif method == "re":
             from . import lt_regex
-            return lt_regex.init_ltgen_regex(*args)
+            return lt_regex.init_ltgen_regex(**kwargs)
         elif method == "va":
             from . import lt_va
-            return lt_va.init_ltgen_va(*args)
+            return lt_va.init_ltgen_va(**kwargs)
         else:
             raise ValueError("lt_alg({0}) invalid".format(method))
 
     if lt_methods is None:
         lt_methods = config.getlist(conf, "log_template", "lt_methods")
-    args = [conf, table]
+    ltgen_kwargs = {"conf": conf,
+                    "table": table,
+                    "shuffle": shuffle}
 
     if len(lt_methods) == 1:
-        return _method2ltgen(args, lt_methods[0])
+        return _method2ltgen(ltgen_kwargs, lt_methods[0])
     elif len(lt_methods) > 1:
         l_ltgen = []
         import_index = None
         for mid, mname in enumerate(lt_methods):
-            l_ltgen.append(_method2ltgen(args, mname))
+            l_ltgen.append(_method2ltgen(ltgen_kwargs, mname))
             if mname == "import":
                 import_index = mid
         return LTGenJoint(table, l_ltgen, import_index)

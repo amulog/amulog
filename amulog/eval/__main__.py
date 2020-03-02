@@ -25,9 +25,29 @@ def measure_accuracy(ns):
     timer = common.Timer("measure-accuracy", output=_logger)
     timer.start()
     targets = get_targets_opt(ns, conf)
-    n_trial = int(conf["eval"]["n_trial"])
-    maketpl.measure(conf, targets, n_trial)
+    n_trial = int(conf["eval"]["n_trial_accuracy"])
+    maketpl.measure_accuracy(conf, targets, n_trial)
     timer.stop()
+
+
+def show_accuracy(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from . import maketpl
+    n_trial = int(conf["eval"]["n_trial_accuracy"])
+    maketpl.print_metrics(conf, n_trial)
+
+
+def measure_time(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from . import maketpl
+    targets = get_targets_opt(ns, conf)
+    maketpl.measure_time(conf, targets)
 
 
 # common argument settings
@@ -39,6 +59,9 @@ OPT_CONFIG = [["-c", "--config"],
                # "default": config.DEFAULT_CONFIG,
                "default": None,
                "help": "configuration file path for amulog"}]
+OPT_RECUR = [["-r", "--recur"],
+             {"dest": "recur", "action": "store_true",
+              "help": "recursively search files to process"}]
 ARG_FILES_OPT = [["files"],
                  {"metavar": "PATH", "nargs": "*",
                   "help": ("files or directories as input "
@@ -50,8 +73,15 @@ ARG_FILES_OPT = [["files"],
 DICT_ARGSET = {
     "measure-accuracy": [("Measure accuracy of log template generation."
                           "This works in online mode."),
-                         [OPT_CONFIG, OPT_DEBUG, ARG_FILES_OPT],
+                         [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],
                          measure_accuracy],
+    "measure-time": [("Measure processing of log template generation."
+                      "This works in online mode."),
+                     [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],
+                     measure_time],
+    "show-accuracy": ["Load and show results of measuring accuracy",
+                      [OPT_CONFIG, OPT_DEBUG],
+                      show_accuracy],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

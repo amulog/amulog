@@ -14,7 +14,7 @@ _logger = logging.getLogger(__package__)
 
 class LTGenImportExternal(lt_common.LTGen):
 
-    def __init__(self, table, filename, mode, mode_esc, ltmap, head):
+    def __init__(self, table, filename, mode, mode_esc, ltmap, head, shuffle=False):
         super(LTGenImportExternal, self).__init__(table)
         self._table = table
         self._fp = filename
@@ -28,6 +28,9 @@ class LTGenImportExternal(lt_common.LTGen):
             self._rtable = regexhash.RegexTable(self._l_tpl, self._l_regex)
         else:
             raise NotImplementedError
+
+        if shuffle:
+            self._rtable.shuffle()
 
     @staticmethod
     def _load_tpl(fp, mode, mode_esc):
@@ -87,7 +90,7 @@ class LTGenImportExternal(lt_common.LTGen):
     #            return tid, self.state_added
 
 
-def init_ltgen_import_ext(conf, table):
+def init_ltgen_import_ext(conf, table, shuffle, **kwargs):
     fn = conf.get("log_template_import", "def_path_ext")
     mode = conf.get("log_template_import", "import_format_ext")
     if fn == "":
@@ -96,4 +99,4 @@ def init_ltgen_import_ext(conf, table):
     ltmap = conf.get("log_template_import", "ext_search_method")
     head = conf.getint("log_template_import", "hash_strlen")
 
-    return LTGenImportExternal(table, fn, mode, mode_esc, ltmap, head)
+    return LTGenImportExternal(table, fn, mode, mode_esc, ltmap, head, shuffle)

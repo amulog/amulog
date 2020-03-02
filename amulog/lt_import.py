@@ -67,13 +67,13 @@ class LTGenImport(lt_common.LTGen):
             return self._d_def.get(defid)
 
 
-def init_ltgen_import(conf, table):
+def init_ltgen_import(conf, table, shuffle=False, **kwargs):
     fn = conf.get("log_template_import", "def_path")
     mode = conf.get("log_template_import", "import_format")
     ltmap = conf.get("log_template_import", "search_method")
     from . import log_db
     lp = log_db.load_log2seq(conf)
-    return LTGenImport(table, fn, mode, ltmap, lp)
+    return LTGenImport(table, fn, mode, ltmap, lp, shuffle)
 
 
 #def search_exception(conf, targets, form):

@@ -308,14 +308,15 @@ def mprocess_queueing(l_pq, n_process):
 
 # measurement
 
-class Timer():
+class Timer:
 
     def __init__(self, header, output=None, timestr_func=None):
-        self.start_dt = None
-        self.lap_dt = []
+        self._dts = None
+        self._dte = None
+        self._lap_dt = []
         self.header = header
-        self.timestr_func = None
         self.output = output
+        self._timestr_func = None
 
     def _output(self, string):
         if isinstance(self.output, logging.Logger):
@@ -324,29 +325,55 @@ class Timer():
             print(string)
 
     def timestr(self, td):
-        if self.timestr_func is None:
+        if self._timestr_func is None:
             return td.total_seconds()
         else:
-            return self.timestr_func(td)
+            return self._timestr_func(td)
 
     def start(self):
-        self.start_dt = datetime.datetime.now()
+        self._dts = datetime.datetime.now()
+        self._lap_dt.append(self._dts)
         self._output("{0} start".format(self.header))
 
     def lap(self, name):
-        if self.start_dt is None:
-            raise AssertionError("call start() before lap()")
+        if self._dts is None:
+            raise ValueError("call start() before lap()")
         lap_dt = datetime.datetime.now()
-        self.lap_dt.append(lap_dt)
-        t = self.timestr(lap_dt - self.start_dt)
+        t = self.timestr(lap_dt - self._dts)
+        self._lap_dt.append(lap_dt)
         self._output("{0} lap({1}) ({2})".format(self.header, name, t))
 
+    def lap_diff(self, name):
+        if self._dts is None:
+            raise ValueError("call start() before lap_diff()")
+        lap_dt = datetime.datetime.now()
+        t = self.timestr(lap_dt - self._lap_dt[-1])
+        self._lap_dt.append(lap_dt)
+        self._output("{0} diff({1}) ({2})".format(self.header, name, t))
+
     def stop(self):
-        if self.start_dt is None:
-            raise AssertionError("call start() before stop()")
-        self.end_dt = datetime.datetime.now()
-        t = self.timestr(self.end_dt - self.start_dt)
+        if self._dts is None:
+            raise ValueError("call start() before stop()")
+        self._dte = datetime.datetime.now()
+        t = self.timestr(self._dte - self._dts)
         self._output("{0} done ({1})".format(self.header, t))
+
+    def total_time(self):
+        if self._dts is None or self._dte is None:
+            raise ValueError("call start() and stop() before total_time()")
+        else:
+            return self.timestr(self._dte - self._dts)
+
+    def stat(self):
+        if len(self._lap_dt) == 1:
+            raise ValueError
+        import numpy as np
+        lap_times = np.diff(self._lap_dt)
+        avg = np.average(lap_times)
+        se = np.std(lap_times) / np.sqrt(len(lap_times))
+        self._output("{0} lap times: {0}".format(self.header, lap_times))
+        self._output("{0} average: {0}".format(self.header, avg))
+        self._output("{0} standard error: {0}".format(self.header, se))
 
 
 # visualization
