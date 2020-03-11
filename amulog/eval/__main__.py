@@ -40,6 +40,43 @@ def show_accuracy(ns):
     maketpl.print_metrics(conf, n_trial)
 
 
+def search_fail_template(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from . import maketpl
+    n_trial = int(conf["eval"]["n_trial_accuracy"])
+    try:
+        maketpl.search_fail_template(conf, n_trial, pass_similar=(not ns.all))
+    except KeyboardInterrupt:
+        print("Keyboard Interrupt")
+
+
+def search_diff_template(ns):
+    conf1, conf2 = [config.open_config(confpath) for confpath in ns.confs]
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf1, logger=_logger, lv=lv)
+
+    from . import maketpl
+    n_trial = int(conf1["eval"]["n_trial_accuracy"])
+    try:
+        maketpl.search_fail_template(conf1, conf2, n_trial,
+                                     pass_similar=(not ns.all))
+    except KeyboardInterrupt:
+        print("Keyboard Interrupt")
+
+
+def search_fail_cluster(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from . import maketpl
+    n_trial = int(conf["eval"]["n_trial_accuracy"])
+    maketpl.search_fail_overdiv(conf, n_trial, n_samples=ns.samples)
+
+
 def measure_time(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -62,6 +99,9 @@ OPT_CONFIG = [["-c", "--config"],
 OPT_RECUR = [["-r", "--recur"],
              {"dest": "recur", "action": "store_true",
               "help": "recursively search files to process"}]
+OPT_ALL = [["-a", "--all"],
+           {"dest": "all", "action": "store_true",
+            "help": "no omittion, show all components"}]
 ARG_FILES_OPT = [["files"],
                  {"metavar": "PATH", "nargs": "*",
                   "help": ("files or directories as input "
@@ -82,6 +122,23 @@ DICT_ARGSET = {
     "show-accuracy": ["Load and show results of measuring accuracy",
                       [OPT_CONFIG, OPT_DEBUG],
                       show_accuracy],
+    "search-fail-template": ["Show failed templates in template accuracy",
+                             [OPT_CONFIG, OPT_DEBUG, OPT_ALL],
+                             search_fail_template],
+    "search-diff-template": ["Compare 2 results in template accuracy",
+                             [OPT_DEBUG, OPT_ALL,
+                              [["confs"],
+                               {"metavar": "CONFIG", "nargs": 2,
+                                "help": "2 config file path"}],
+                              ],
+                             search_diff_template],
+    "search-fail-cluster": ["Show failed template in cluster accuracy",
+                            [OPT_CONFIG, OPT_DEBUG,
+                             [["-s", "--samples"],
+                              {"dest": "samples", "metavar": "SAMPLES",
+                               "action": "store", "type": int, "default": 1,
+                               "help": "number of samples for each cluster"}]],
+                            search_fail_cluster],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

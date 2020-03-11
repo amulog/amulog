@@ -74,3 +74,20 @@ def parsing_accuracy(labels_true, labels_pred):
             n_correct += sum(nz_cnt[nz_true == uniq_label])
 
     return 1. * n_correct / n_total
+
+
+def cluster_accuracy(labels_true, labels_pred):
+    from sklearn.metrics.cluster import contingency_matrix
+    a_true = np.array(labels_true)
+    a_pred = np.array(labels_pred)
+    cm = contingency_matrix(a_true, a_pred, sparse=True)
+
+    nz_true, _ = cm.nonzero()
+
+    n_correct = 0
+    for uniq_label, uniq_cnt in zip(*np.unique(nz_true, return_counts=True)):
+        if uniq_cnt == 1:
+            n_correct += 1
+
+    return 1. * n_correct / np.unique(a_true).shape[0]
+
