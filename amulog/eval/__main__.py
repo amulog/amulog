@@ -11,22 +11,35 @@ from amulog import config
 _logger = logging.getLogger(__package__)
 
 
-def get_targets_opt(ns, conf):
+def get_targets_conf(conf):
     from amulog import __main__ as amulog_main
-    return amulog_main.get_targets_opt(ns, conf)
+    return amulog_main.get_targets_conf(conf)
 
 
-def measure_accuracy(ns):
+def measure_accuracy_answer(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
 
     from . import maketpl
-    timer = common.Timer("measure-accuracy", output=_logger)
+    timer = common.Timer("measure-accuracy-answer", output=_logger)
     timer.start()
-    targets = get_targets_opt(ns, conf)
+    targets = get_targets_conf(conf)
+    maketpl.measure_accuracy_answer(conf, targets)
+    timer.stop()
+
+
+def measure_accuracy_trial(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from . import maketpl
+    timer = common.Timer("measure-accuracy-trial", output=_logger)
+    timer.start()
+    targets = get_targets_conf(conf)
     n_trial = int(conf["eval"]["n_trial_accuracy"])
-    maketpl.measure_accuracy(conf, targets, n_trial)
+    maketpl.measure_accuracy_trial(conf, targets, n_trial)
     timer.stop()
 
 
@@ -67,7 +80,7 @@ def search_diff_template(ns):
         print("Keyboard Interrupt")
 
 
-def search_fail_cluster(ns):
+def search_fail_cluster_overdiv(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
@@ -77,13 +90,23 @@ def search_fail_cluster(ns):
     maketpl.search_fail_overdiv(conf, n_trial, n_samples=ns.samples)
 
 
+def search_fail_cluster_overagg(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from . import maketpl
+    n_trial = int(conf["eval"]["n_trial_accuracy"])
+    maketpl.search_fail_overagg(conf, n_trial, n_samples=ns.samples)
+
+
 def measure_time(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
 
     from . import maketpl
-    targets = get_targets_opt(ns, conf)
+    targets = get_targets_conf(conf)
     maketpl.measure_time(conf, targets)
 
 
@@ -102,6 +125,10 @@ OPT_RECUR = [["-r", "--recur"],
 OPT_ALL = [["-a", "--all"],
            {"dest": "all", "action": "store_true",
             "help": "no omittion, show all components"}]
+OPT_SAMPLES = [["-s", "--samples"],
+               {"dest": "samples", "metavar": "SAMPLES",
+                "action": "store", "type": int, "default": 1,
+                "help": "number of samples for each cluster"}]
 ARG_FILES_OPT = [["files"],
                  {"metavar": "PATH", "nargs": "*",
                   "help": ("files or directories as input "
@@ -111,10 +138,14 @@ ARG_FILES_OPT = [["files"],
 # description, List[args, kwargs], func
 # defined after functions because these settings use functions
 DICT_ARGSET = {
-    "measure-accuracy": [("Measure accuracy of log template generation."
-                          "This works in online mode."),
-                         [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],
-                         measure_accuracy],
+    "measure-accuracy-answer": [("Make answer of log template generation."
+                                 "This works in online mode."),
+                                [OPT_CONFIG, OPT_DEBUG],
+                                measure_accuracy_answer],
+    "measure-accuracy-trial": [("Measure accuracy of log template generation."
+                                "This works in online mode."),
+                               [OPT_CONFIG, OPT_DEBUG],
+                               measure_accuracy_trial],
     "measure-time": [("Measure processing of log template generation."
                       "This works in online mode."),
                      [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],
@@ -132,13 +163,14 @@ DICT_ARGSET = {
                                 "help": "2 config file path"}],
                               ],
                              search_diff_template],
-    "search-fail-cluster": ["Show failed template in cluster accuracy",
-                            [OPT_CONFIG, OPT_DEBUG,
-                             [["-s", "--samples"],
-                              {"dest": "samples", "metavar": "SAMPLES",
-                               "action": "store", "type": int, "default": 1,
-                               "help": "number of samples for each cluster"}]],
-                            search_fail_cluster],
+    "search-fail-cluster-overdiv": [("Show samples of clusters"
+                                     "divided in surplus"),
+                                    [OPT_CONFIG, OPT_DEBUG, OPT_SAMPLES],
+                                    search_fail_cluster_overdiv],
+    "search-fail-cluster-overagg": [("Show samples of clusters"
+                                     "aggregated in surplus"),
+                                    [OPT_CONFIG, OPT_DEBUG, OPT_SAMPLES],
+                                    search_fail_cluster_overdiv],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

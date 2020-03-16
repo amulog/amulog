@@ -12,6 +12,8 @@ from . import config
 from . import strutil
 
 REPLACER = "**"
+REPLACER_HEAD = "*"
+REPLACER_TAIL = "*"
 REPLACER_REGEX = re.compile(r"\*[A-Z]*?\*")  # shortest match
 
 _logger = logging.getLogger(__package__)

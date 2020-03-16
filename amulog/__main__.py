@@ -18,7 +18,7 @@ _logger = logging.getLogger(__package__)
 SUBLIB = ["eval", "crf"]
 
 
-def get_targets(ns, conf):
+def get_targets_arg(ns, conf):
     if ns.recur:
         targets = common.recur_dir(ns.files)
     else:
@@ -26,16 +26,19 @@ def get_targets(ns, conf):
     return targets
 
 
-def get_targets_opt(ns, conf):
-    if len(ns.files) == 0:
-        l_path = config.getlist(conf, "general", "src_path")
-        if conf.getboolean("general", "src_recur"):
-            targets = common.recur_dir(l_path)
-        else:
-            targets = common.rep_dir(l_path)
+def get_targets_conf(conf):
+    l_path = config.getlist(conf, "general", "src_path")
+    if conf.getboolean("general", "src_recur"):
+        return common.recur_dir(l_path)
     else:
-        targets = get_targets(ns, conf)
-    return targets
+        return common.rep_dir(l_path)
+
+
+def get_targets(ns, conf):
+    if ns is None or len(ns.files) == 0:
+        return get_targets_conf(conf)
+    else:
+        return get_targets_arg(ns, conf)
 
 
 def generate_testdata(ns):
@@ -51,7 +54,7 @@ def data_filter(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
-    targets = get_targets_opt(ns, conf)
+    targets = get_targets(ns, conf)
     dirname = ns.dirname
     if ns.incr:
         method = "incremental"
@@ -82,7 +85,7 @@ def data_from_data(ns):
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
     dirname = ns.dirname
-    targets = get_targets_opt(ns, conf)
+    targets = get_targets(ns, conf)
     if ns.incr:
         method = "incremental"
     else:
@@ -97,7 +100,7 @@ def lt_from_data(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
-    targets = get_targets_opt(ns, conf)
+    targets = get_targets(ns, conf)
     check_import = ns.check_import
 
     from . import lt_misc
@@ -110,7 +113,7 @@ def db_make(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
-    targets = get_targets_opt(ns, conf)
+    targets = get_targets(ns, conf)
     dry = ns.dry
     from . import log_db
 
@@ -124,7 +127,7 @@ def db_make_init(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
-    targets = get_targets_opt(ns, conf)
+    targets = get_targets(ns, conf)
     from . import log_db
 
     timer = common.Timer("db-make-init", output=_logger)
@@ -137,7 +140,7 @@ def db_add(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
-    targets = get_targets(ns, conf)
+    targets = get_targets_arg(ns, conf)
     from . import log_db
 
     timer = common.Timer("db-add", output=_logger)
@@ -150,7 +153,7 @@ def db_update(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
-    targets = get_targets(ns, conf)
+    targets = get_targets_arg(ns, conf)
     from . import log_db
 
     timer = common.Timer("db-update", output=_logger)
@@ -234,7 +237,7 @@ def show_lt_import_exception(ns):
 
     form = ns.format
     assert form in ("log", "message")
-    targets = get_targets(ns, conf)
+    targets = get_targets_arg(ns, conf)
     from . import lt_import
 
     lt_import.search_exception(conf, targets, form)

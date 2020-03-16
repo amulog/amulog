@@ -233,7 +233,8 @@ ltlabel_default_group = None
 
 
 [eval]
-measure_ltgen_dir = measure_ltgen
+ltgen_answer_dir = measure_ltgen_answer
+ltgen_trial_dir = measure_ltgen_trial
 n_trial_accuracy = 10
 n_trial_time = 5
 

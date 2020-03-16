@@ -19,11 +19,15 @@ class MeasureLTGen:
     The calculated data for each line is appended into text file."""
 
     SPLITTER = "@@"
+    LABEL_NONE = "N"
+    LABEL_DESCRIPTION = "D"
+    LABEL_VARIABLE = "V"
 
     def __init__(self, conf, n_trial):
         self.conf = conf
         self._number_of_trials = n_trial
-        common.mkdir(self._output_dir(conf))
+        common.mkdir(self._output_dir_answer(conf))
+        common.mkdir(self._output_dir_trial(conf))
 
         self._d_answer = {"l_tid": list(),
                           "n_lines": int(),
@@ -34,6 +38,10 @@ class MeasureLTGen:
                           "d_n_variables": defaultdict(int),
                           "n_descriptions": int(),
                           "d_n_descriptions": defaultdict(int)}
+
+        if n_trial is None:
+            return
+        assert n_trial < 100
         self._d_trial = []
         for tid in range(n_trial):
             self._d_trial.append({"l_tid": list(),
@@ -47,76 +55,157 @@ class MeasureLTGen:
                                   "d_n_c_descriptions": defaultdict(int)})
 
     @staticmethod
-    def _output_dir(conf):
-        return conf["eval"]["measure_ltgen_dir"]
+    def _output_dir_answer(conf):
+        return conf["eval"]["ltgen_answer_dir"]
 
-    def _trial_path(self, trial_id):
-        return "{0}/trial{1}".format(self._output_dir(self.conf),
-                                     str(trial_id).zfill(2))
+    @staticmethod
+    def _output_dir_trial(conf):
+        return conf["eval"]["ltgen_trial_dir"]
 
-    def _answer_path(self):
-        return "{0}/answer".format(self._output_dir(self.conf))
+    def _org_word_path(self):
+        return "{0}/word".format(self._output_dir_answer(self.conf))
+
+    def _answer_label_path(self):
+        return "{0}/label_answer".format(self._output_dir_answer(self.conf))
+
+    def _trial_label_path(self, trial_id):
+        return "{0}/label_trial{1}".format(self._output_dir_trial(self.conf),
+                                           str(trial_id).zfill(2))
+
+    def _answer_info_path(self):
+        return "{0}/info_answer".format(self._output_dir_answer(self.conf))
+
+    def _trial_info_path(self):
+        return "{0}/info_trial".format(self._output_dir_trial(self.conf))
 
     def init_answer(self):
-        common.rm(self._answer_path())
+        common.rm(self._answer_label_path())
 
     def init_trial(self, trial_id):
-        common.rm(self._trial_path(trial_id))
+        common.rm(self._trial_label_path(trial_id))
 
-    def _info_path(self):
-        return "{0}/info".format(self._output_dir(self.conf))
-
-    def load(self):
-        with open(self._info_path(), 'r', encoding='utf-8') as f:
+    def load_answer_info(self):
+        with open(self._answer_info_path(), 'r', encoding='utf-8') as f:
             obj = json.load(f)
-        self._d_answer, self._d_trial = obj
+        self._d_answer = obj
 
-    def dump(self):
-        obj = (self._d_answer, self._d_trial)
-        with open(self._info_path(), 'w', encoding='utf-8') as f:
+    def load_trial_info(self):
+        with open(self._trial_info_path(), 'r', encoding='utf-8') as f:
+            obj = json.load(f)
+        self._d_trial = obj
+
+    def dump_answer_info(self):
+        obj = self._d_answer
+        with open(self._answer_info_path(), 'w', encoding='utf-8') as f:
             json.dump(obj, f)
 
+    def dump_trial_info(self):
+        obj = self._d_trial
+        with open(self._trial_info_path(), 'w', encoding='utf-8') as f:
+            json.dump(obj, f)
+
+    def load(self):
+        self.load_answer_info()
+        self.load_trial_info()
+
+    @classmethod
+    def _tpl2dump(cls, tpl, l_w):
+        if tpl is None:
+            return "\n"
+        else:
+            l_label = [cls.LABEL_VARIABLE if w_tpl == lt_common.REPLACER
+                       else cls.LABEL_DESCRIPTION
+                       for w_tpl, w_org in zip(tpl, l_w)]
+            return "".join(l_label)
+
+    @classmethod
+    def restore_tpl(cls, labels, l_w):
+        if labels is None or labels == "\n":
+            return None
+        else:
+            return [lt_common.REPLACER if label == cls.LABEL_VARIABLE
+                    else w
+                    for label, w in zip(labels, l_w)]
+
+    @classmethod
+    def restore_result(cls, labels, l_w):
+        if labels is None or labels == "\n":
+            return None
+        else:
+            return [lt_common.REPLACER_HEAD + w + lt_common.REPLACER_TAIL
+                    if label == cls.LABEL_VARIABLE else w
+                    for label, w in zip(labels, l_w)]
+
+    def add_org(self, l_w):
+        added_line = self.SPLITTER.join(l_w) + "\n"
+        with open(self._org_word_path(), 'a') as f:
+            f.write(added_line)
+
+    def add_answer(self, tid, tpl, l_w):
+        self._update_stat_answer(tid, tpl)
+        added_line = self._tpl2dump(tpl, l_w)
+        with open(self._answer_label_path(), 'a') as f:
+            f.write(added_line)
+
     def add_trial(self, trial_id, tid_trial, tpl_trial,
-                  tid_answer, tpl_answer):
+                  tid_answer, tpl_answer, l_w):
         self._update_stat_trial(trial_id, tid_trial, tpl_trial,
                                 tid_answer, tpl_answer)
-        if tpl_trial is None:
-            added_line = "\n"
-        else:
-            added_line = self.SPLITTER.join(tpl_trial) + "\n"
-        with open(self._trial_path(trial_id), 'a') as f:
+        added_line = self._tpl2dump(tpl_trial, l_w)
+        with open(self._trial_label_path(trial_id), 'a') as f:
             f.write(added_line)
 
-    def add_answer(self, tid, tpl):
-        self._update_stat_answer(tid, tpl)
-        if tpl is None:
-            added_line = "\n"
-        else:
-            added_line = self.SPLITTER.join(tpl) + "\n"
-        with open(self._answer_path(), 'a') as f:
-            f.write(added_line)
-
-    def iter_tpl_trial(self, trial_id, yield_none=True):
-        with open(self._trial_path(trial_id), 'r') as f:
+    def iter_org(self):
+        with open(self._org_word_path(), 'r') as f:
             for line in f:
-                if line == "\n":
-                    if yield_none:
-                        yield None
-                else:
-                    yield line.rstrip().split(self.SPLITTER)
+                yield line.strip().split(" ")
 
-    def iter_tpl_answer(self, yield_none=True):
-        with open(self._answer_path(), 'r') as f:
+    def iter_label_answer(self, pass_none=False):
+        with open(self._answer_label_path(), 'r') as f:
             for line in f:
-                if line == "\n":
-                    if yield_none:
-                        yield None
+                if line == "\n" and pass_none:
+                    pass
                 else:
-                    yield line.rstrip().split(self.SPLITTER)
+                    yield line.strip()
 
-    def iter_answer_info(self, yield_none=True):
-        for tid, tpl in zip(self._d_answer["l_tid"], self.iter_tpl_answer()):
-            yield tid, tpl
+    def iter_label_trial(self, trial_id, pass_none=False):
+        with open(self._trial_label_path(trial_id), 'r') as f:
+            for line in f:
+                if line == "\n" and pass_none:
+                    pass
+                else:
+                    yield line.strip()
+
+    def iter_tpl_answer(self, pass_none=True, fill_wildcard=False):
+        for l_w, labels in zip(self.iter_org(), self.iter_label_answer()):
+            if labels == "":
+                if pass_none:
+                    pass
+                else:
+                    return None
+            elif fill_wildcard:
+                yield self.restore_result(labels, l_w)
+            else:
+                yield self.restore_tpl(labels, l_w)
+
+    def iter_tpl_trial(self, trial_id, pass_none=True, fill_wildcard=False):
+        for l_w, labels in zip(self.iter_org(), self.iter_label_trial(trial_id)):
+            if labels == "":
+                if pass_none:
+                    pass
+                else:
+                    return None
+            elif fill_wildcard:
+                yield self.restore_result(labels, l_w)
+            else:
+                yield self.restore_tpl(labels, l_w)
+
+    def iter_tid_answer(self):
+        return self._d_answer["l_tid"].__iter__()
+
+#    def iter_answer_info(self):
+#        for tid, tpl in zip(self._d_answer["l_tid"], self.iter_tpl_answer()):
+#            yield tid, tpl
 
     def _update_stat_answer(self, tid, tpl):
         self._d_answer["l_tid"].append(tid)
@@ -361,30 +450,37 @@ def _iter_plines(conf, targets):
                 yield pline
 
 
-def measure_accuracy(conf, targets, n_trial=None):
-    if n_trial is None:
-        n_trial = int(conf["eval"]["n_trial"])
+def measure_accuracy_answer(conf, targets, n_trial=None):
     mlt = MeasureLTGen(conf, n_trial)
+    mlt.init_answer()
 
-    # generate answer
-    # required (not enough with existing log_db.LogData)
-    # because measurement numerators need to be initialized
     from amulog import lt_import
     table_answer = lt_common.TemplateTable()
     ltgen_answer = lt_import.init_ltgen_import(conf, table_answer)
-    mlt.init_answer()
+
     for pline in _iter_plines(conf, targets):
         tpl = ltgen_answer.generate_tpl(pline)
         tid, _ = ltgen_answer.match_table(tpl)
-        mlt.add_answer(tid, tpl)
+        mlt.add_org(pline["words"])
+        mlt.add_answer(tid, tpl, pline["words"])
+    mlt.dump_answer_info()
+    return mlt
 
-    # estimate templates
+
+def measure_accuracy_trial(conf, targets, n_trial=None, mlt=None):
+    if n_trial is None:
+        n_trial = int(conf["eval"]["n_trial"])
+    if mlt is None:
+        mlt = MeasureLTGen(conf, n_trial)
+        mlt.load_answer_info()
+
     for trial_id in range(n_trial):
+        mlt.init_trial(trial_id)
         table = lt_common.TemplateTable()
         ltgen = lt_common.init_ltgen_methods(conf, table)
-        mlt.init_trial(trial_id)
-        for pline, (tid_answer, tpl_answer) in zip(_iter_plines(conf, targets),
-                                                   mlt.iter_answer_info()):
+        for pline, tid_answer, tpl_answer in zip(_iter_plines(conf, targets),
+                                                 mlt.iter_tid_answer(),
+                                                 mlt.iter_label_answer()):
             if tid_answer is None:
                 tid_trial = None
                 tpl_trial = None
@@ -392,10 +488,10 @@ def measure_accuracy(conf, targets, n_trial=None):
                 tpl_trial = ltgen.generate_tpl(pline)
                 tid_trial, _ = ltgen.match_table(tpl_trial)
             mlt.add_trial(trial_id, tid_trial, tpl_trial,
-                          tid_answer, tpl_answer)
+                          tid_answer, tpl_answer, pline["words"])
 
-    mlt.dump()
-    print_metrics(conf, n_trial, mlt=mlt)
+    mlt.dump_trial_info()
+    return mlt
 
 
 def print_metrics(conf, n_trial, mlt=None):
@@ -431,15 +527,18 @@ def search_fail_template(conf, n_trial, trial_id=0, pass_similar=True):
     mlt.load()
 
     s_pass = set()
-    for (tid_answer, tpl_answer), tpl_trial in zip(
-            mlt.iter_answer_info(), mlt.iter_tpl_trial(trial_id)):
+    iterobj = zip(mlt.iter_org(), mlt.iter_tid_answer(),
+                  mlt.iter_label_answer(), mlt.iter_label_trial(trial_id))
+    for l_w, tid_answer, labels_answer, labels_trial in iterobj:
         if pass_similar and tid_answer in s_pass:
             continue
-        if tpl_answer == tpl_trial:
+        if labels_answer == labels_trial:
             pass
         else:
-            print("Answer: {0}".format(" ".join(tpl_answer)))
-            print("Trial: {0}".format(" ".join(tpl_trial)))
+            result_answer = mlt.restore_result(labels_answer, l_w)
+            print("Answer: {0}".format(" ".join(result_answer)))
+            result_trial = mlt.restore_result(labels_trial, l_w)
+            print("Trial: {0}".format(" ".join(result_trial)))
             print("--------------------")
         pass
         s_pass.add(tid_answer)
@@ -453,32 +552,32 @@ def search_diff_template(conf1, conf2, n_trial,
     mlt2.load()
 
     s_pass = set()
-    iterobj = zip(mlt1.iter_answer_info(),
-                  mlt2.iter_answer_info(),
-                  mlt1.iter_tpl_trial(trial_id1),
-                  mlt2.iter_tpl_trial(trial_id2))
-    for elm in iterobj:
-        tid_answer, tpl_answer1 = elm[0]
-        _, tpl_answer2 = elm[1]
-        if not tpl_answer1 == tpl_answer2:
-            msg = ("answer data not matching: "
-                   "comparing results of different input?")
-            raise ValueError(msg)
+    iterobj = zip(mlt1.iter_org(),
+                  mlt1.iter_tid_answer(),
+                  mlt1.iter_label_answer(),
+                  mlt1.iter_label_trial(trial_id1),
+                  mlt2.iter_label_trial(trial_id2))
+    for l_w, tid_answer, labels_answer, labels_trial1, labels_trial2 in iterobj:
         if pass_similar and tid_answer in s_pass:
             continue
-        tpl_trial1, tpl_trial2 = elm[2:4]
-        if (not tpl_trial1 == tpl_answer1) and (tpl_trial2 == tpl_answer2):
-            print("< Answer: {0}".format(" ".join(tpl_answer1)))
+        if (not labels_trial1 == labels_answer) and \
+                (labels_trial2 == labels_answer):
+            tpl_answer = mlt1.restore_result(labels_answer, l_w)
+            tpl_trial1 = mlt1.restore_result(labels_trial1, l_w)
+            print("< Answer: {0}".format(" ".join(tpl_answer)))
             print("< Trial: {0}".format(" ".join(tpl_trial1)))
             print("--------------------")
-        if (tpl_trial1 == tpl_answer1) and (not tpl_trial2 == tpl_answer2):
-            print("> Answer: {0}".format(" ".join(tpl_answer2)))
+        elif (labels_trial1 == labels_answer) and \
+                (not labels_trial2 == labels_answer):
+            tpl_answer = mlt1.restore_result(labels_answer, l_w)
+            tpl_trial2 = mlt2.restore_result(labels_trial2, l_w)
+            print("> Answer: {0}".format(" ".join(tpl_answer)))
             print("> Trial: {0}".format(" ".join(tpl_trial2)))
             print("--------------------")
         s_pass.add(tid_answer)
 
 
-def _sample_cluster_diff(a_true, a_pred, n_samples):
+def _sample_partial_cluster(a_true, a_pred, n_samples):
     from sklearn.metrics.cluster import contingency_matrix
     cm = contingency_matrix(a_true, a_pred, sparse=True)
     nz_true, _ = cm.nonzero()
@@ -509,23 +608,23 @@ def search_fail_overdiv(conf, n_trial, trial_id=0, n_samples=1):
 
     a_tid_answer = np.array(mlt.tid_list_answer())
     a_tid_trial = np.array(mlt.tid_list_trial(trial_id))
-    l_cluster = _sample_cluster_diff(a_tid_answer, a_tid_trial, n_samples)
+    l_cluster = _sample_partial_cluster(a_tid_answer, a_tid_trial, n_samples)
     s_index_to_show = set()
     for _, div in l_cluster:
         s_index_to_show = s_index_to_show | set(np.ravel(tuple(zip(*div))[-1]))
 
     # get templates for the indexes to show
-    d_tpl = {index: tpl for index, tpl
-             in enumerate(mlt.iter_tpl_trial(trial_id, yield_none=False))
-             if index in s_index_to_show}
+    iterobj = mlt.iter_tpl_trial(trial_id, pass_none=True, fill_wildcard=True)
+    d_result = {index: result for index, result in enumerate(iterobj)
+                if index in s_index_to_show}
 
     # show
     for tid_answer, div in l_cluster:
         for cid, (tid_trial, a_index, cnt) in enumerate(div):
             print("Template ID {0} (in answer)".format(tid_answer))
             for index in a_index:
-                tpl = d_tpl[index]
-                print("{0} ({1}): {2}".format(cid, cnt, " ".join(tpl)))
+                tpl = d_result[index]
+                print("{0} ({1}): {2}".format(cid, cnt, d_result[index]))
         print("--------------------")
 
 
@@ -538,86 +637,21 @@ def search_fail_overagg(conf, n_trial, trial_id=0, n_samples=1):
 
     a_tid_answer = np.array(mlt.tid_list_answer())
     a_tid_trial = np.array(mlt.tid_list_trial(trial_id))
-    l_cluster = _sample_cluster_diff(a_tid_trial, a_tid_answer, n_samples)
+    l_cluster = _sample_partial_cluster(a_tid_trial, a_tid_answer, n_samples)
     s_index_to_show = set()
     for _, div in l_cluster:
         s_index_to_show = s_index_to_show | set(np.ravel(tuple(zip(*div))[-1]))
 
     # get templates for the indexes to show
-    d_tpl = {index: tpl for index, tpl
-             in enumerate(mlt.iter_tpl_trial(trial_id, yield_none=False))
-             if index in s_index_to_show}
+    iterobj = mlt.iter_tpl_trial(trial_id, pass_none=True, fill_wildcard=True)
+    d_result = {index: result for index, result in enumerate(iterobj)
+                if index in s_index_to_show}
 
     # show
     for tid_trial, div in l_cluster:
         for tid_answer, a_index, cnt in div:
             for index in a_index:
-                tpl = d_tpl[index]
-                print("{0} ({1}): {2}".format(tid_answer, cnt, " ".join(tpl)))
-        print("--------------------")
-
-
-def search_diff_overdiv(conf1, conf2, n_trial, trial_id=0, n_samples=1):
-    from sklearn.metrics.cluster import contingency_matrix
-    mlt1 = MeasureLTGen(conf1, n_trial)
-    mlt1.load()
-    a_tid_answer1 = np.array(mlt1.tid_list_answer())
-    a_tid_trial1 = np.array(mlt1.tid_list_trial(trial_id))
-    a_true1 = np.array(a_tid_answer1)
-    a_pred1 = np.array(a_tid_trial1)
-    cm1 = contingency_matrix(a_true1, a_pred1, sparse=True)
-    nz_true1, _ = cm1.nonzero()
-
-    s_tid_answer_correct = set()
-    s_tid_answer = {tid_answer for tid_answer, cnt_answer
-                    in zip(*np.unique(nz_true1, return_counts=True))
-                    if cnt_answer > 1}
-    del mlt1
-    del cm1
-    del nz_true1
-
-    mlt2 = MeasureLTGen(conf2, n_trial)
-    mlt2.load()
-    a_tid_answer2 = np.array(mlt2.tid_list_answer())
-    a_tid_trial2 = np.array(mlt2.tid_list_trial(trial_id))
-    a_true2 = np.array(a_tid_answer2)
-    a_pred2 = np.array(a_tid_trial2)
-    cm2 = contingency_matrix(a_true2, a_pred2, sparse=True)
-    nz_true2, _ = cm2.nonzero()
-
-    for tid_answer in s_tid_answer:
-        pass
-
-
-    # determine list of indexes for failed clusters
-    l_show = []
-    s_pred = set()
-    for tid_answer, cnt_answer in zip(*np.unique(nz_true, return_counts=True)):
-        if cnt_answer <= 1:
-            continue
-
-        tmp = []
-        for tid_trial, cnt_trial in zip(*np.unique(
-                a_tid_trial[a_tid_answer == tid_answer], return_counts=True)):
-            a_index = np.where((a_tid_answer == tid_answer) &
-                               (a_tid_trial == tid_trial))[0]
-            index_to_add = a_index[:min(n_samples, a_index.shape[0])]
-            tmp.append((index_to_add, cnt_trial))
-            s_pred = s_pred | set(index_to_add)
-
-        assert len(tmp) > 1
-        l_show.append(tmp)
-
-    # get templates for the indexes to show
-    d_tpl = {index: tpl
-             for index, tpl in enumerate(mlt.iter_tpl_trial(trial_id))
-             if index in s_pred}
-
-    # show
-    for result_indexes in l_show:
-        for cid, (a_index, cnt) in enumerate(result_indexes):
-            for index in a_index:
-                print("{0} ({1}): {2}".format(cid, cnt, " ".join(d_tpl[index])))
+                print("{0} ({1}): {2}".format(tid_answer, cnt, d_result[index]))
         print("--------------------")
 
 
