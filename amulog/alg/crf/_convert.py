@@ -15,60 +15,59 @@ import re
 import pycrfsuite
 
 
-class FeatureExtracter():
-    DEFAULT_TEMPLATE = "/".join((os.path.dirname(__file__),
-                                 "../data/crf_template"))
-    TPL_PARSER = re.compile("^([a-z0-9]+)(\[[-0-9]+\])?$")
+class FeatureExtracter:
+    DEFAULT_TEMPLATE = "/".join((os.path.dirname(os.path.abspath(__file__)),
+                                 "../../data/crf_template"))
+    TPL_PARSER = re.compile(r"^([a-z0-9]+)(\[[-0-9]+\])?$")
     TPL_FIELD = {"0": 0, "w": 0, "word": 0,
                  "1": 1, "pos": 1, "mid": 1,
                  "2": 2, "y": 2, "label": 2,
                  "bos": None, "eos": None,
                  "F": None}
 
-    def __init__(self, template_fp = None, ig_key = [], ig_val = 0.1):
+    def __init__(self, template_fp=None, ig_key=[], ig_weight=0.1):
         if template_fp is None or template_fp == "":
-            self.template = self.load_template(self.DEFAULT_TEMPLATE)
+            self._template = self._load_template(self.DEFAULT_TEMPLATE)
         else:
-            self.template = self.load_template(template_fp)
-        self.ig_key = ig_key
-        self.ig_val = ig_val
-        self.bos = False
-        self.eos = False
+            self._template = self._load_template(template_fp)
+        self._ig_key = ig_key  # unknown keys
+        self._ig_val = ig_weight  # weight for unknown keys
+        self._bos = False
+        self._eos = False
 
-    def load_template(self, fp):
+    def _load_template_line(self, line):
+        l_rule = []
+        line = line.rstrip()
+        if line == "":
+            return None
 
-        def _parse_line(line):
-            l_rule = []
-            line = line.rstrip()
-            if line == "":
-                return None
-
-            if ":" in line:
-                temp = line.split(":")
-                line = temp[0].strip()
-                weight = float(temp[1].strip())
+        if ":" in line:
+            temp = line.split(":")
+            line = temp[0].strip()
+            weight = float(temp[1].strip())
+        else:
+            weight = 1.0
+        l_cond = [s.strip() for s in line.split(",")]
+        name = "|".join(l_cond)
+        for cond in l_cond:
+            m = self.TPL_PARSER.match(cond)
+            if m is None:
+                raise SyntaxError(
+                    "Invalid syntax of feature template ({0})".format(
+                        line))
+            field, offset_str = m.groups()
+            if offset_str is None:
+                offset = None
             else:
-                weight = 1.0
-            l_cond = [s.strip() for s in line.split(",")]
-            name = "|".join(l_cond)
-            for cond in l_cond:
-                m = self.TPL_PARSER.match(cond)
-                if m is None:
-                    raise SyntaxError(
-                        "Invalid syntax of feature template ({0})".format(
-                            line))
-                field, offset_str = m.groups()
-                if offset_str is None:
-                    offset = None
-                else:
-                    offset = int(offset_str.strip("[").rstrip("]"))
-                l_rule.append(tuple([field, offset]))
-            return name, tuple(l_rule), weight
+                offset = int(offset_str.strip("[").rstrip("]"))
+            l_rule.append(tuple([field, offset]))
+        return name, tuple(l_rule), weight
 
-        template = [] # name, tuples(field (int), offset (int))), weight
+    def _load_template(self, fp):
+        template = []  # name, tuples(field (int), offset (int))), weight
         with open(fp, 'r') as f:
             for line in f:
-                ret = _parse_line(line)
+                ret = self._load_template_line(line)
                 if ret is not None:
                     template.append(tuple(ret))
         return tuple(template)
@@ -80,12 +79,11 @@ class FeatureExtracter():
             raise NotImplementedError
 
     def feature(self, l_items):
-
         l_items_range = range(len(l_items))
         ret = []
         for wid, item in enumerate(l_items):
             d_feature = {}
-            for name, l_rule, weight in self.template:
+            for name, l_rule, weight in self._template:
                 subfeature = []
                 for field, offset in l_rule:
                     if field == "bos":
@@ -112,17 +110,15 @@ class FeatureExtracter():
                 if subfeature is not None:
                     s = set(subfeature)
                     if len(s) == 1:
-                        if len(s & set(self.ig_key)) == 1:
-                            weight = weight * self.ig_val
+                        if len(s & set(self._ig_key)) == 1:
+                            weight = weight * self._ig_val
                     fval = "|".join(subfeature)
                     key = "=".join((name, fval))
                     d_feature[key] = weight
-                    #print(key, weight)
             ret.append(d_feature)
 
         return pycrfsuite.ItemSequence(ret)
 
-    def label(self, l_items):
+    @staticmethod
+    def label(l_items):
         return [item[-1] for item in l_items]
-
-

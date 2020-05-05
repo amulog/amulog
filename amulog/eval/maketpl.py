@@ -34,10 +34,11 @@ class MeasureLTGen:
                           "d_n_lines": defaultdict(int),
                           "n_words": int(),
                           "d_n_words": defaultdict(int),
-                          "n_variables": int(),
-                          "d_n_variables": defaultdict(int),
-                          "n_descriptions": int(),
-                          "d_n_descriptions": defaultdict(int)}
+                          # "n_variables": int(),
+                          # "d_n_variables": defaultdict(int),
+                          # "n_descriptions": int(),
+                          # "d_n_descriptions": defaultdict(int),
+                          }
 
         if n_trial is None:
             return
@@ -49,11 +50,13 @@ class MeasureLTGen:
                                   "d_n_c_lines": defaultdict(int),
                                   "n_c_words": int(),
                                   "d_n_c_words": defaultdict(int),
-                                  "n_c_variables": int(),
-                                  "d_n_c_variables": defaultdict(int),
-                                  "n_c_descriptions": int(),
-                                  "d_n_c_descriptions": defaultdict(int)})
+                                  # "n_c_variables": int(),
+                                  # "d_n_c_variables": defaultdict(int),
+                                  # "n_c_descriptions": int(),
+                                  # "d_n_c_descriptions": defaultdict(int),
+                                  })
 
+    # file IO methods
     @staticmethod
     def _output_dir_answer(conf):
         return conf["eval"]["ltgen_answer_dir"]
@@ -79,6 +82,7 @@ class MeasureLTGen:
         return "{0}/info_trial".format(self._output_dir_trial(self.conf))
 
     def init_answer(self):
+        common.rm(self._org_word_path())
         common.rm(self._answer_label_path())
 
     def init_trial(self, trial_id):
@@ -108,19 +112,24 @@ class MeasureLTGen:
         self.load_answer_info()
         self.load_trial_info()
 
+    # data APIs
     @classmethod
     def _tpl2dump(cls, tpl, l_w):
         if tpl is None:
-            return "\n"
+            return cls.LABEL_NONE + "\n"
         else:
             l_label = [cls.LABEL_VARIABLE if w_tpl == lt_common.REPLACER
                        else cls.LABEL_DESCRIPTION
                        for w_tpl, w_org in zip(tpl, l_w)]
-            return "".join(l_label)
+            return "".join(l_label) + "\n"
+
+    @classmethod
+    def _labels_isnone(cls, labels):
+        return cls.LABEL_NONE in labels
 
     @classmethod
     def restore_tpl(cls, labels, l_w):
-        if labels is None or labels == "\n":
+        if labels is None or labels == cls.LABEL_NONE:
             return None
         else:
             return [lt_common.REPLACER if label == cls.LABEL_VARIABLE
@@ -129,7 +138,7 @@ class MeasureLTGen:
 
     @classmethod
     def restore_result(cls, labels, l_w):
-        if labels is None or labels == "\n":
+        if labels is None or labels == cls.LABEL_NONE:
             return None
         else:
             return [lt_common.REPLACER_HEAD + w + lt_common.REPLACER_TAIL
@@ -155,58 +164,6 @@ class MeasureLTGen:
         with open(self._trial_label_path(trial_id), 'a') as f:
             f.write(added_line)
 
-    def iter_org(self):
-        with open(self._org_word_path(), 'r') as f:
-            for line in f:
-                yield line.strip().split(" ")
-
-    def iter_label_answer(self, pass_none=False):
-        with open(self._answer_label_path(), 'r') as f:
-            for line in f:
-                if line == "\n" and pass_none:
-                    pass
-                else:
-                    yield line.strip()
-
-    def iter_label_trial(self, trial_id, pass_none=False):
-        with open(self._trial_label_path(trial_id), 'r') as f:
-            for line in f:
-                if line == "\n" and pass_none:
-                    pass
-                else:
-                    yield line.strip()
-
-    def iter_tpl_answer(self, pass_none=True, fill_wildcard=False):
-        for l_w, labels in zip(self.iter_org(), self.iter_label_answer()):
-            if labels == "":
-                if pass_none:
-                    pass
-                else:
-                    return None
-            elif fill_wildcard:
-                yield self.restore_result(labels, l_w)
-            else:
-                yield self.restore_tpl(labels, l_w)
-
-    def iter_tpl_trial(self, trial_id, pass_none=True, fill_wildcard=False):
-        for l_w, labels in zip(self.iter_org(), self.iter_label_trial(trial_id)):
-            if labels == "":
-                if pass_none:
-                    pass
-                else:
-                    return None
-            elif fill_wildcard:
-                yield self.restore_result(labels, l_w)
-            else:
-                yield self.restore_tpl(labels, l_w)
-
-    def iter_tid_answer(self):
-        return self._d_answer["l_tid"].__iter__()
-
-#    def iter_answer_info(self):
-#        for tid, tpl in zip(self._d_answer["l_tid"], self.iter_tpl_answer()):
-#            yield tid, tpl
-
     def _update_stat_answer(self, tid, tpl):
         self._d_answer["l_tid"].append(tid)
         if tid is not None:
@@ -230,6 +187,65 @@ class MeasureLTGen:
                     self._d_trial[trial_id]["n_c_words"] += 1
                     self._d_trial[trial_id]["d_n_c_words"][str(tid_answer)] += 1
 
+    def iter_org(self):
+        with open(self._org_word_path(), 'r') as f:
+            for line in f:
+                yield line.strip().split(self.SPLITTER)
+
+    def iter_label_answer(self, pass_none=False):
+        with open(self._answer_label_path(), 'r') as f:
+            for line in f:
+                labels_str = line.strip()
+                if self._labels_isnone(labels_str):
+                    if pass_none:
+                        pass
+                    else:
+                        yield None
+                else:
+                    yield labels_str
+
+    def iter_label_trial(self, trial_id, pass_none=False):
+        with open(self._trial_label_path(trial_id), 'r') as f:
+            for line in f:
+                labels_str = line.strip()
+                if self._labels_isnone(labels_str):
+                    if pass_none:
+                        pass
+                    else:
+                        yield None
+                else:
+                    yield labels_str
+
+    def iter_tpl_answer(self, pass_none=False, fill_wildcard=False):
+        for l_w, labels in zip(self.iter_org(), self.iter_label_answer()):
+            if labels is None:
+                if pass_none:
+                    pass
+                else:
+                    yield None
+            elif fill_wildcard:
+                yield self.restore_result(labels, l_w)
+            else:
+                yield self.restore_tpl(labels, l_w)
+
+    def iter_tpl_trial(self, trial_id, pass_none=False, fill_wildcard=False):
+        for l_w, labels in zip(self.iter_org(), self.iter_label_trial(trial_id)):
+            if labels is None:
+                if pass_none:
+                    pass
+                else:
+                    yield None
+            elif fill_wildcard:
+                yield self.restore_result(labels, l_w)
+            else:
+                yield self.restore_tpl(labels, l_w)
+
+    def iter_tid_answer(self):
+        return self._d_answer["l_tid"].__iter__()
+
+    def iter_tid_trial(self, trial_id):
+        return self._d_trial[trial_id]["l_tid"].__iter__()
+
     def tid_list_answer(self):
         return [tid for tid in self._d_answer["l_tid"]
                 if tid is not None]
@@ -247,6 +263,13 @@ class MeasureLTGen:
     def number_of_answer_clusters(self):
         return len(self._d_answer["d_n_lines"])
 
+    def number_of_answer_cluster_members(self):
+        d = {}
+        for key, val in self._d_answer["d_n_lines"].items():
+            tid = int(key)
+            d[tid] = val
+        return d
+
     def number_of_trial_clusters(self, trial_id=None):
         if trial_id is None:
             l_cnt = [self.number_of_trial_clusters(i)
@@ -258,6 +281,7 @@ class MeasureLTGen:
         else:
             return np.unique(self.tid_list_trial(trial_id)).shape[0]
 
+    # accuracy methods
     def _word_accuracy_trial(self, trial_id):
         # n_words: Number of all words in dataset
         n_words = self._d_answer["n_words"]
@@ -328,21 +352,54 @@ class MeasureLTGen:
         else:
             return self._tpl_accuracy_trial(trial_id)
 
-#    def _rand_score(self, trial_id):
-#        # Referred R library "fossil::rand.index"
-#        from scipy.special import comb
-#        l_tid_answer = self._tid_list_answer()
-#        l_tid_trial = self._tid_list_trial(trial_id)
-#
-#        x = np.array(l_tid_answer)
-#        m_x_diff = np.abs(x - x[:, np.newaxis])
-#        m_x_diff[m_x_diff > 1] = 1
-#        y = np.array(l_tid_trial)
-#        m_y_diff = np.abs(y - y[:, np.newaxis])
-#        m_y_diff[m_y_diff > 1] = 1
-#        diff_comb = np.sum(np.abs(m_x_diff - m_y_diff)) / 2
-#        all_comb = comb(len(l_tid_answer), 2, exact=True)
-#        return 1. - diff_comb / all_comb
+    def tpl_word_accuracy_dist(self, trial_id):
+        # d_n_words: Number of words in a template cluster
+        d_n_words = self._d_answer["d_n_words"]
+        # d_n_c_words: Number of words correctly labeled in a template cluster
+        d_n_c_words = self._d_trial[trial_id]["d_n_c_words"]
+
+        ret = {}
+        for key in d_n_words:  # key: str(tid)
+            tid = int(key)
+            ret[tid] = d_n_c_words.get(key, 0) / d_n_words.get(key, 0)
+        return ret
+
+    def tpl_line_accuracy_dist(self, trial_id):
+        # d_n_lines: Number of lines in a template cluster
+        d_n_lines = self._d_answer["d_n_lines"]
+        # d_n_c_lines: Number of lines correctly labeled in a template cluster
+        d_n_c_lines = self._d_trial[trial_id]["d_n_c_lines"]
+
+        ret = {}
+        for key in d_n_lines:  # key: str(tid)
+            tid = int(key)
+            ret[tid] = d_n_c_lines.get(key, 0) / d_n_lines.get(key, 0)
+        return ret
+
+    # def word_accuracy_precision_recall_fmeasure(self, trial_id,
+    #                                             standard_label="variable"):
+    #     n_variables = self._d_answer["n_variables"]
+    #     n_descriptions = self._d_answer["n_descriptions"]
+    #     n_c_variables = self._d_trial[trial_id]["n_c_variables"]
+    #     n_c_descriptions = self._d_trial[trial_id]["n_c_descriptions"]
+    #     if standard_label == "description":
+    #         tp = n_c_descriptions
+    #         fp = n_variables - n_c_variables
+    #         fn = n_descriptions - n_c_descriptions
+    #         tn = n_c_variables
+    #     elif standard_label == "variable":
+    #         tp = n_c_variables
+    #         fp = n_descriptions - n_c_descriptions
+    #         fn = n_variables - n_c_variables
+    #         tn = n_c_descriptions
+    #     else:
+    #         raise ValueError("standard_label is one of [description, variable]")
+    #
+    #     accuracy = (tp + tn) / (tp + fp + fn + tn)
+    #     precision = tp / (tp + fp)
+    #     recall = tp / (tp + fn)
+    #     f1_score = 2. * recall * precision / (recall + precision)
+    #     return accuracy, precision, recall, f1_score
 
     def rand_score(self, trial_id=None):
         if trial_id is None:
@@ -353,12 +410,6 @@ class MeasureLTGen:
             l_tid_answer = self.tid_list_answer()
             l_tid_trial = self.tid_list_trial(trial_id)
             return cluster_metrics.rand_score(l_tid_answer, l_tid_trial)
-
-#    def _adjusted_rand_score_trial(self, trial_id):
-#        from sklearn.metrics import adjusted_rand_score
-#        l_tid_answer = self._tid_list_answer()
-#        l_tid_trial = self._tid_list_trial(trial_id)
-#        return adjusted_rand_score(l_tid_answer, l_tid_trial)
 
     def adjusted_rand_score(self, trial_id=None):
         if trial_id is None:
@@ -371,18 +422,6 @@ class MeasureLTGen:
             l_tid_trial = self.tid_list_trial(trial_id)
             return adjusted_rand_score(l_tid_answer, l_tid_trial)
 
-#    def _f1_score_trial(self, trial_id):
-#        from itertools import combinations
-#        l_tid_answer = self._tid_list_answer()
-#        pairs_answer = [n1 == n2
-#                        for n1, n2 in combinations(l_tid_answer, 2)]
-#        l_tid_trial = self._tid_list_trial(trial_id)
-#        pairs_trial = [n1 == n2
-#                       for n1, n2 in combinations(l_tid_trial, 2)]
-#
-#        from sklearn.metrics import f1_score
-#        return f1_score(pairs_answer, pairs_trial)
-
     def f1_score(self, trial_id=None):
         if trial_id is None:
             l_score = [self.f1_score(i)
@@ -393,22 +432,6 @@ class MeasureLTGen:
             l_tid_trial = self.tid_list_trial(trial_id)
             return cluster_metrics.precision_recall_fscore(
                 l_tid_answer, l_tid_trial)[2]
-
-#    def _parsing_accuracy_trial(self, trial_id):
-#        # Referred https://github.com/logpai/logparser
-#        from pandas import Series
-#        sr_tid_answer = Series(self._tid_list_answer(), dtype=int)
-#        sr_tid_trial = Series(self._tid_list_trial(trial_id), dtype=int)
-#
-#        n_correct = 0
-#        for tid_answer in sr_tid_answer.unique():
-#            logs_answer = sr_tid_answer[sr_tid_answer == tid_answer].index
-#            division = sr_tid_trial[logs_answer].unique()
-#            if division.size == 1:
-#                logs_trial = sr_tid_trial[sr_tid_trial == division[0]].index
-#                if logs_trial.size == logs_answer.size:
-#                    n_correct += logs_answer.size
-#        return 1.0 * n_correct / sr_tid_answer.size
 
     def parsing_accuracy(self, trial_id=None):
         if trial_id is None:
@@ -447,10 +470,13 @@ def _iter_plines(conf, targets):
             if pline is None:
                 pass
             else:
+                log_db.log2seq_weight_save(pline)
                 yield pline
 
 
 def measure_accuracy_answer(conf, targets, n_trial=None):
+    timer = common.Timer("measure-accuracy answer", output=_logger)
+    timer.start()
     mlt = MeasureLTGen(conf, n_trial)
     mlt.init_answer()
 
@@ -459,15 +485,19 @@ def measure_accuracy_answer(conf, targets, n_trial=None):
     ltgen_answer = lt_import.init_ltgen_import(conf, table_answer)
 
     for pline in _iter_plines(conf, targets):
-        tpl = ltgen_answer.generate_tpl(pline)
-        tid, _ = ltgen_answer.match_table(tpl)
+        tid, _ = ltgen_answer.process_line(pline)
+        if tid is None:
+            tpl = None
+        else:
+            tpl = ltgen_answer.get_tpl(tid)
         mlt.add_org(pline["words"])
         mlt.add_answer(tid, tpl, pline["words"])
     mlt.dump_answer_info()
+    timer.stop()
     return mlt
 
 
-def measure_accuracy_trial(conf, targets, n_trial=None, mlt=None):
+def measure_accuracy_trial_offline(conf, targets, n_trial=None, mlt=None):
     if n_trial is None:
         n_trial = int(conf["eval"]["n_trial"])
     if mlt is None:
@@ -475,20 +505,69 @@ def measure_accuracy_trial(conf, targets, n_trial=None, mlt=None):
         mlt.load_answer_info()
 
     for trial_id in range(n_trial):
+        timer = common.Timer("measure-accuracy-offline trial{0}".format(
+            trial_id), output=_logger)
+        timer.start()
         mlt.init_trial(trial_id)
         table = lt_common.TemplateTable()
         ltgen = lt_common.init_ltgen_methods(conf, table)
-        for pline, tid_answer, tpl_answer in zip(_iter_plines(conf, targets),
-                                                 mlt.iter_tid_answer(),
-                                                 mlt.iter_label_answer()):
+
+        input_lines = list(_iter_plines(conf, targets))
+        d_tid = ltgen.process_offline(input_lines)
+        iterobj = zip(input_lines,
+                      mlt.iter_tid_answer(),
+                      mlt.iter_tpl_answer(pass_none=False))
+        for mid, (pline, tid_answer, tpl_answer) in enumerate(iterobj):
             if tid_answer is None:
                 tid_trial = None
                 tpl_trial = None
             else:
-                tpl_trial = ltgen.generate_tpl(pline)
-                tid_trial, _ = ltgen.match_table(tpl_trial)
+                tid_trial = d_tid[mid]
+                if tid_trial is None:
+                    tpl_trial = None
+                else:
+                    tpl_trial = ltgen.get_tpl(tid_trial)
             mlt.add_trial(trial_id, tid_trial, tpl_trial,
                           tid_answer, tpl_answer, pline["words"])
+        timer.stop()
+
+    mlt.dump_trial_info()
+    return mlt
+
+
+def measure_accuracy_trial_online(conf, targets_train, targets_test,
+                                  n_trial=None, mlt=None):
+    if n_trial is None:
+        n_trial = int(conf["eval"]["n_trial"])
+    if mlt is None:
+        mlt = MeasureLTGen(conf, n_trial)
+        mlt.load_answer_info()
+
+    for trial_id in range(n_trial):
+        timer = common.Timer("measure-accuracy-online trial{0}".format(
+            trial_id), output=_logger)
+        timer.start()
+        mlt.init_trial(trial_id)
+        table = lt_common.TemplateTable()
+        ltgen = lt_common.init_ltgen_methods(conf, table)
+
+        if targets_train is not None:
+            for pline in _iter_plines(conf, targets_train):
+                ltgen.process_line(pline)
+
+        iterobj = zip(_iter_plines(conf, targets_test),
+                      mlt.iter_tid_answer(),
+                      mlt.iter_tpl_answer(pass_none=False))
+        for pline, tid_answer, tpl_answer in iterobj:
+            if tid_answer is None:
+                tid_trial = None
+                tpl_trial = None
+            else:
+                tid_trial, _ = ltgen.process_line(pline)
+                tpl_trial = ltgen.get_tpl(tid_trial)
+            mlt.add_trial(trial_id, tid_trial, tpl_trial,
+                          tid_answer, tpl_answer, pline["words"])
+        timer.stop()
 
     mlt.dump_trial_info()
     return mlt
@@ -520,6 +599,20 @@ def print_metrics(conf, n_trial, mlt=None):
     print("f1 score: {0}".format(mlt.f1_score()))
     print("parsing accuracy: {0}".format(mlt.parsing_accuracy()))
     print("cluster accuracy: {0}".format(mlt.cluster_accuracy()))
+
+
+def get_templates(conf, n_trial, trial_id=0, answer=False):
+    mlt = MeasureLTGen(conf, n_trial)
+    mlt.load()
+
+    if answer:
+        iterobj = mlt.iter_tpl_answer(pass_none=True)
+    else:
+        iterobj = mlt.iter_tpl_trial(trial_id, pass_none=True)
+
+    tpls = {tuple(tpl) for tpl in iterobj}
+    for tpl in tpls:
+        yield tpl
 
 
 def search_fail_template(conf, n_trial, trial_id=0, pass_similar=True):
@@ -580,52 +673,84 @@ def search_diff_template(conf1, conf2, n_trial,
 def _sample_partial_cluster(a_true, a_pred, n_samples):
     from sklearn.metrics.cluster import contingency_matrix
     cm = contingency_matrix(a_true, a_pred, sparse=True)
+    # sklearn.metrics.cluster.contingency_matrix now uses
+    # inverse output of np.unique(a_true, inverse=true)
+    # as the input of contingency matrix.
+    # Therefore, the unique output works as value mapping.
+    a_true_map, a_true_inverse = np.unique(a_true, return_inverse=True)
     nz_true, _ = cm.nonzero()
 
     l_cluster = []
-    for tid_true, cnt_true in zip(*np.unique(nz_true, return_counts=True)):
-        if cnt_true <= 1:
-            continue
-
-        div = []
-        for tid_pred, cnt_pred in zip(*np.unique(
-                a_pred[a_true == tid_true], return_counts=True)):
-            a_index = np.where((a_true == tid_true) &
-                               (a_pred == tid_pred))[0]
-            a_index_sample = a_index[:min(n_samples, a_index.shape[0])]
-            div.append((tid_pred, cnt_pred, a_index_sample))
-        l_cluster.append((tid_true, div))
+    for cls_true, uniq_cnt in zip(*np.unique(nz_true, return_counts=True)):
+        if uniq_cnt > 1:
+            tid_true = a_true_map[cls_true]
+            div = []
+            for tid_pred, cnt_pred in zip(*np.unique(
+                    a_pred[a_true_inverse == cls_true], return_counts=True)):
+                a_index = np.where((a_true == tid_true) &
+                                   (a_pred == tid_pred))[0]
+                tmp_n_samples = min(n_samples, a_index.shape[0])
+                a_index_sample = a_index[:tmp_n_samples]
+                div.append((tid_pred, cnt_pred, a_index_sample))
+            l_cluster.append((tid_true, div))
 
     return l_cluster
+
+
+def _get_complete_clusters(a_true, a_pred):
+    from sklearn.metrics.cluster import contingency_matrix
+    cm = contingency_matrix(a_true, a_pred, sparse=True)
+    nz_true, _ = cm.nonzero()
+
+    tids = []
+    for tid_true, uniq_cnt in zip(*np.unique(nz_true, return_counts=True)):
+        if uniq_cnt == 1:
+            tids.append(tid_true)
+    return tids
 
 
 def search_fail_overdiv(conf, n_trial, trial_id=0, n_samples=1):
     """Search failed log clusters of over-division.
     e.g., 1 cls in answer ≡ 3 cls in trial"""
 
+    timer = common.Timer("test fail_overdiv", output=_logger)
+    timer.start()
+
     mlt = MeasureLTGen(conf, n_trial)
     mlt.load()
 
+    # overdiv cluster information
     a_tid_answer = np.array(mlt.tid_list_answer())
     a_tid_trial = np.array(mlt.tid_list_trial(trial_id))
     l_cluster = _sample_partial_cluster(a_tid_answer, a_tid_trial, n_samples)
+
+    timer.lap("lap1")
+
+    # make sample tpl list to show
     s_index_to_show = set()
     for _, div in l_cluster:
-        s_index_to_show = s_index_to_show | set(np.ravel(tuple(zip(*div))[-1]))
+        samples = [a_index_sample for _, _, a_index_sample in div]
+        s_index_to_show = s_index_to_show | set(np.ravel(samples))
+
+    timer.lap("lap2")
 
     # get templates for the indexes to show
     iterobj = mlt.iter_tpl_trial(trial_id, pass_none=True, fill_wildcard=True)
     d_result = {index: result for index, result in enumerate(iterobj)
                 if index in s_index_to_show}
 
+    timer.lap("lap3")
+
     # show
     for tid_answer, div in l_cluster:
-        for cid, (tid_trial, a_index, cnt) in enumerate(div):
-            print("Template ID {0} (in answer)".format(tid_answer))
+        print("Template ID {0} (in answer)".format(tid_answer))
+        iterobj = sorted(div, key=lambda x: x[1], reverse=True)
+        for cls_id, (tid_trial, cnt_trial, a_index) in enumerate(iterobj):
             for index in a_index:
-                tpl = d_result[index]
-                print("{0} ({1}): {2}".format(cid, cnt, d_result[index]))
+                print("{0} ({1}): {2}".format(cls_id, cnt_trial,
+                                              " ".join(d_result[index])))
         print("--------------------")
+    timer.stop()
 
 
 def search_fail_overagg(conf, n_trial, trial_id=0, n_samples=1):
@@ -635,12 +760,16 @@ def search_fail_overagg(conf, n_trial, trial_id=0, n_samples=1):
     mlt = MeasureLTGen(conf, n_trial)
     mlt.load()
 
+    # overagg cluster information
     a_tid_answer = np.array(mlt.tid_list_answer())
     a_tid_trial = np.array(mlt.tid_list_trial(trial_id))
     l_cluster = _sample_partial_cluster(a_tid_trial, a_tid_answer, n_samples)
+
+    # make sample tpl list to show
     s_index_to_show = set()
     for _, div in l_cluster:
-        s_index_to_show = s_index_to_show | set(np.ravel(tuple(zip(*div))[-1]))
+        samples = [a_index_sample for _, _, a_index_sample in div]
+        s_index_to_show = s_index_to_show | set(np.ravel(samples))
 
     # get templates for the indexes to show
     iterobj = mlt.iter_tpl_trial(trial_id, pass_none=True, fill_wildcard=True)
@@ -649,24 +778,143 @@ def search_fail_overagg(conf, n_trial, trial_id=0, n_samples=1):
 
     # show
     for tid_trial, div in l_cluster:
-        for tid_answer, a_index, cnt in div:
+        print("Cluster {0} (in trial)".format(tid_trial))
+        iterobj = sorted(div, key=lambda x: x[1], reverse=True)
+        for tid_answer, cnt_answer, a_index in iterobj:
             for index in a_index:
-                print("{0} ({1}): {2}".format(tid_answer, cnt, d_result[index]))
+                print("ltid {0} ({1}): {2}".format(tid_answer, cnt_answer,
+                                                   " ".join(d_result[index])))
         print("--------------------")
 
 
-def measure_time(conf, targets, n_trial=None):
+def search_diff_overdiv(conf1, conf2, n_trial, trial_id=0, n_samples=1):
+    """Search log clusters that is accurate in conf1,
+    but failed of over-division in conf2.
+    e.g., 1 cls in answer ≡ 1 cls in trial-conf1 ≡ 3 cls in trial-conf2"""
+
+    mlt1 = MeasureLTGen(conf1, n_trial)
+    mlt1.load()
+    mlt2 = MeasureLTGen(conf2, n_trial)
+    mlt2.load()
+
+    # clusters accurate in conf1
+    a_tid_answer = np.array(mlt1.tid_list_answer())
+    a_tid_trial1 = np.array(mlt1.tid_list_trial(trial_id))
+    tids = _get_complete_clusters(a_tid_answer, a_tid_trial1)
+
+    # cluster information that is overdiv in conf2
+    a_tid_trial2 = np.array(mlt2.tid_list_trial(trial_id))
+    l_cls_all = _sample_partial_cluster(a_tid_answer, a_tid_trial2, n_samples)
+    l_cluster = [(tid_true, div) for tid_true, div
+                 in l_cls_all if tid_true in tids]
+
+    # make sample tpl list to show
+    s_index_to_show = set()
+    for _, div in l_cluster:
+        samples = [a_index_sample for _, _, a_index_sample in div]
+        s_index_to_show = s_index_to_show | set(np.ravel(samples))
+
+    # get templates for the indexes to show
+    iterobj = mlt2.iter_tpl_trial(trial_id, pass_none=True, fill_wildcard=True)
+    d_result = {index: result for index, result in enumerate(iterobj)
+                if index in s_index_to_show}
+
+    # show
+    for tid_answer, div in l_cluster:
+        print("Template ID {0} (in answer)".format(tid_answer))
+        iterobj = sorted(div, key=lambda x: x[1], reverse=True)
+        for cid, (tid_trial, cnt_trial, a_index) in enumerate(iterobj):
+            for index in a_index:
+                print("{0} ({1}): {2}".format(cid, cnt_trial,
+                                              " ".join(d_result[index])))
+        print("--------------------")
+
+
+def search_diff_overagg(conf1, conf2, n_trial, trial_id=0, n_samples=1):
+    """Search log clusters that is accurate in conf1,
+    but failed of over-aggregation in conf2.
+    e.g., 3 cls in answer ≡ 3 cls in trial-conf1 ≡ 1 cls in trial-conf2"""
+    mlt1 = MeasureLTGen(conf1, n_trial)
+    mlt1.load()
+    mlt2 = MeasureLTGen(conf2, n_trial)
+    mlt2.load()
+
+    # clusters accurate in conf1
+    a_tid_answer = np.array(mlt1.tid_list_answer())
+    a_tid_trial1 = np.array(mlt1.tid_list_trial(trial_id))
+    tids = _get_complete_clusters(a_tid_answer, a_tid_trial1)
+
+    # cluster information that is overagg in conf2
+    a_tid_trial2 = np.array(mlt2.tid_list_trial(trial_id))
+    l_cls_all = _sample_partial_cluster(a_tid_trial2, a_tid_answer, n_samples)
+    l_cluster = []
+    for tid_trial2, div in l_cls_all:
+        for tid_answer, a_index, cnt in div:
+            if tid_answer not in tids:
+                break
+        else:
+            l_cluster.append((tid_trial2, div))
+
+    # make sample tpl list to show
+    s_index_to_show = set()
+    for _, div in l_cluster:
+        samples = [a_index_sample for _, _, a_index_sample in div]
+        s_index_to_show = s_index_to_show | set(np.ravel(samples))
+
+    # get templates for the indexes to show
+    iterobj = mlt2.iter_tpl_trial(trial_id, pass_none=True, fill_wildcard=True)
+    d_result = {index: result for index, result in enumerate(iterobj)
+                if index in s_index_to_show}
+
+    # show
+    for tid_trial2, div in l_cluster:
+        print("Cluster {0} (in trial)".format(tid_trial2))
+        iterobj = sorted(div, key=lambda x: x[1], reverse=True)
+        for tid_answer, cnt_answer, a_index in iterobj:
+            for index in a_index:
+                print("ltid {0} ({1}): {2}".format(tid_answer, cnt_answer,
+                                                   " ".join(d_result[index])))
+        print("--------------------")
+
+
+def measure_time_online(conf, targets_train, targets_test, n_trial=None):
     if n_trial is None:
         n_trial = int(conf["eval"]["n_trial_time"])
 
-    timer = common.Timer("measure-time", output=None)
-    timer.start()
+    d_time = {}
     for trial_id in range(n_trial):
         table = lt_common.TemplateTable()
         ltgen = lt_common.init_ltgen_methods(conf, table)
-        for pline in _iter_plines(conf, targets):
-            tpl_trial = ltgen.generate_tpl(pline)
-            tid_trial, _ = ltgen.match_table(tpl_trial)
-        timer.lap_diff("trial{0}".format(trial_id))
-    timer.stop()
-    timer.stat()
+        if targets_train is not None:
+            for pline in _iter_plines(conf, targets_train):
+                ltgen.process_line(pline)
+
+        timer = common.Timer("measure-time-online trial{0}".format(trial_id),
+                             output=None)
+        timer.start()
+        for pline in _iter_plines(conf, targets_test):
+            ltgen.process_line(pline)
+        timer.stop()
+        d_time[trial_id] = timer.total_time()
+
+    return d_time
+
+
+def measure_time_offline(conf, targets_test, n_trial=None):
+    if n_trial is None:
+        n_trial = int(conf["eval"]["n_trial_time"])
+
+    d_time = {}
+    for trial_id in range(n_trial):
+        table = lt_common.TemplateTable()
+        ltgen = lt_common.init_ltgen_methods(conf, table)
+
+        timer = common.Timer("measure-time-offline trial{0}".format(trial_id),
+                             output=None)
+        timer.start()
+        input_lines = list(_iter_plines(conf, targets_test))
+        ltgen.process_offline(input_lines)
+        timer.stop()
+        d_time[trial_id] = timer.total_time()
+
+    return d_time

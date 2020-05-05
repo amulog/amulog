@@ -9,17 +9,16 @@ import re
 import configparser
 import numpy as np
 
-from . import config
+from amulog import config
 
-DEFAULT_CONFIG = "/".join((os.path.dirname(__file__),
-                           "data/testlog.conf.default"))
+DEFAULT_CONFIG = "/".join((os.path.dirname(os.path.abspath(__file__)),
+                           "./testlog.conf"))
 
 
 class TestLogGenerator():
-
     _var_re = re.compile(r"\$.+?\$")
 
-    def __init__(self, conf_fn, seed = None):
+    def __init__(self, conf_fn, seed=None):
         if seed is None:
             random.seed()
         else:
@@ -44,13 +43,13 @@ class TestLogGenerator():
 
     def _dt_rand(self, top_dt, end_dt):
         return self._dt_delta_rand(top_dt,
-                datetime.timedelta(0), end_dt - top_dt)
+                                   datetime.timedelta(0), end_dt - top_dt)
 
     @staticmethod
     def _dt_delta_rand(top_dt, durmin, durmax):
         deltasec = 24 * 60 * 60 * (durmax.days - durmin.days) + \
-                durmax.seconds - durmin.seconds
-        seconds = datetime.timedelta(seconds = random.randint(0, deltasec - 1))
+                   durmax.seconds - durmin.seconds
+        seconds = datetime.timedelta(seconds=random.randint(0, deltasec - 1))
         return top_dt + durmin + seconds
 
     @staticmethod
@@ -72,7 +71,7 @@ class TestLogGenerator():
         times = int(np.random.poisson(avtimes))
         for i in range(times):
             deltasec = int(total_dt.total_seconds() * random.random())
-            dt = top_dt + datetime.timedelta(seconds = deltasec)
+            dt = top_dt + datetime.timedelta(seconds=deltasec)
             ret.append(dt)
         return ret
 
@@ -98,13 +97,13 @@ class TestLogGenerator():
 
     @staticmethod
     def _rand_next_exp(dt, lambd):
-        return dt + datetime.timedelta(seconds = 1) * int(
-                24 * 60 * 60 * random.expovariate(lambd))
+        return dt + datetime.timedelta(seconds=1) * int(
+            24 * 60 * 60 * random.expovariate(lambd))
 
     def _generate_event(self, event_name):
-        
+
         section = "event_" + event_name
-        
+
         def _recur(dt, host, event_name):
             if not self.conf.has_option(section, "recurrence"):
                 return
@@ -121,10 +120,10 @@ class TestLogGenerator():
                 for i in config.gettuple(self.conf, section, "info"):
                     if i == "ifname":
                         info[i] = random.choice(
-                                config.gettuple(self.conf, section, "ifname"))
+                            config.gettuple(self.conf, section, "ifname"))
                     elif i == "user":
                         info[i] = random.choice(
-                                config.gettuple(self.conf, section, "user"))
+                            config.gettuple(self.conf, section, "user"))
             self.l_event.append((dt, host, event_name, info))
             _recur(dt, host, event_name)
 
@@ -133,8 +132,8 @@ class TestLogGenerator():
                 occ = self.conf.get(section, "occurrence")
                 if occ == "random_uniform":
                     freq = self.conf.getfloat(section, "frequency")
-                    for dt in self._rand_uniform(self.top_dt, self.end_dt,
-                            freq):
+                    for dt in self.rand_uniform(self.top_dt, self.end_dt,
+                                                freq):
                         _add_event(dt, host, event_name)
                 elif occ in ("random", "random_exp"):
                     freq = self.conf.getfloat(section, "frequency")
@@ -142,20 +141,20 @@ class TestLogGenerator():
                         _add_event(dt, host, event_name)
                 elif occ == "hourly":
                     dursec = 60 * 60
-                    first_dt = self.top_dt + datetime.timedelta(\
-                            seconds = random.randint(0, dursec - 1))
+                    first_dt = self.top_dt + datetime.timedelta(
+                        seconds=random.randint(0, dursec - 1))
                     now_dt = first_dt
                     while now_dt < self.end_dt:
                         _add_event(now_dt, host, event_name)
-                        now_dt += datetime.timedelta(seconds = dursec)
+                        now_dt += datetime.timedelta(seconds=dursec)
                 elif occ == "daily":
                     dursec = 24 * 60 * 60
-                    first_dt = self.top_dt + datetime.timedelta(\
-                            seconds = random.randint(0, dursec - 1))
+                    first_dt = self.top_dt + datetime.timedelta(
+                        seconds=random.randint(0, dursec - 1))
                     now_dt = first_dt
                     while now_dt < self.end_dt:
                         _add_event(now_dt, host, event_name)
-                        now_dt += datetime.timedelta(seconds = dursec)
+                        now_dt += datetime.timedelta(seconds=dursec)
 
     def _generate_log(self, event):
         dt = event[0]
@@ -180,8 +179,10 @@ class TestLogGenerator():
                     var_string = str(random.randint(1, 65535))
                 elif var_type == "host":
                     var_string = host
+                else:
+                    raise ValueError
                 mes = "".join((mes[:match.start()] + var_string +
-                        mes[match.end():]))
+                               mes[match.end():]))
 
             if mode == "each":
                 self.l_log.append((dt, host, mes))
@@ -203,42 +204,20 @@ class TestLogGenerator():
                 self.l_log.append((dt, random.choice(l_host), mes))
 
     def dump_log(self, output):
-        l_line = sorted(self.l_log, key = lambda x: x[0])
+        l_line = sorted(self.l_log, key=lambda x: x[0])
         if output is None:
             for line in l_line:
-                print(" ".join((line[0].strftime("%Y-%m-%d %H:%M:%S"), 
-                        line[1], line[2])))
+                print(" ".join((line[0].strftime("%Y-%m-%d %H:%M:%S"),
+                                line[1], line[2])))
         else:
             with open(output, 'w') as f:
                 for line in l_line:
-                    f.write(" ".join((line[0].strftime("%Y-%m-%d %H:%M:%S"), 
-                        line[1], line[2])) + "\n")
+                    f.write(" ".join((line[0].strftime("%Y-%m-%d %H:%M:%S"),
+                                      line[1], line[2])) + "\n")
 
 
-def generate_testdata(fn = None, output = None, seed = None):
+def generate_testdata(fn=None, output=None, seed=None):
     if fn is None:
         fn = DEFAULT_CONFIG
     tlg = TestLogGenerator(fn, seed)
     tlg.dump_log(output)
-
-
-#def test_make(fn = None, output = None):
-#    if fn is None:
-#        fn = DEFAULT_CONFIG
-#    tlg = TestLogGenerator(fn)
-#    tlg.dump_log(output)
-#
-#
-#if __name__ == "__main__":
-#    usage = "usage: {0} [options]".format(sys.argv[0])
-#    import optparse
-#    op = optparse.OptionParser(usage)
-#    op.add_option("-c", "--config", action="store",
-#            dest="conf", type="string", default=DEFAULT_CONFIG,
-#            help="configuration file path")
-#    (options, args) = op.parse_args()
-#    if len(args) > 0:
-#        sys.exit("use -c for config file")
-#    generate_testdata(fn = options.conf)
-
-

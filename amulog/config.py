@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import sys
 import os
 import datetime
 import logging
@@ -8,7 +9,7 @@ import configparser
 from collections import defaultdict
 from dateutil.tz import tzlocal
 
-DEFAULT_CONFIG = "/".join((os.path.dirname(__file__),
+DEFAULT_CONFIG = "/".join((os.path.dirname(os.path.abspath(__file__)),
                            "data/config.conf.default"))
 LOAD_SECTION = 'general'
 LOAD_OPTION = 'base_filename'

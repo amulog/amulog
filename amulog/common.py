@@ -362,7 +362,7 @@ class Timer:
         if self._dts is None or self._dte is None:
             raise ValueError("call start() and stop() before total_time()")
         else:
-            return self.timestr(self._dte - self._dts)
+            return self._dte - self._dts
 
     def stat(self):
         if len(self._lap_dt) == 1:

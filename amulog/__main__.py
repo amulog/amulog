@@ -6,7 +6,6 @@ Interface to use some functions about Log DB from CLI.
 """
 
 import sys
-import os
 import datetime
 import logging
 import argparse
@@ -39,15 +38,6 @@ def get_targets(ns, conf):
         return get_targets_conf(conf)
     else:
         return get_targets_arg(ns, conf)
-
-
-def generate_testdata(ns):
-    from . import testlog
-    if ns.conf_path is None:
-        conf_path = testlog.DEFAULT_CONFIG
-    else:
-        conf_path = ns.conf_path
-    testlog.generate_testdata(conf_path, ns.file, ns.seed)
 
 
 def data_filter(ns):
@@ -272,7 +262,7 @@ def show_lt_variables(ns):
         reobj = re.compile(r"[0-9]+")
         keys = list(d.keys())
         for k in keys:
-            new_k = reobj.sub("\d", k)
+            new_k = reobj.sub(r"\d", k)
             if k == new_k:
                 pass
             else:
@@ -462,68 +452,6 @@ def show_log(ns):
             print(e.restore_line())
 
 
-def make_crf_train(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
-    from . import lt_crf
-
-    size = int(ns.train_size)
-    method = ns.method
-    d = parse_condition(ns.conditions)
-    ld = log_db.LogData(conf)
-    iterobj = ld.iter_lines(**d)
-    l_train = lt_crf.make_crf_train(conf, iterobj, size, method)
-    print("\n\n".join(l_train))
-
-
-def make_crf_model(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
-    from . import lt_crf
-
-    size = int(ns.train_size)
-    method = ns.method
-    d = parse_condition(ns.conditions)
-    ld = log_db.LogData(conf)
-    iterobj = [lm for lm in ld.iter_lines(**d)]
-    fn = lt_crf.make_crf_model(conf, iterobj, size, method)
-    print("> {0}".format(fn))
-
-
-def make_crf_model_ideal(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
-    from . import lt_crf
-
-    if int(ns.train_size) <= 0:
-        size = None
-    else:
-        size = int(ns.train_size)
-    ld = log_db.LogData(conf)
-    fn = lt_crf.make_crf_model_ideal(conf, ld, size)
-    print("> {0}".format(fn))
-
-
-# def make_lt_mp(ns):
-#    conf = config.open_config(ns.conf_path)
-#    lv = logging.DEBUG if ns.debug else logging.INFO
-#    config.set_common_logging(conf, logger = _logger, lv = lv)
-#    from . import lt_crf
-#    targets = get_targets_opt(ns, conf)
-#    check_import = ns.check_import
-#
-#    s_tpl = lt_crf.generate_lt_mprocess(conf, targets,
-#                                        check_import, pal = ns.pal)
-#    for tpl in s_tpl:
-#        print(" ".join(tpl))
-
-
 def parse_condition(conditions):
     """
     Args:
@@ -553,83 +481,6 @@ def parse_condition(conditions):
         elif key == "area":
             d["area"] = arg.partition("=")[-1]
     return d
-
-
-def measure_crf(ns):
-    ex_defaults = ["/".join((os.path.dirname(__file__),
-                             "data/measure_crf.conf.default"))]
-    conf = config.open_config(ns.conf_path, ex_defaults)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import lt_crf
-
-    timer = common.Timer("measure-crf", output=_logger)
-    timer.start()
-    ma = lt_crf.MeasureAccuracy(conf)
-    if len(ma.results) == 0:
-        raise ValueError("No measure results found")
-    print(ma.info())
-    print()
-    print(ma.result())
-    if ns.failure:
-        from . import log_db
-        ld = log_db.LogData(conf)
-        with open(ns.failure, "w") as f:
-            f.write(ma.failure_report(ld))
-    timer.stop()
-
-
-def measure_crf_multi(ns):
-    from . import lt_crf
-
-    def process_measure_crf(conf, conf_name):
-        _logger.info("process {0} start".format(conf_name))
-        output = "result_" + conf_name
-        ma = lt_crf.MeasureAccuracy(conf)
-        if len(ma.results) == 0:
-            raise ValueError("No measure results found")
-        buf = []
-        buf.append(ma.info())
-        buf.append("")
-        buf.append(ma.result())
-        with open(output, "w") as f:
-            f.write("\n".join(buf))
-        print("> {0}".format(output))
-        _logger.info("process {0} finished".format(conf_name))
-
-    ex_defaults = ["/".join((os.path.dirname(__file__),
-                             "data/measure_crf.conf.default"))]
-    l_conf = [config.open_config(conf_path, ex_defaults)
-              for conf_path in ns.confs]
-    l_conf_name = ns.confs[:]
-    if ns.configset is not None:
-        l_conf += config.load_config_group(ns.configset, ex_defaults)
-        l_conf_name += config.read_config_group(ns.configset)
-
-    if len(l_conf) == 0:
-        sys.exit("No configuration file is given")
-    diff_keys = ["log_template_crf.model_filename"]
-    if not config.check_all_diff(ns.confs, diff_keys, l_conf):
-        print(("This experiment makes no sense because model file "
-               "will be overwritten !"))
-        sys.exit()
-    diff_keys = ns.diff
-    if not config.check_all_diff(ns.confs, diff_keys, l_conf):
-        print("Option value check failed, so exited")
-        sys.exit()
-
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(l_conf[0], logger=_logger, lv=lv)
-
-    import multiprocessing
-    timer = common.Timer("measure-crf-multi task", output=_logger)
-    timer.start()
-    l_process = [multiprocessing.Process(name=args[1],
-                                         target=process_measure_crf,
-                                         args=args)
-                 for args in zip(l_conf, l_conf_name)]
-    common.mprocess_queueing(l_process, ns.pal)
-    timer.stop()
 
 
 def conf_defaults(ns):
@@ -755,18 +606,6 @@ ARG_DBSEARCH = [["conditions"],
 # description, List[args, kwargs], func
 # defined after functions because these settings use functions
 DICT_ARGSET = {
-    "testdata": ["Generate test log data.",
-                 [OPT_DEBUG, ARG_FILE,
-                  [["-c", "--config"],
-                   {"dest": "conf_path", "metavar": "CONFIG",
-                    "action": "store", "default": None,
-                    "help": ("configuration file path for testlog "
-                             "(different from that for amulog)")}],
-                  [["-s", "--seed"],
-                   {"dest": "seed", "metavar": "INT", "action": "store",
-                    "default": 0,
-                    "help": "seed value to generate random values"}]],
-                 generate_testdata],
     "data-filter": ["Straighten data and remove lines of undefined template.",
                     [OPT_CONFIG, OPT_DEBUG, OPT_RECUR,
                      [["-d", "--dirname"],
@@ -898,7 +737,7 @@ DICT_ARGSET = {
                       [OPT_CONFIG, OPT_DEBUG,
                        [["-d", "--digit"],
                         {"dest": "repld", "action": "store_true",
-                         "help": "replace digit to \d"}]],
+                         "help": "replace digit to \\d"}]],
                       show_lt_variables],
     "lttool-breakdown": ["Show variable candidates in a log template.",
                          [OPT_CONFIG, OPT_DEBUG,
@@ -996,41 +835,6 @@ DICT_ARGSET = {
                              {"metavar": "RULE", "action": "store",
                               "help": "word / regular expression"}]],
                            lttool_free_search],
-    "make-crf-train": ["Output CRF training file for given conditions.",
-                       [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,
-                        [["-n", "--train_size"],
-                         {"dest": "train_size", "action": "store",
-                          "type": int, "default": 1000,
-                          "help": "number of training data to sample"}],
-                        [["-m", "--method"],
-                         {"dest": "method", "action": "store",
-                          "default": "all",
-                          "help": "train data sampling method name. "
-                                  "[all, random, random-va] is available."}], ],
-                       make_crf_train],
-    "make-crf-model": ["Output CRF trained model file for given conditions.",
-                       [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,
-                        [["-n", "--train_size"],
-                         {"dest": "train_size", "action": "store",
-                          "type": int, "default": 1000,
-                          "help": "number of training data to sample"}],
-                        [["-m", "--method"],
-                         {"dest": "method", "action": "store",
-                          "default": "all",
-                          "help": "train data sampling method name. "
-                                  "[all, random, random-va] is available."}], ],
-                       make_crf_model],
-    "make-crf-model-ideal": [("Output CRF trained model file "
-                              "in ideal situation "
-                              "(correct log cluster is available)."),
-                             [OPT_CONFIG, OPT_DEBUG, ARG_DBSEARCH,
-                              [["-n", "--train_size"],
-                               {"dest": "train_size", "action": "store",
-                                "type": int, "default": -1,
-                                "help": ("number of training data to sample, "
-                                         "if omitted use all log templates")}],
-                              ],
-                             make_crf_model_ideal],
     #    "make-lt-mp": [("Generate log templates with CRF "
     #                    "in multiprocessing."),
     #                   [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
@@ -1143,6 +947,7 @@ USAGE = ("usage: {0} MODE [options and arguments] ...\n\n"
         "\n\nsee \"{0} MODE -h\" to refer detailed usage".format(sys.argv[0]) + \
         "\nalso see sub-liblary {0}".format(" ".join(["logdag.{0}".format(n)
                                                       for n in SUBLIB]))
+
 
 def _main():
     if len(sys.argv) < 2:

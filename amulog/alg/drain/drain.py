@@ -11,7 +11,7 @@ Drain do not work correctly.
 Do NOT edit log templates manually if you still have unprocessed log data.
 """
 
-from . import lt_common
+from amulog import lt_common
 
 
 class Node:
@@ -24,15 +24,17 @@ class Node:
 class LTGenDrain(lt_common.LTGen):
 
     def __init__(self, table, threshold, depth, vreobj):
-        super(LTGenDrain, self).__init__(table)
+        super().__init__(table)
         self._threshold = threshold
         self._depth = depth
         self._vre = vreobj
         self._root = Node()
 
-    def generate_tpl(self, pline):
-        tid, _ = self.process_line(pline)
-        return self._table[tid]
+    def load(self, loadobj):
+        self._root = loadobj
+
+    def dumpobj(self):
+        return self._root
 
     def process_line(self, pline):
         # preprocess
@@ -66,21 +68,21 @@ class LTGenDrain(lt_common.LTGen):
 
         # update clusters
         if tid is None:
-            tid = self._table.next_tid()
-            state = self.update_table(tokens, tid, True)
+            tid = self.add_tpl(tokens)
             node.clusters.add(tid)
+            state = self.state_added
         else:
-            state = self.update_table(tokens, tid, False)
+            state = self.merge_tpl(tokens, tid)
 
         return tid, state
 
 
-def init_ltgen_drain(conf, table, **kwargs):
+def init_ltgen(conf, table, **_):
     threshold = conf.getfloat("log_template_drain", "threshold")
     depth = conf.getint("log_template_drain", "depth")
 
-    from . import lt_regex
+    from amulog.lt_regex import VariableRegex
     preprocess_fn = conf.get("log_template_drain", "preprocess_rule")
-    vreobj = lt_regex.VariableRegex(conf, preprocess_fn)
+    vreobj = VariableRegex(conf, preprocess_fn)
 
     return LTGenDrain(table, threshold, depth, vreobj)

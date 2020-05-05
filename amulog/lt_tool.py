@@ -97,7 +97,7 @@ def merge_ltid(ld, ltid1, ltid2):
     cnt2 = ld.lt(ltid2).cnt
     if not len(ltw1) == len(ltw2):
         sys.exit("log template length is different, failed")
-    new_ltw = lt_common.merge_lt(ltw1, ltw2, sym)
+    new_ltw = lt_common.merged_template(ltw1, ltw2, sym)
 
     ld.ltm.replace_lt(ltid1, new_ltw, l_s, cnt1 + cnt2)
     ld.ltm.remove_lt(ltid2)
@@ -121,7 +121,7 @@ def separate_ltid(ld, ltid, vid, value):
             if new_lt is None:
                 new_lt = l_w
             else:
-                new_lt = lt_common.merge_lt(new_lt, l_w, sym)
+                new_lt = lt_common.merged_template(new_lt, l_w, sym)
             cnt += 1
         print("result : " + str(new_lt))
         print()

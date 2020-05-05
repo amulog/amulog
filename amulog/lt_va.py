@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""VA (Vaarandi's algorithm) is a simplified algorithm of SLCT and LogCluster.
+It estimates log templates on the basis of an assumption
+'description words appear more frequently than variable words'.
+"""
+
 from collections import defaultdict
 
 from . import lt_common
@@ -19,7 +24,7 @@ class LTGenVA(lt_common.LTGen):
     """
 
     def __init__(self, table, method, threshold):
-        super(LTGenVA, self).__init__(table)
+        super().__init__(table)
         self.method = method
         self.th = threshold
         self._d_wordcnt = defaultdict(int)
@@ -80,50 +85,20 @@ class LTGenVA(lt_common.LTGen):
                 raise ValueError
         return ret
 
-    #def process_init_data(self, plines):
-    #    d = {}
-    #    for pline in plines:
-    #        l_w = pline["words"]
-    #        self._add_dict(l_w)
-
-    #    for mid, pline in enumerate(plines):
-    #        l_w = pline["words"]
-    #        l_label = self._label(l_w)
-    #        tpl = self._label2tpl(l_w, l_label)
-
-    #        if self._table.exists(tpl):
-    #            tid = self._table.get_tid(tpl)
-    #        else:
-    #            tid = self._table.add(tpl)
-    #        d[mid] = tid
-    #    return d
-
     def preprocess(self, plines):
         for pline in plines:
             l_w = pline["words"]
             self._add_dict(l_w)
 
-    def generate_tpl(self, pline):
+    def process_line(self, pline):
         l_w = pline["words"]
         self._add_dict(l_w)
         l_label = self._label(l_w)
-        return self._label2tpl(l_w, l_label)
-
-    #def process_line(self, pline):
-    #    l_w = pline["words"]
-    #    self._add_dict(l_w)
-    #    l_label = self._label(l_w)
-    #    tpl = self._label2tpl(l_w, l_label)
-
-    #    if self._table.exists(tpl):
-    #        tid = self._table.get_tid(tpl)
-    #        return tid, self.state_unchanged
-    #    else:
-    #        tid = self._table.add(tpl)
-    #        return tid, self.state_added
+        tpl = self._label2tpl(l_w, l_label)
+        return self.update_table(tpl)
 
 
-def init_ltgen_va(conf, table, **kwargs):
+def init_ltgen_va(conf, table, **_):
     method = conf.get("log_template_va", "method")
     threshold = conf.getfloat("log_template_va", "threshold")
     return LTGenVA(table, method, threshold)

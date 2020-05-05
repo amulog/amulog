@@ -12,7 +12,7 @@ from .external import regexhash
 _logger = logging.getLogger(__package__)
 
 
-class LTGenImportExternal(lt_common.LTGen):
+class LTGenImportExternal(lt_common.LTGenStateless):
 
     def __init__(self, table, filename, mode, mode_esc, ltmap, head, shuffle=False):
         super(LTGenImportExternal, self).__init__(table)
@@ -65,7 +65,7 @@ class LTGenImportExternal(lt_common.LTGen):
             return None
         else:
             tplid, matchobj = ret
-            tpl = self._rtable.l_tpl[tplid]
+            tpl = self._l_tpl[tplid]
             new_tpl = mod_tplseq.redefine_tpl(tpl, pline, matchobj=matchobj)
             return new_tpl
 

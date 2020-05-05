@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import sys
 import re
+import logging
 import ipaddress
 import configparser
 
-from . import lt_common
-from . import host_alias
+from amulog import lt_common
+from amulog import host_alias
+
+_logger = logging.getLogger(__package__)
 
 
 class VariableRegex:
@@ -33,7 +35,8 @@ class VariableRegex:
         vre_conf = configparser.ConfigParser()
         loaded = vre_conf.read(fn)
         if len(loaded) == 0:
-            sys.exit("opening VariableRegex config {0} failed".format(fn))
+            mes = "VariableRegex config {0} is empty".format(fn)
+            _logger.warning(mes)
 
         t_ext = gettuple(vre_conf, "ext", "rules")
         for rule in t_ext:
@@ -105,7 +108,7 @@ class VariableRegex:
             return None
 
 
-class LTGenRegularExpression(lt_common.LTGen):
+class LTGenRegularExpression(lt_common.LTGenStateless):
 
     def __init__(self, table, vreobj):
         super(LTGenRegularExpression, self).__init__(table)
@@ -121,24 +124,8 @@ class LTGenRegularExpression(lt_common.LTGen):
                 tpl.append(w)
         return tpl
 
-    #def process_line(self, pline):
-    #    l_w = pline["words"]
-    #    tpl = []
-    #    for w in l_w:
-    #        if self._vre.match(w):
-    #            tpl.append(lt_common.REPLACER)
-    #        else:
-    #            tpl.append(w)
 
-    #    if self._table.exists(tpl):
-    #        tid = self._table.get_tid(tpl)
-    #        return tid, self.state_unchanged
-    #    else:
-    #        tid = self._table.add(tpl)
-    #        return tid, self.state_added
-
-
-def init_ltgen_regex(conf, table, **kwargs):
+def init_ltgen_regex(conf, table, **_):
     fn = conf.get("log_template_re", "variable_rule")
     vreobj = VariableRegex(conf, fn)
     return LTGenRegularExpression(table, vreobj)

@@ -18,7 +18,7 @@ data_dir = "/".join((package_name, "data"))
 data_files = ["/".join((data_dir, fn)) for fn in os.listdir(data_dir)]
 
 setup(name='amulog',
-      version='0.0.2',
+      version='0.0.3',
       description='',
       long_description=read_md('README.md'),
       author='Satoru Kobayashi',
@@ -42,5 +42,5 @@ setup(name='amulog',
 
       packages=['amulog'],
       package_data={'amulog': data_files},
-      test_suite="suite.suite"
+      test_suite="tests"
       )

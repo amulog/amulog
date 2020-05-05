@@ -1,59 +1,57 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
 import unittest
+import tempfile
 
-from amulog import common
 from amulog import config
 from amulog import lt_common
-from amulog import lt_crf
-from amulog.crf import convert
 
 
 class TestCRF(unittest.TestCase):
 
     def setUp(self):
         self.data_train = [["ssh N D",
-                      "login N D",
-                      "failure N V",
-                      "from N D",
-                      "192.168.100.1 N V"],
-                      ["su N D",
-                       "user N D",
-                       "sat N V",
-                       "enabled N D"]]
+                            "login N D",
+                            "failure N V",
+                            "from N D",
+                            "192.168.100.1 N V"],
+                           ["su N D",
+                            "user N D",
+                            "sat N V",
+                            "enabled N D"]]
         self.data_test = ["ssh", "auth", "failure",
                           "from", "192.168.100.1", "user", "sat"]
 
+        fd, self._path_trainfile = tempfile.mkstemp()
+        with os.fdopen(fd, 'w') as f:
+            l_buf = []
+            for lines in self.data_train:
+                l_buf.append("\n".join(lines))
+            f.write("\n\n".join(l_buf))
 
-    def test_label_train(self):
-        converter = convert.FeatureExtracter()
-        for data_line in self.data_train:
-            lineitem = [item.split() for item in data_line]
-            fset = converter.feature(lineitem)
-            self.assertEqual(len(fset), len(data_line))
-            for fsubset in fset.items():
-                self.assertTrue(len(fsubset) > 0)
+        fd, self._path_model = tempfile.mkstemp()
+        os.close(fd)
+
+    def tearDown(self):
+        os.remove(self._path_trainfile)
+        os.remove(self._path_model)
 
     def test_tagging(self):
+        from amulog.alg.crf import init_ltgen
         conf = config.open_config()
-        sym = conf.get("log_template", "variable_symbol")
+        conf["log_template_crf"]["model_filename"] = self._path_model
+
         table = lt_common.TemplateTable()
-        #converter = convert.FeatureExtracter()
-        ltgen = lt_crf.LTGenCRF(table, sym, conf)
-
-        l_items = []
-        for data_line in self.data_train:
-            lineitem = [item.split() for item in data_line]
-            l_items.append(lineitem) 
+        ltgen = init_ltgen(conf, table)
         ltgen.init_trainer()
-        ltgen.train(l_items)
+        ltgen.train_from_file(self._path_trainfile)
 
-        tid, state = ltgen.process_line(self.data_test, None)
-        tpl = ltgen._table.get_template(tid)
+        tmp_pline = {"words": self.data_test}
+        tpl = ltgen.generate_tpl(tmp_pline)
         self.assertTrue("ssh" in tpl)
-        self.assertTrue(sym in tpl)
-        common.rm(ltgen.model)
+        self.assertTrue(lt_common.REPLACER in tpl)
 
 
 if __name__ == "__main__":

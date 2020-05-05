@@ -360,7 +360,7 @@ class LogData:
         Returns:
             LogMessage: An annotated log message instance.
         """
-        kwargs = {"ltid" : ltid,
+        kwargs = {"ltid": ltid,
                   "dt": pline["timestamp"],
                   "host": pline["host"],
                   "l_w": pline["words"]}
@@ -415,7 +415,7 @@ class LogDB:
 
         if edit:
             if self.db.db_exists():
-                if reset_db == True:
+                if reset_db:
                     self.db.reset()
                     self._init_tables()
                     self._init_area()
@@ -423,7 +423,7 @@ class LogDB:
                     self._line_cnt = self.count_lines()
                     self._init_lttable()
             else:
-                if reset_db == True:
+                if reset_db:
                     _logger.warning(
                         "Requested to reset DB, but database not found")
                 self._init_tables()
@@ -896,7 +896,7 @@ class RestoreOriginalData(object):
             _logger.info("RestoreOriginalData was requested to reset files")
             common.rm_dirchild(dirname)
 
-        assert self.style in ("date", )
+        assert self.style in ("date", "")
         assert self.method in ("incremental", "commit")
         if self.method == "commit":
             self.buf = defaultdict(list)
@@ -971,6 +971,14 @@ def load_log2seq(conf):
     else:
         rules = log2seq.load_from_script(fp)
         return log2seq.init_parser(rules)
+
+
+def log2seq_weight_save(pline):
+    unused_keys = ["year", "month", "day", "hour", "minute", "second", "tz",
+                   "message"]
+    for key in unused_keys:
+        if key in pline:
+            del pline[key]
 
 
 def init_failure_log(conf):
@@ -1127,24 +1135,26 @@ def process_files_offline(conf, targets, isnew_check=False):
     latest = ld.dt_term()[1] if isnew_check else None
     drop_undefhost = conf.getboolean("database", "undefined_host")
 
-    l_line = []
-    for f in iter_files(targets):
-        for msg in f:
-            pline = parse_line(msg, lp)
-            if pline is None:
-                continue
-            dt = pline["timestamp"]
-            if latest is not None and dt < latest:
-                _logger.debug(
-                    "pass message with excluded timestamp {0}".format(dt))
-                continue
-            pline = normalize_host(msg, pline, ha, fl, drop_undefhost)
-            if pline is None:
-                continue
+    def _load_plines():
+        for f in iter_files(targets):
+            for msg in f:
+                pline = parse_line(msg, lp)
+                if pline is None:
+                    continue
+                dt = pline["timestamp"]
+                if latest is not None and dt < latest:
+                    _logger.debug(
+                        "pass message with excluded timestamp {0}".format(dt))
+                    continue
+                pline = normalize_host(msg, pline, ha, fl, drop_undefhost)
+                if pline is None:
+                    continue
 
-            l_line.append(pline)
+                yield pline
 
-    for ltline, pline, in zip(ld.ltm.process_init_data(l_line),
+    l_line = [pline for pline in _load_plines()]
+
+    for ltline, pline, in zip(ld.ltm.process_offline(l_line),
                               l_line):
         ld.add_line(ltline.ltid, pline)
 
@@ -1310,10 +1320,16 @@ def data_from_db(conf, dirname, method, reset):
 def data_from_data(conf, targets, dirname, method, reset):
     rod = RestoreOriginalData(dirname, method=method, reset=reset)
     lp = load_log2seq(conf)
-    for fp in targets:
-        with open(fp, 'r', encoding='utf-8') as f:
-            for line in f:
-                linestr = line.rstrip("\n")
-                dt, org_host, l_w, l_s = lp.process_line(line)
-                rod.add_str(dt, linestr)
+    ha = host_alias.init_hostalias(conf)
+    drop_undefhost = conf.getboolean("database", "undefined_host")
+    for f in iter_files(targets):
+        for line in f:
+            pline = parse_line(line, lp)
+            if pline is None:
+                continue
+            dt = pline["timestamp"]
+            pline = normalize_host(line, pline, ha, None, drop_undefhost)
+            if pline is None:
+                continue
+            rod.add_str(dt, line)
     rod.commit()

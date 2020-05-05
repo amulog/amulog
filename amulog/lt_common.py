@@ -1,4 +1,4 @@
-    #!/usr/bin/env python
+#!/usr/bin/env python
 # coding: utf-8
 
 import os
@@ -6,8 +6,8 @@ import re
 import pickle
 import logging
 from collections import defaultdict
+from importlib import import_module
 
-from . import common
 from . import config
 from . import strutil
 
@@ -40,7 +40,6 @@ class LTManager(object):
     def __init__(self, conf, db, lttable, reset_db):
         self._reset_db = reset_db
         self.filename = conf.get("log_template", "indata_filename")
-        self.pickle_comp = conf.get("general", "pickle_compatible")
 
         self._db = db
         self._lttable = lttable
@@ -60,22 +59,13 @@ class LTManager(object):
     def set_ltspl(self, ltspl):
         self._ltspl = ltspl
 
-    def process_init_data(self, plines):
-        self._ltgen.preprocess(plines)
-
-        #d_tid = {}
-        #for mid, pline in enumerate(plines):
-        #    tid, _ = self._ltgen.process_line(pline)
-        #    if tid is not None:
-        #        next_iterobj.append((mid, pline))
-        #    else:
-        #        d_tid[mid] = tid
-        #iterobj = next_iterobj
+    def process_offline(self, plines):
+        d_tid = self._ltgen.process_offline(plines)
 
         for mid, pline in enumerate(plines):
             l_w = pline["words"]
             l_s = pline["symbols"]
-            tid, _ = self._ltgen.process_line(pline)
+            tid = d_tid[mid]
             tpl = self._table[tid]
             ltw = self._ltspl.replace_variable(l_w, tpl, REPLACER)
             ltid = self._ltspl.search(tid, ltw)
@@ -110,15 +100,6 @@ class LTManager(object):
 
         l_w = pline["words"]
         l_s = pline["symbols"]
-        #tid = None
-        #state = None
-            #tid, state = ltgen.process_line(pline)
-            #if tid is not None:
-            #    break
-            #else:
-            #    msg = "Not found with {0}".format(ltgen.__class__.__name__)
-            #    _logger.debug(msg)
-            #    return None
         tid, state = self._ltgen.process_line(pline)
         if tid is None:
             return None
@@ -168,7 +149,7 @@ class LTManager(object):
         self._db.update_lt(ltid, l_w, l_s, cnt)
 
     def replace_and_count_lt(self, ltid, l_w, l_s=None):
-        cnt = self._lttable[ltid].count()
+        cnt = self._lttable[ltid].add()
         self._lttable[ltid].replace(l_w, l_s, None)
         self._db.update_lt(ltid, l_w, l_s, cnt)
 
@@ -182,7 +163,7 @@ class LTManager(object):
 
     def remake_ltg(self):
         self._db.reset_ltg()
-        self._ltgroup.init_dict()
+        self._ltgroup._init_dict()
         temp_lttable = self._lttable
         self._ltgroup._lttable = LTTable()
 
@@ -194,26 +175,20 @@ class LTManager(object):
         assert self._ltgroup._lttable.ltdict == temp_lttable.ltdict
 
     def load(self):
-        kwargs = common.pickle_comp_args(self.pickle_comp)
         with open(self.filename, 'rb') as f:
-            obj = pickle.load(f, **kwargs)
+            obj = pickle.load(f)
         table_data, ltgen_data, ltgroup_data = obj
         self._table.load(table_data)
         self._ltgen.load(ltgen_data)
-        #for ltgen, ltgen_data in zip(self._l_ltgen, ltgen_data_all):
-        #    ltgen.load(ltgen_data)
         self._ltgroup.load(ltgroup_data)
 
     def dump(self):
-        # kwargs = common.pickle_comp_args(self.pickle_comp)
         table_data = self._table.dumpobj()
         ltgen_data = self._ltgen.dumpobj()
-        #ltgen_data_all = [ltgen.dumpobj() for ltgen in self._l_ltgen]
         ltgroup_data = self._ltgroup.dumpobj()
         obj = (table_data, ltgen_data, ltgroup_data)
         with open(self.filename, 'wb') as f:
             pickle.dump(obj, f)
-            # pickle.dump(obj, f, **kwargs)
 
 
 class LTTable:
@@ -400,6 +375,7 @@ class TemplateTable:
 
 
 class LTGen(object):
+    stateful = True
     state_added = 0
     state_changed = 1
     state_unchanged = 2
@@ -407,21 +383,42 @@ class LTGen(object):
     def __init__(self, table: TemplateTable):
         self._table = table
 
-    def update_table(self, l_w, tid, added_flag):
-        if added_flag:
-            new_tid = self._table.add(l_w)
-            assert new_tid == tid
-            return self.state_added
-        else:
-            old_tpl = self._table[tid]
-            new_tpl = merge_lt(old_tpl, l_w)
-            if old_tpl == new_tpl:
-                return self.state_unchanged
-            else:
-                self._table.replace(tid, new_tpl)
-                return self.state_changed
+    def get_tpl(self, tid):
+        return self._table[tid]
 
-    def process_init_data(self, plines):
+    def add_tpl(self, ltw, tid=None):
+        if tid is None:
+            tid = self._table.add(ltw)
+        return tid
+
+    def update_tpl(self, ltw, tid):
+        self._table.replace(tid, ltw)
+
+    def merge_tpl(self, l_w, tid):
+        old_tpl = self._table[tid]
+        new_tpl = merged_template(old_tpl, l_w)
+        if old_tpl == new_tpl:
+            return self.state_unchanged
+        else:
+            self.update_tpl(new_tpl, tid)
+            return self.state_changed
+
+    def update_table(self, tpl):
+        if tpl is None:
+            return None, None
+        elif self._table.exists(tpl):
+            tid = self._table.get_tid(tpl)
+            return tid, self.state_unchanged
+        else:
+            tid = self._table.add(tpl)
+            return tid, self.state_added
+
+    def preprocess(self, plines):
+        """This function do the pre-process for given data if needed.
+        This function is called by process_init_data."""
+        pass
+
+    def process_offline(self, plines):
         """If there is no need of special process for init phase,
         this function simply call process_line multiple times.
         """
@@ -431,11 +428,6 @@ class LTGen(object):
             tid, state = self.process_line(pline)
             d[mid] = tid
         return d
-
-    def preprocess(self, plines):
-        """This function do the preprocess for given data if needed.
-        This function is called by process_init_data."""
-        pass
 
     def process_line(self, pline):
         """Estimate log template for given message.
@@ -448,21 +440,33 @@ class LTGen(object):
             tid (int): A template id in TemplateTable.
             state (int)
         """
-        tpl = self.generate_tpl(pline)
-        return self.match_table(tpl)
+        raise NotImplementedError
+
+    def postprocess(self, plines):
+        """This function do the post-process for given data if needed.
+        This function is called by process_init_data."""
+        pass
+
+    def load(self, loadobj):
+        raise NotImplementedError
+
+    def dumpobj(self):
+        raise NotImplementedError
+
+
+class LTGenStateless(LTGen):
+
+    """Subclasses of LTGenStateless is acceptable
+    for multiprocessing in offline template generation."""
+
+    stateful = False
 
     def generate_tpl(self, pline):
         raise NotImplementedError
 
-    def match_table(self, tpl):
-        if tpl is None:
-            return None, None
-        elif self._table.exists(tpl):
-            tid = self._table.get_tid(tpl)
-            return tid, self.state_unchanged
-        else:
-            tid = self._table.add(tpl)
-            return tid, self.state_added
+    def process_line(self, pline):
+        tpl = self.generate_tpl(pline)
+        return self.update_table(tpl)
 
     def load(self, loadobj):
         pass
@@ -474,24 +478,21 @@ class LTGen(object):
 class LTGenJoint(LTGen):
 
     def __init__(self, table: TemplateTable, l_ltgen, ltgen_import_index=None):
-        super(LTGenJoint, self).__init__(table)
+        super().__init__(table)
         self._l_ltgen = l_ltgen
         self._import_index = ltgen_import_index
 
     def _update_ltmap(self, pline, index, tid, state):
+        from .lt_import import LTGenImport
         if (self._import_index is not None) and \
                 (not index == self._import_index):
-            ltgen_import = self._l_ltgen[self._import_index]
+            ltgen_import: LTGenImport = self._l_ltgen[self._import_index]
             if state == self.state_added:
-                ltgen_import.add_tpl(pline["words"])
+                ltgen_import.add_definition(pline["words"])
             elif state == self.state_changed:
                 old_tpl = self._table.get_updated()
                 new_tpl = self._table.get_template(tid)
-                ltgen_import.update_tpl(old_tpl, new_tpl)
-
-    def generate_tpl(self, pline):
-        tid, _ = self.process_line(pline)
-        return self._table[tid]
+                ltgen_import.update_definition(old_tpl, new_tpl)
 
     def process_line(self, pline):
         for index, ltgen in enumerate(self._l_ltgen):
@@ -513,6 +514,54 @@ class LTGenJoint(LTGen):
         return [ltgen.dumpobj() for ltgen in self._l_ltgen]
 
 
+class LTGenMultiProcess(LTGen):
+
+    _ltgen: LTGenStateless
+
+    def __init__(self, table: TemplateTable, n_proc, kwargs):
+        super().__init__(table)
+        self._n_proc = n_proc
+        self._ltgen = init_ltgen(**kwargs)
+        assert not self._ltgen.stateful, \
+            "multiprocessing is limited to stateless methods"
+
+        from multiprocessing import Pool
+        self._pool = Pool(processes=self._n_proc)
+
+    def load(self, _):
+        pass
+
+    def dumpobj(self):
+        return None
+
+    @staticmethod
+    def _task(args):
+        ltgen, message_id, pline = args
+        template = ltgen.generate_tpl(pline)
+        return message_id, template
+
+    def process_line(self, _):
+        raise ValueError("use process_offline")
+
+    def process_offline(self, plines):
+        l_args = [(self._ltgen, mid, pline)
+                  for mid, pline in enumerate(plines)]
+        try:
+            d_tpl = {}
+            for mid, tpl in self._pool.imap_unordered(self._task, l_args):
+                d_tpl[mid] = tpl
+            self._pool.close()
+        except KeyboardInterrupt:
+            self._pool.terminate()
+            exit()
+        else:
+            ret = {}
+            for mid, tpl in d_tpl.items():
+                tid, _ = self.update_table(tpl)
+                ret[mid] = tid
+            return ret
+
+
 class LTGroup(object):
 
     # usually used as super class of other ltgroup
@@ -520,15 +569,15 @@ class LTGroup(object):
     # (ltgid is always same as ltid)
 
     def __init__(self):
-        self.init_dict()
+        self._init_dict()
 
-    def init_dict(self):
-        self.d_group = {}  # key : groupid, val : [ltline, ...]
-        self.d_rgroup = {}  # key : ltid, val : groupid
+    def _init_dict(self):
+        self._d_group = {}  # key : groupid, val : [ltline, ...]
+        self._d_rgroup = {}  # key : ltid, val : groupid
 
     def _next_groupid(self):
         cnt = 0
-        while cnt in self.d_group:
+        while cnt in self._d_group:
             cnt += 1
         else:
             return cnt
@@ -539,13 +588,13 @@ class LTGroup(object):
         return gid
 
     def add_ltid(self, gid, ltline):
-        self.d_group.setdefault(gid, []).append(ltline)
-        self.d_rgroup[ltline.ltid] = gid
+        self._d_group.setdefault(gid, []).append(ltline)
+        self._d_rgroup[ltline.ltid] = gid
 
     def restore_ltg(self, db, table):
         for ltid, ltgid in db.iter_ltg_def():
-            self.d_group.setdefault(ltgid, []).append(table[ltid])
-            self.d_rgroup[ltid] = ltgid
+            self._d_group.setdefault(ltgid, []).append(table[ltid])
+            self._d_rgroup[ltid] = ltgid
 
     def load(self, loadobj):
         pass
@@ -620,6 +669,7 @@ class VariableLabelRule(object):
 class VariableLabelHost(VariableLabelRule):
 
     def __init__(self, conf):
+        super().__init__()
         from . import host_alias
         self.ha = host_alias.init_hostalias(conf)
 
@@ -627,49 +677,61 @@ class VariableLabelHost(VariableLabelRule):
         return self.ha.get_group(w)
 
 
-def init_ltgen_methods(conf, table, lt_methods=None, shuffle=False):
+def init_ltgen(conf, table, method, shuffle=False):
+    kwargs = {"conf": conf,
+              "table": table,
+              "shuffle": shuffle}
+    if method == "import":
+        from . import lt_import
+        return lt_import.init_ltgen_import(**kwargs)
+    elif method == "import-ext":
+        from . import lt_import_ext
+        return lt_import_ext.init_ltgen_import_ext(**kwargs)
+    elif method == "crf":
+        from amulog.alg.crf import lt_crf
+        return lt_crf.init_ltgen_crf(**kwargs)
+    elif method == "re":
+        from amulog import lt_regex
+        return lt_regex.init_ltgen_regex(**kwargs)
+    elif method == "va":
+        from . import lt_va
+        return lt_va.init_ltgen_va(**kwargs)
+    else:
+        modname = "amulog.alg." + method
+        alg_module = import_module(modname)
+        return alg_module.init_ltgen(**kwargs)
 
-    def _method2ltgen(kwargs, method):
-        if method == "import":
-            from . import lt_import
-            return lt_import.init_ltgen_import(**kwargs)
-        elif method == "import-ext":
-            from . import lt_import_ext
-            return lt_import_ext.init_ltgen_import_ext(**kwargs)
-        elif method == "shiso":
-            from . import lt_shiso
-            return lt_shiso.init_ltgen_shiso(**kwargs)
-        elif method == "drain":
-            from . import lt_drain
-            return lt_drain.init_ltgen_drain(**kwargs)
-        elif method == "crf":
-            from . import lt_crf
-            return lt_crf.init_ltgen_crf(**kwargs)
-        elif method == "re":
-            from . import lt_regex
-            return lt_regex.init_ltgen_regex(**kwargs)
-        elif method == "va":
-            from . import lt_va
-            return lt_va.init_ltgen_va(**kwargs)
-        else:
-            raise ValueError("lt_alg({0}) invalid".format(method))
 
+def init_ltgen_methods(conf, table, lt_methods=None, shuffle=False,
+                       multiprocess=None):
     if lt_methods is None:
         lt_methods = config.getlist(conf, "log_template", "lt_methods")
+    if multiprocess is None:
+        multiprocess = conf.getboolean("log_template", "ltgen_multiprocess")
     ltgen_kwargs = {"conf": conf,
                     "table": table,
                     "shuffle": shuffle}
 
-    if len(lt_methods) == 1:
-        return _method2ltgen(ltgen_kwargs, lt_methods[0])
+    if multiprocess:
+        n_proc = conf["log_template"]["n_proc"].strip()
+        if n_proc.isdigit():
+            n_proc = int(n_proc)
+        else:
+            n_proc = None
+        assert len(lt_methods) == 1, \
+            "for multiprocessing, lt_methods should be single"
+        ltgen_kwargs["method"] = lt_methods[0]
+        return LTGenMultiProcess(table, n_proc, ltgen_kwargs)
     elif len(lt_methods) > 1:
         l_ltgen = []
         import_index = None
-        for mid, mname in enumerate(lt_methods):
-            l_ltgen.append(_method2ltgen(ltgen_kwargs, mname))
-            if mname == "import":
+        for mid, method_name in enumerate(lt_methods):
+            l_ltgen.append(init_ltgen(conf, table, method_name, shuffle))
+            if method_name == "import":
                 import_index = mid
         return LTGenJoint(table, l_ltgen, import_index)
+    elif len(lt_methods) == 1:
+        return init_ltgen(conf, table, lt_methods[0], shuffle)
     else:
         raise ValueError
 
@@ -683,17 +745,17 @@ def init_ltmanager(conf, db, table, reset_db):
 
     ltg_alg = conf.get("log_template", "ltgroup_alg")
     if ltg_alg == "shiso":
-        from . import lt_shiso
-        ltgroup = lt_shiso.LTGroupSHISO(table,
-                                        ngram_length=conf.getint(
+        from amulog.alg.shiso import shiso
+        ltgroup = shiso.LTGroupSHISO(table,
+                                     ngram_length=conf.getint(
                                             "log_template_shiso", "ltgroup_ngram_length"),
-                                        th_lookup=conf.getfloat(
+                                     th_lookup=conf.getfloat(
                                             "log_template_shiso", "ltgroup_th_lookup"),
-                                        th_distance=conf.getfloat(
+                                     th_distance=conf.getfloat(
                                             "log_template_shiso", "ltgroup_th_distance"),
-                                        mem_ngram=conf.getboolean(
+                                     mem_ngram=conf.getboolean(
                                             "log_template_shiso", "ltgroup_mem_ngram")
-                                        )
+                                     )
     elif ltg_alg == "ssdeep":
         from . import lt_misc
         ltgroup = lt_misc.LTGroupFuzzyHash(table)
@@ -713,7 +775,7 @@ def init_ltmanager(conf, db, table, reset_db):
     return ltm
 
 
-def merge_lt(m1, m2):
+def merged_template(m1, m2):
     """Return common area of log message (to be log template)"""
     ret = []
     for w1, w2 in zip(m1, m2):

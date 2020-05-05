@@ -4,32 +4,34 @@
 import os
 import logging
 
-from . import common
-from . import lt_common
-from . import lt_misc
+from amulog import common
+from amulog import lt_common
+from amulog import lt_search
 
 _logger = logging.getLogger(__package__)
 
 
-class LTGenImport(lt_common.LTGen):
+class LTGenImport(lt_common.LTGenStateless):
 
     def __init__(self, table, filename, mode, ltmap, lp, shuffle=False):
         super(LTGenImport, self).__init__(table)
         self._table = table
         self._d_def = common.IDDict(lambda x: tuple(x))
-        self._ltmap = lt_misc.init_ltsearcher(ltmap)
+        self._ltmap = lt_search.init_searcher(ltmap)
         self._lp = lp
         self._open_def(filename, mode, shuffle)
 
-    def get_ltmap(self):
-        return self._ltmap
-
     def _open_def(self, filename, mode, shuffle):
+        if filename.strip() == "":
+            errmes = "lt_import initialized with empty template set"
+            _logger.info(errmes)
+            return
+        elif not os.path.exists(filename):
+            errmes = ("log_template_import.def_path {0} is invalid".format(
+                filename))
+            raise IOError(errmes)
+
         cnt = 0
-        if not os.path.exists(filename):
-            errmes = ("log_template_import.def_path"
-                      " {0} is invalid".format(filename))
-            raise ValueError(errmes)
         with open(filename, 'r') as f:
             for line in f:
                 if mode == "plain":
@@ -43,17 +45,17 @@ class LTGenImport(lt_common.LTGen):
                 if len(mes) == 0:
                     continue
                 ltw, lts = self._lp.process_message(mes)
-                self.add_tpl(ltw)
+                self.add_definition(ltw)
                 cnt += 1
         _logger.info("{0} template imported".format(cnt))
         if shuffle:
             self._ltmap.shuffle()
 
-    def add_tpl(self, ltw):
+    def add_definition(self, ltw):
         defid = self._d_def.add(ltw)
         self._ltmap.add(defid, ltw)
 
-    def update_tpl(self, old_ltw, new_ltw):
+    def update_definition(self, old_ltw, new_ltw):
         defid = self._ltmap.search(old_ltw)
         self._ltmap.remove(defid, old_ltw)
         self._d_def.set_item(defid, new_ltw)
@@ -64,14 +66,15 @@ class LTGenImport(lt_common.LTGen):
         if defid is None:
             return None
         else:
-            return self._d_def.get(defid)
+            tpl = self._d_def.get(defid)
+            return tpl
 
 
-def init_ltgen_import(conf, table, shuffle=False, **kwargs):
+def init_ltgen_import(conf, table, shuffle=False, **_):
     fn = conf.get("log_template_import", "def_path")
     mode = conf.get("log_template_import", "import_format")
     ltmap = conf.get("log_template_import", "search_method")
-    from . import log_db
+    from amulog import log_db
     lp = log_db.load_log2seq(conf)
     return LTGenImport(table, fn, mode, ltmap, lp, shuffle)
 

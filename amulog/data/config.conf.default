@@ -18,9 +18,6 @@ src_recur = false
 # If empty, output log on stderr
 logging = auto.log
 
-# Not supported (TODO)
-pickle_compatible = false
-
 # Output lines that are not stored into DB
 # Reasons: no_tpl, unknown_host
 fail_output = lt_fail.json
@@ -97,7 +94,15 @@ default_year =
 
 # 1st step algorithms / methods to generate log templates
 # [shiso, va, crf, import] are available
-lt_alg = shiso
+lt_methods = shiso
+
+# Use multiprocessing (only available for stateless methods)
+ltgen_multiprocess = false
+
+# Number of processes for multiprocessing
+# if None, use os.cpu_count()
+n_proc =
+
 
 # 2nd step algorithms / methods
 # especially for classifying log templates with different length
@@ -213,13 +218,48 @@ threshold = 0.3
 preprocess_rule =
 
 
+[log_template_fttree]
+max_child = 6
+cut_depth = 3
+type_func = none
+
+
+[log_template_dlog]
+preprocess_rule =
+
+
+[log_template_lenma]
+threshold = 0.9
+n_same_count = 3
+use_head_rule = True
+
+
 [log_template_crf]
 
 model_filename = crf_model
 verbose = false
-feature_template = 
+feature_template =
+
+# options for sampling training data from DB
+# sample_method: one of ["all", "random", "ltgen", "leak"]
+# "ltgen" make temporal templates for fair sampling with smaple_lt_methods
+# "leak" uses template cluster definition in original DB (do not use for accuracy measurement)
+# sample_lt_methods: same as log_template.lt_methods
+# n_sample: number of sampled log messages
+sample_method = random
+n_sample = 1000
+sample_lt_methods = va
+sample_lt_multiprocess = false
+
+# use middle label estimated with regular expressions
+# middle_label_rule: same as log_template_re.variable_regex
 middle_label_rule = 
 unknown_key_weight = 1.0
+
+# If log_template_crf.normalizer_conf specified,
+# the inpu words are normalized with log-normalizer (currently not public)
+normalizer_conf =
+normalizer_rule = DEFAULT
 
 
 [visual]
@@ -233,8 +273,17 @@ ltlabel_default_group = None
 
 
 [eval]
+# Input data of online accuracy measurement
+# train is preliminary learned, but not used to calculate accuracy
+# If none, train is empty and test is equal to general.src_path
+online_train_input =
+online_test_input =
+
+# Result dump directories
 ltgen_answer_dir = measure_ltgen_answer
 ltgen_trial_dir = measure_ltgen_trial
+
+# Number of trials to calculate average accuracy / processing time
 n_trial_accuracy = 10
 n_trial_time = 5
 

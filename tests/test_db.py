@@ -1,46 +1,52 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
 import unittest
+import tempfile
 
-from amulog import common
 from amulog import config
-from amulog import testlog
 from amulog import log_db
+
+from . import testlog
 
 
 class TestDB(unittest.TestCase):
-    
-    def test_db_sqlite3(self):
-        path_testlog = "/tmp/amulog_testlog"
-        path_db = "/tmp/amulog_db"
 
-        conf = config.open_config()
-        path_testlog = conf['general']['src_path']
-        path_db = conf['database']['sqlite3_filename']
+    def setUp(self):
+        fd_testlog, self._path_testlog = tempfile.mkstemp()
+        os.close(fd_testlog)
+        fd_testdb, self._path_testdb = tempfile.mkstemp()
+        os.close(fd_testdb)
+        fd_ltgendump, self._path_ltgendump = tempfile.mkstemp()
+        os.close(fd_ltgendump)
 
-        tlg = testlog.TestLogGenerator(testlog.DEFAULT_CONFIG, seed = 3)
-        tlg.dump_log(path_testlog)
+        self._conf = config.open_config()
+        self._conf['general']['src_path'] = self._path_testlog
+        self._conf['database']['sqlite3_filename'] = self._path_testdb
+        self._conf['log_template']['indata_filename'] = self._path_ltgendump
 
-        l_path = config.getlist(conf, "general", "src_path")
-        if conf.getboolean("general", "src_recur"):
-            targets = common.recur_dir(l_path)
-        else:
-            targets = common.rep_dir(l_path)
-        log_db.process_files_online(conf, targets, True)
+        tlg = testlog.TestLogGenerator(testlog.DEFAULT_CONFIG, seed=3)
+        tlg.dump_log(self._path_testlog)
 
-        ld = log_db.LogData(conf)
+    def tearDown(self):
+        os.remove(self._path_testlog)
+        os.remove(self._path_testdb)
+        os.remove(self._path_ltgendump)
+
+    def test_000_makedb(self):
+        from amulog import __main__ as amulog_main
+        targets = amulog_main.get_targets_conf(self._conf)
+        log_db.process_files_online(self._conf, targets, reset_db=True)
+
+        ld = log_db.LogData(self._conf)
         num = ld.count_lines()
         self.assertEqual(num, 6539,
                          "not all logs added to database")
         ltg_num = len([gid for gid in ld.iter_ltgid()])
-        self.assertTrue(ltg_num > 3 and ltg_num < 10,
+        self.assertTrue(3 < ltg_num < 10,
                         ("log template generation fails? "
                          "(groups: {0})".format(ltg_num)))
-        
-        del ld
-        common.rm(path_testlog)
-        common.rm(path_db)
 
 
 if __name__ == "__main__":
