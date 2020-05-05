@@ -1091,6 +1091,7 @@ def process_files_online(conf, targets, reset_db, isnew_check=False,
             False otherwise. 
         isnew_check (Optional[bool]): If True, add message to DB
             only if its timestamp is newest of existing messages in DB.
+        dry (Optional[bool]): for dry-run (no database-io)
 
     Raises:
         IOError: If a file in targets not found.

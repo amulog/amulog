@@ -20,7 +20,7 @@ logging = auto.log
 
 # Output lines that are not stored into DB
 # Reasons: no_tpl, unknown_host
-fail_output = lt_fail.json
+fail_output = lt_fail
 
 # Another configparser filename, to add any options without warnings
 # Use this to define new options for private use
@@ -94,7 +94,7 @@ default_year =
 
 # 1st step algorithms / methods to generate log templates
 # [shiso, va, crf, import] are available
-lt_methods = shiso
+lt_methods = drain
 
 # Use multiprocessing (only available for stateless methods)
 ltgen_multiprocess = false
@@ -103,36 +103,21 @@ ltgen_multiprocess = false
 # if None, use os.cpu_count()
 n_proc =
 
-
 # 2nd step algorithms / methods
 # especially for classifying log templates with different length
 # [shiso, none] are available
 # (none : with no grouping)
-ltgroup_alg = shiso
+ltgroup_alg = none
 
 # Post process algorithms / methods
 # [host, dummy] are available
 # Note : If you use postprocess to split variables,
-#   it is not recommended to use ltgroup (=> ltgroup_alg = none)
+#        it is not recommended to use ltgroup (=> ltgroup_alg = none)
 post_alg = dummy
 
 # Output filename of internal data for log template generation
-# Do NOT share among multiple log template generation algorithms
-indata_filename = lt.dump
-
-# Definition file of symbol strings to split log messages
-# If empty, use default rule (symdef.txt.sample)
-sym_filename = 
-
-# Ignore splitting symbol strings in log template generation
-# In many cases this option enables speeding up in exchange for precision
-sym_ignore = true
-
-# Symbol string to abstract variable strings in log templates
-# that must not appear in raw log messages
-variable_symbol = **
-labeled_variable_symbol_header = *
-labeled_variable_symbol_footer = *
+# Used to restart template generation with command db-add
+indata_filename = ltgen.dump
 
 
 [log_template_import]
@@ -142,13 +127,19 @@ labeled_variable_symbol_footer = *
 def_path = 
 
 # Log template definition file format for "import"
-# [plain, ids]
-# plain: without headers(datetime and host)
-# ids: the top word is ignored as template identifier
+# The templates are basically given as a text file.
+# Each line defines a log template.
+# A template is corresponding to log messages without headers(datetime and host).
+#
+# import_format: one of [plain, manual]
+# plain: Automatically generated format with command show-lt-import
+#        (i.e., segmented and escaped)
+# manual: unsegmented and unescaped
 import_format = plain
 
-# Log template matching algorithm
-# [tree, table]
+# Log template matching algorithm, one of [tree, table]
+# tree is scalable, recommended
+# If the number of given templates is small, table is a little faster than tree
 search_method = tree
 
 # If true, newly generated templates with lt_alg methods (including lt_import_ext)

@@ -5,6 +5,7 @@ import os
 import logging
 
 from amulog import common
+from amulog import strutil
 from amulog import lt_common
 from amulog import lt_search
 
@@ -36,9 +37,9 @@ class LTGenImport(lt_common.LTGenStateless):
             for line in f:
                 if mode == "plain":
                     mes = line.rstrip("\n")
-                elif mode == "ids":
-                    line = line.rstrip("\n")
-                    mes = line.partition(" ")[2].strip()
+                elif mode == "manual":
+                    pline = self._lp.process_message(strutil.add_esc(line))
+                    mes = pline["words"]
                 else:
                     raise ValueError("invalid import_mode {0}".format(
                         mode))
@@ -77,43 +78,3 @@ def init_ltgen_import(conf, table, shuffle=False, **_):
     from amulog import log_db
     lp = log_db.load_log2seq(conf)
     return LTGenImport(table, fn, mode, ltmap, lp, shuffle)
-
-
-#def search_exception(conf, targets, form):
-#    table = lt_common.TemplateTable()
-#    ltgen = init_ltgen_import(conf, table)
-#    from . import log_db
-#    lp = log_db.load_log2seq(conf)
-#
-#    for fp in targets:
-#        _logger.info("lt_import job for ({0}) start".format(fp))
-#        with open(fp, "r") as f:
-#            for line in f:
-#                pline = lp.process_line(line)
-#                tid, dummy = ltgen.process_line(pline)
-#                if tid is None:
-#                    print(pline["message"])
-#        _logger.info("lt_import job for ({0}) done".format(fp))
-#
-#
-#def filter_org(conf, targets, dirname, style="date", method="commit"):
-#    from . import strutil
-#    table = lt_common.TemplateTable()
-#    ltgen = init_ltgen_import(conf, table)
-#    from . import log_db
-#    lp = log_db.load_log2seq(conf)
-#    rod = log_db.RestoreOriginalData(dirname, style=style, method=method)
-#
-#    for fp in targets:
-#        _logger.info("lt_import job for ({0}) start".format(fp))
-#        with open(fp, "r") as f:
-#            for line in f:
-#                pline = lp.process_line(strutil.add_esc(line))
-#                l_w = pline["words"]
-#                if l_w is None or len(l_w) == 0:
-#                    continue
-#                tid, dummy = ltgen.process_line(pline)
-#                if tid is not None:
-#                    rod.add_str(pline["timestamp"], line.rstrip("\n"))
-#        rod.commit()
-#        _logger.info("lt_import job for ({0}) done".format(fp))
