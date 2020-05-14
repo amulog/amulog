@@ -1,0 +1,6 @@
+CRON ** ** CMD cd / && run-parts --report **
+Interface ** went down
+Interface ** came up
+Connection timeout on interface **
+System restart
+Connection failed with **

@@ -319,6 +319,9 @@ class TemplateTable:
             raise IndexError("index out of range")
         return self._d_tpl[key]
 
+    def __len__(self):
+        return len(self._d_tpl)
+
     def next_tid(self):
         cnt = 0
         while cnt in self._d_tpl:
@@ -616,10 +619,13 @@ class LTPostProcess(object):
                 self._rules.append(VariableLabelHost(conf))
             else:
                 raise NotImplementedError
-        self.sym_header = conf.get("log_template",
-                                   "labeled_variable_symbol_header")
-        self.sym_footer = conf.get("log_template",
-                                   "labeled_variable_symbol_footer")
+
+        self.sym_header = REPLACER_HEAD
+        self.sym_footer = REPLACER_TAIL
+        #self.sym_header = conf.get("log_template",
+        #                           "labeled_variable_symbol_header")
+        #self.sym_footer = conf.get("log_template",
+        #                           "labeled_variable_symbol_footer")
 
     def _labeled_variable(self, w):
         return "".join((self.sym_header, w, self.sym_footer))

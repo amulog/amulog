@@ -57,37 +57,60 @@ def precision_recall_fscore(labels_true, labels_pred):
 
 
 def parsing_accuracy(labels_true, labels_pred):
-    # Referred https://github.com/logpai/logparser
+    """Parsing accuracy is one of clustering metrics.
+    It is the ratio of log lines in completely-correct clusters.
+    A completely-correct cluster has log instances (i.e., cluster members)
+    that is completely same as the instances in an answer cluster.
+
+    This metrics is defined in [1].
+    [1] P. He, et al. Drain: An Online Log Parsing Approach with Fixed Depth Tree. ICWS 2017, pp.33–40, 2017.
+    https://github.com/logpai/logparser is also referred.
+    """
 
     from sklearn.metrics.cluster import contingency_matrix
     a_true = np.array(labels_true)
     a_pred = np.array(labels_pred)
-    n_total = a_true.shape[0]
+    n_total_line = a_true.shape[0]
     cm = contingency_matrix(a_true, a_pred, sparse=True)
 
-    nz_true, _ = cm.nonzero()
+    nz_true, nz_pred = cm.nonzero()
     nz_cnt = cm.data
 
-    n_correct = 0
-    for uniq_label, uniq_cnt in zip(*np.unique(nz_true, return_counts=True)):
-        if uniq_cnt == 1:
-            n_correct += sum(nz_cnt[nz_true == uniq_label])
+    n_correct_line = 0
+    for uniq_label_true, uniq_cnt_true in zip(*np.unique(nz_true, return_counts=True)):
+        # 1 estimated cluster for 1 answer cluster?
+        if uniq_cnt_true == 1:
+            index_uniq_true = (nz_true == uniq_label_true)
+            index_uniq_pred = (nz_pred == nz_pred[index_uniq_true][0])
+            # 1 answer cluster for 1 estimated cluster?
+            if nz_true[index_uniq_pred].shape[0] == 1:
+                n_correct_line += sum(nz_cnt[index_uniq_true])
 
-    return 1. * n_correct / n_total
+    return 1. * n_correct_line / n_total_line
 
 
 def cluster_accuracy(labels_true, labels_pred):
+    """Cluster accuracy is one of clustering metrics.
+    This is an extended version of parsing accuracy,
+    but counting clusters instead of log messages.
+    """
     from sklearn.metrics.cluster import contingency_matrix
     a_true = np.array(labels_true)
     a_pred = np.array(labels_pred)
+    n_cluster = np.unique(a_true).shape[0]
     cm = contingency_matrix(a_true, a_pred, sparse=True)
 
-    nz_true, _ = cm.nonzero()
+    nz_true, nz_pred = cm.nonzero()
 
-    n_correct = 0
-    for uniq_label, uniq_cnt in zip(*np.unique(nz_true, return_counts=True)):
-        if uniq_cnt == 1:
-            n_correct += 1
+    n_correct_cluster = 0
+    for uniq_label_true, uniq_cnt_true in zip(*np.unique(nz_true, return_counts=True)):
+        # 1 estimated cluster for 1 answer cluster?
+        if uniq_cnt_true == 1:
+            index_uniq_true = (nz_true == uniq_label_true)
+            index_uniq_pred = (nz_pred == nz_pred[index_uniq_true][0])
+            # 1 answer cluster for 1 estimated cluster?
+            if nz_true[index_uniq_pred].shape[0] == 1:
+                n_correct_cluster += 1
 
-    return 1. * n_correct / np.unique(a_true).shape[0]
+    return 1. * n_correct_cluster / n_cluster
 

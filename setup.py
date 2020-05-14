@@ -4,13 +4,11 @@ import sys
 import os
 from setuptools import setup
 
-try:
-    from pypandoc import convert_file
 
-    read_md = lambda f: convert_file(f, 'rst')
-except ImportError:
-    print('pandoc is not installed.')
-    read_md = lambda f: open(f, 'r').read()
+def load_readme():
+    with open('README.md', 'r') as f:
+        return f.read()
+
 
 sys.path.append("./tests")
 package_name = 'amulog'
@@ -18,9 +16,9 @@ data_dir = "/".join((package_name, "data"))
 data_files = ["/".join((data_dir, fn)) for fn in os.listdir(data_dir)]
 
 setup(name='amulog',
-      version='0.0.5',
+      version='0.0.6',
       description='A system log management tool with automatically generated log templates.',
-      long_description=read_md('README.md'),
+      long_description=load_readme(),
       long_description_content_type='text/markdown',
       author='Satoru Kobayashi',
       author_email='sat@nii.ac.jp',

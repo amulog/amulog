@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-
 """
 A log template generation algorithm proposed in [1].
 [1] P. He, et al. Drain: An Online Log Parsing Approach with Fixed Depth Tree. ICWS 2017, pp.33–40, 2017.
@@ -11,7 +10,11 @@ Drain do not work correctly.
 Do NOT edit log templates manually if you still have unprocessed log data.
 """
 
+import os
 from amulog import lt_common
+
+DEFAULT_REGEX_CONFIG = "/".join((os.path.dirname(os.path.abspath(__file__)),
+                                 "../../data/drain_regex.conf"))
 
 
 class Node:
@@ -83,6 +86,8 @@ def init_ltgen(conf, table, **_):
 
     from amulog.lt_regex import VariableRegex
     preprocess_fn = conf.get("log_template_drain", "preprocess_rule")
+    if preprocess_fn.strip() == "":
+        preprocess_fn = DEFAULT_REGEX_CONFIG
     vreobj = VariableRegex(conf, preprocess_fn)
 
     return LTGenDrain(table, threshold, depth, vreobj)

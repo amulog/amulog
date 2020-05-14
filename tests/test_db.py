@@ -44,7 +44,7 @@ class TestDB(unittest.TestCase):
         self.assertEqual(num, 6539,
                          "not all logs added to database")
         ltg_num = len([gid for gid in ld.iter_ltgid()])
-        self.assertTrue(3 < ltg_num < 10,
+        self.assertTrue(3 < ltg_num < 20,
                         ("log template generation fails? "
                          "(groups: {0})".format(ltg_num)))
 

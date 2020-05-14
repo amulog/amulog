@@ -8,10 +8,8 @@ K. Shima. Length Matters: Clustering System Log Messages using Length of Words. 
 This code is based on https://github.com/keiichishima/templateminer .
 """
 
-from collections import defaultdict
-
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
+from collections import defaultdict
 
 from amulog import lt_common
 
@@ -25,6 +23,7 @@ class Cluster:
 
     def _get_similarity_score_cosine(self, new_words):
         # cosine similarity
+        from sklearn.metrics.pairwise import cosine_similarity
         wordlens = self._wordlens.reshape(1, -1)
         new_wordlens = np.asarray([len(w) for w in new_words]).reshape(1, -1)
         cos_score = cosine_similarity(wordlens, new_wordlens)

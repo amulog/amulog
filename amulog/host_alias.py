@@ -180,14 +180,14 @@ def test_hostalias(conf):
         print()
 
 
-if __name__ == "__main__":
-    usage = ""
-    import optparse
-
-    op = optparse.OptionParser(usage)
-    op.add_option("-c", "--config", action="store",
-                  dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
-                  help="configuration file path")
-    options, args = op.parse_args()
-    conf = config.open_config(options.conf)
-    test_hostalias(conf)
+#if __name__ == "__main__":
+#    usage = ""
+#    import optparse
+#
+#    op = optparse.OptionParser(usage)
+#    op.add_option("-c", "--config", action="store",
+#                  dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
+#                  help="configuration file path")
+#    options, args = op.parse_args()
+#    conf = config.open_config(options._conf)
+#    test_hostalias(conf)

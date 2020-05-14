@@ -132,7 +132,8 @@ class LTGenDlog(lt_common.LTGen):
         for mid, pline in enumerate(plines):
             primary_tpl = self._get_primary_tpl(pline["words"])
             tpl = self._restore_tpl(primary_tpl)
-            ret[mid] = self.update_table(tpl)
+            tid, _ = self.update_table(tpl)
+            ret[mid] = tid
         return ret
 
     def process_line(self, pline):

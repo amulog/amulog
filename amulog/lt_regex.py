@@ -20,7 +20,7 @@ class VariableRegex:
         self.label_unknown = label_unknown
 
         self._ha = host_alias.init_hostalias(conf)
-        if fn is not None:
+        if fn is not None and fn.strip() != "":
             self._load_rule(fn)
 
     def _load_rule(self, fn):

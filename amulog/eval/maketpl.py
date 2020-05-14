@@ -24,7 +24,7 @@ class MeasureLTGen:
     LABEL_VARIABLE = "V"
 
     def __init__(self, conf, n_trial):
-        self.conf = conf
+        self._conf = conf
         self._number_of_trials = n_trial
         common.mkdir(self._output_dir_answer(conf))
         common.mkdir(self._output_dir_trial(conf))
@@ -66,20 +66,20 @@ class MeasureLTGen:
         return conf["eval"]["ltgen_trial_dir"]
 
     def _org_word_path(self):
-        return "{0}/word".format(self._output_dir_answer(self.conf))
+        return "{0}/word".format(self._output_dir_answer(self._conf))
 
     def _answer_label_path(self):
-        return "{0}/label_answer".format(self._output_dir_answer(self.conf))
+        return "{0}/label_answer".format(self._output_dir_answer(self._conf))
 
     def _trial_label_path(self, trial_id):
-        return "{0}/label_trial{1}".format(self._output_dir_trial(self.conf),
+        return "{0}/label_trial{1}".format(self._output_dir_trial(self._conf),
                                            str(trial_id).zfill(2))
 
     def _answer_info_path(self):
-        return "{0}/info_answer".format(self._output_dir_answer(self.conf))
+        return "{0}/info_answer".format(self._output_dir_answer(self._conf))
 
     def _trial_info_path(self):
-        return "{0}/info_trial".format(self._output_dir_trial(self.conf))
+        return "{0}/info_trial".format(self._output_dir_trial(self._conf))
 
     def init_answer(self):
         common.rm(self._org_word_path())
@@ -454,24 +454,24 @@ class MeasureLTGen:
             return cluster_metrics.cluster_accuracy(l_tid_answer, l_tid_trial)
 
 
-def _iter_plines(conf, targets):
-    from amulog import log_db
-    from amulog import host_alias
-    lp = log_db.load_log2seq(conf)
-    ha = host_alias.init_hostalias(conf)
-    drop_undefhost = conf.getboolean("database", "undefined_host")
-
-    for f in log_db.iter_files(targets):
-        for msg in f:
-            pline = log_db.parse_line(msg, lp)
-            if pline is None:
-                continue
-            pline = log_db.normalize_host(msg, pline, ha, None, drop_undefhost)
-            if pline is None:
-                pass
-            else:
-                log_db.log2seq_weight_save(pline)
-                yield pline
+#def iter_plines(conf, targets):
+#    from amulog import log_db
+#    from amulog import host_alias
+#    lp = log_db.load_log2seq(conf)
+#    ha = host_alias.init_hostalias(conf)
+#    drop_undefhost = conf.getboolean("database", "undefined_host")
+#
+#    for f in log_db.iter_files(targets):
+#        for msg in f:
+#            pline = log_db.parse_line(msg, lp)
+#            if pline is None:
+#                continue
+#            pline = log_db.normalize_host(msg, pline, ha, None, drop_undefhost)
+#            if pline is None:
+#                pass
+#            else:
+#                log_db.log2seq_weight_save(pline)
+#                yield pline
 
 
 def measure_accuracy_answer(conf, targets, n_trial=None):
@@ -480,11 +480,12 @@ def measure_accuracy_answer(conf, targets, n_trial=None):
     mlt = MeasureLTGen(conf, n_trial)
     mlt.init_answer()
 
+    from amulog import log_db
     from amulog import lt_import
     table_answer = lt_common.TemplateTable()
     ltgen_answer = lt_import.init_ltgen_import(conf, table_answer)
 
-    for pline in _iter_plines(conf, targets):
+    for pline in log_db.iter_plines(conf, targets):
         tid, _ = ltgen_answer.process_line(pline)
         if tid is None:
             tpl = None
@@ -504,6 +505,7 @@ def measure_accuracy_trial_offline(conf, targets, n_trial=None, mlt=None):
         mlt = MeasureLTGen(conf, n_trial)
         mlt.load_answer_info()
 
+    from amulog import log_db
     for trial_id in range(n_trial):
         timer = common.Timer("measure-accuracy-offline trial{0}".format(
             trial_id), output=_logger)
@@ -512,7 +514,7 @@ def measure_accuracy_trial_offline(conf, targets, n_trial=None, mlt=None):
         table = lt_common.TemplateTable()
         ltgen = lt_common.init_ltgen_methods(conf, table)
 
-        input_lines = list(_iter_plines(conf, targets))
+        input_lines = list(log_db.iter_plines(conf, targets))
         d_tid = ltgen.process_offline(input_lines)
         iterobj = zip(input_lines,
                       mlt.iter_tid_answer(),
@@ -543,6 +545,7 @@ def measure_accuracy_trial_online(conf, targets_train, targets_test,
         mlt = MeasureLTGen(conf, n_trial)
         mlt.load_answer_info()
 
+    from amulog import log_db
     for trial_id in range(n_trial):
         timer = common.Timer("measure-accuracy-online trial{0}".format(
             trial_id), output=_logger)
@@ -552,10 +555,10 @@ def measure_accuracy_trial_online(conf, targets_train, targets_test,
         ltgen = lt_common.init_ltgen_methods(conf, table)
 
         if targets_train is not None:
-            for pline in _iter_plines(conf, targets_train):
+            for pline in log_db.iter_plines(conf, targets_train):
                 ltgen.process_line(pline)
 
-        iterobj = zip(_iter_plines(conf, targets_test),
+        iterobj = zip(log_db.iter_plines(conf, targets_test),
                       mlt.iter_tid_answer(),
                       mlt.iter_tpl_answer(pass_none=False))
         for pline, tid_answer, tpl_answer in iterobj:
@@ -881,21 +884,22 @@ def measure_time_online(conf, targets_train, targets_test, n_trial=None):
     if n_trial is None:
         n_trial = int(conf["eval"]["n_trial_time"])
 
+    from amulog import log_db
     d_time = {}
     for trial_id in range(n_trial):
         table = lt_common.TemplateTable()
         ltgen = lt_common.init_ltgen_methods(conf, table)
         if targets_train is not None:
-            for pline in _iter_plines(conf, targets_train):
+            for pline in log_db.iter_plines(conf, targets_train):
                 ltgen.process_line(pline)
 
         timer = common.Timer("measure-time-online trial{0}".format(trial_id),
                              output=None)
         timer.start()
-        for pline in _iter_plines(conf, targets_test):
+        for pline in log_db.iter_plines(conf, targets_test):
             ltgen.process_line(pline)
         timer.stop()
-        d_time[trial_id] = timer.total_time()
+        d_time[trial_id] = timer.total_time().total_seconds()
 
     return d_time
 
@@ -904,6 +908,7 @@ def measure_time_offline(conf, targets_test, n_trial=None):
     if n_trial is None:
         n_trial = int(conf["eval"]["n_trial_time"])
 
+    from amulog import log_db
     d_time = {}
     for trial_id in range(n_trial):
         table = lt_common.TemplateTable()
@@ -912,9 +917,9 @@ def measure_time_offline(conf, targets_test, n_trial=None):
         timer = common.Timer("measure-time-offline trial{0}".format(trial_id),
                              output=None)
         timer.start()
-        input_lines = list(_iter_plines(conf, targets_test))
+        input_lines = list(log_db.iter_plines(conf, targets_test))
         ltgen.process_offline(input_lines)
         timer.stop()
-        d_time[trial_id] = timer.total_time()
+        d_time[trial_id] = timer.total_time().total_seconds()
 
     return d_time

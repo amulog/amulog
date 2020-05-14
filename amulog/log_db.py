@@ -21,6 +21,7 @@ from . import lt_common
 from . import host_alias
 
 _logger = logging.getLogger(__package__)
+ONLINE_COMMIT_INTERVAL = 1000
 
 
 class LogMessage():
@@ -974,8 +975,7 @@ def load_log2seq(conf):
 
 
 def log2seq_weight_save(pline):
-    unused_keys = ["year", "month", "day", "hour", "minute", "second", "tz",
-                   "message"]
+    unused_keys = ["year", "month", "day", "hour", "minute", "second", "tz"]
     for key in unused_keys:
         if key in pline:
             del pline[key]
@@ -1037,60 +1037,32 @@ def normalize_host(msg, pline, ha, fl, drop_undefhost=False):
     return pline
 
 
-def process_line(msg, ld, lp, ha, fl, isnew_check=False, latest=None,
-                 drop_undefhost=False, dry=False):
-    """Add a log message to DB.
-    
-    Args:
-        msg (str): A log message to process.
-            Line feed code will be ignored.
-        ld (LogData): An log database interface opened in edit mode.
-            Needs to initialize template classifier with ld.init_ltmanager.
-        lp (log2seq.LogParser): An open message parser.
-        latest (Optional[datetime.datetime]): If not None,
-            Ignore messages that have later timestamp than 'latest'.
+def iter_plines(conf, targets):
+    from amulog import host_alias
+    lp = load_log2seq(conf)
+    ha = host_alias.init_hostalias(conf)
+    drop_undefhost = conf.getboolean("database", "undefined_host")
 
-    Returns:
-        LogMessage: An annotated log message instance.
-            Same as lines given with LogData.iterlines.
-    """
-    pline = parse_line(msg, lp)
-    if pline is None:
-        return
-
-    dt = pline["timestamp"]
-    if latest is not None and dt < latest:
-        _logger.debug(
-            "pass message with excluded timestamp {0}".format(dt))
-        return
-    pline = normalize_host(msg, pline, ha, fl, drop_undefhost)
-    if pline is None:
-        return
-
-    _logger.debug("Processing [{0}]".format(" ".join(pline["words"])))
-    ltline = ld.ltm.process_line(pline)
-    if ltline is None:
-        fl.add(msg)
-        return
-    elif dry:
-        return
-    else:
-        _logger.debug("Template [{0}]".format(ltline))
-        line = ld.add_line(ltline.ltid, pline)
-        return line
+    for f in iter_files(targets):
+        for msg in f:
+            pline = parse_line(msg, lp)
+            if pline is None:
+                continue
+            pline = normalize_host(msg, pline, ha, None, drop_undefhost)
+            if pline is None:
+                pass
+            else:
+                log2seq_weight_save(pline)
+                yield pline
 
 
-def process_files_online(conf, targets, reset_db, isnew_check=False,
-                         dry=False):
+def process_files_online(conf, targets, reset_db, dry=False):
     """Add log messages to DB from files.
 
     Args:
         conf (config.ExtendedConfigParser): A common configuration object.
         targets (List[str]): A sequence of filepaths to process.
-        reset_db (bool): True if DB needs to reset before adding,
-            False otherwise. 
-        isnew_check (Optional[bool]): If True, add message to DB
-            only if its timestamp is newest of existing messages in DB.
+        reset_db (bool): True if DB needs to reset before adding.
         dry (Optional[bool]): for dry-run (no database-io)
 
     Raises:
@@ -1098,20 +1070,24 @@ def process_files_online(conf, targets, reset_db, isnew_check=False,
     """
     ld = LogData(conf, edit=True, reset_db=reset_db)
     ld.init_ltmanager()
-    lp = load_log2seq(conf)
-    ha = host_alias.init_hostalias(conf)
     fl = init_failure_log(conf)
-    latest = ld.dt_term()[1] if isnew_check else None
-    drop_undefhost = conf.getboolean("database", "undefined_host")
 
-    for f in iter_files(targets):
-        for line in f:
-            process_line(line, ld, lp, ha, fl, isnew_check, latest,
-                         drop_undefhost, dry)
-        ld.commit_db()
+    for mid, pline in enumerate(iter_plines(conf, targets)):
+        _logger.debug("Processing [{0}]".format(" ".join(pline["words"])))
+        ltline = ld.ltm.process_line(pline)
+        if ltline is None:
+            fl.add(pline["message"])
+        elif dry:
+            pass
+        else:
+            _logger.debug("Template [{0}]".format(ltline))
+            ld.add_line(ltline.ltid, pline)
+        if mid % ONLINE_COMMIT_INTERVAL == 0:
+            ld.commit_db()
+    ld.commit_db()
 
 
-def process_files_offline(conf, targets, isnew_check=False):
+def process_files_offline(conf, targets, dry=False):
     """Add log messages to DB from files. This function do NOT process
     messages incrementally. Use this to avoid bad-start problem of
     log template generation with clustering or training methods.
@@ -1122,42 +1098,25 @@ def process_files_offline(conf, targets, isnew_check=False):
     Args:
         conf (config.ExtendedConfigParser): A common configuration object.
         targets (List[str]): A sequence of filepaths to process.
-        isnew_check (Optional[bool]): If True, add message to DB
-            only if its timestamp is newest of existing messages in DB.
+        dry (Optional[bool]): for dry-run (no database-io)
 
     Raises:
         IOError: If a file in targets not found.
     """
     ld = LogData(conf, edit=True, reset_db=True)
     ld.init_ltmanager()
-    lp = load_log2seq(conf)
-    ha = host_alias.init_hostalias(conf)
     fl = init_failure_log(conf)
-    latest = ld.dt_term()[1] if isnew_check else None
-    drop_undefhost = conf.getboolean("database", "undefined_host")
 
-    def _load_plines():
-        for f in iter_files(targets):
-            for msg in f:
-                pline = parse_line(msg, lp)
-                if pline is None:
-                    continue
-                dt = pline["timestamp"]
-                if latest is not None and dt < latest:
-                    _logger.debug(
-                        "pass message with excluded timestamp {0}".format(dt))
-                    continue
-                pline = normalize_host(msg, pline, ha, fl, drop_undefhost)
-                if pline is None:
-                    continue
-
-                yield pline
-
-    l_line = [pline for pline in _load_plines()]
+    l_line = [pline for pline in iter_plines(conf, targets)]
 
     for ltline, pline, in zip(ld.ltm.process_offline(l_line),
                               l_line):
-        ld.add_line(ltline.ltid, pline)
+        if ltline is None:
+            fl.add(pline["message"])
+        elif dry:
+            pass
+        else:
+            ld.add_line(ltline.ltid, pline)
 
     ld.commit_db()
 

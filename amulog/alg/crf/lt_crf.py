@@ -9,6 +9,8 @@ from amulog import lt_common
 from amulog.alg.crf import _items, _convert
 
 _logger = logging.getLogger(__package__)
+DEFAULT_TEMPLATE = "/".join((os.path.dirname(os.path.abspath(__file__)),
+                             "../../data/crf_template.default"))
 
 
 class LTGenCRF(lt_common.LTGenStateless):
@@ -57,8 +59,9 @@ class LTGenCRF(lt_common.LTGenStateless):
                     replaced = self._ln.replace_word(w, rule_name)
             except IndexError:
                 import pdb; pdb.set_trace()
-            words.extend(replaced)
-            length_vec.append(len(replaced))
+            else:
+                words.extend(replaced)
+                length_vec.append(len(replaced))
         return words, length_vec
 
     @classmethod
@@ -571,6 +574,8 @@ def init_ltgen_crf(conf, table, **_):
     model = conf.get("log_template_crf", "model_filename")
     verbose = conf.getboolean("log_template_crf", "verbose")
     feature_template = conf.get("log_template_crf", "feature_template")
+    if feature_template.strip() == "":
+        feature_template = DEFAULT_TEMPLATE
     unknown_weight = conf.getfloat("log_template_crf", "unknown_key_weight")
     normalizer_conf = conf.get("log_template_crf", "normalizer_conf")
     if normalizer_conf.strip() == "":

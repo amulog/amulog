@@ -484,7 +484,7 @@ if __name__ == "__main__":
             dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
             help="configuration file path")
     options, args = op.parse_args()
-    conf = config.open_config(options.conf)
+    conf = config.open_config(options._conf)
     config.set_common_logging(conf, _logger, [])
 
     if len(args) == 0:

@@ -188,7 +188,7 @@ def measure_time_online(ns):
     d_time = maketpl.measure_time_online(conf, targets_train, targets_test)
 
     import numpy as np
-    avg = np.average(d_time.values())
+    avg = np.average(list(d_time.values()))
     print("Trials: {0}".format(", ".join(d_time.values())))
     print("Average: {0}".format(avg))
 
@@ -203,7 +203,7 @@ def measure_time_offline(ns):
     d_time = maketpl.measure_time_offline(conf, targets_test)
 
     import numpy as np
-    avg = np.average(d_time.values())
+    avg = np.average(list(d_time.values()))
     print("Trials: {0}".format(", ".join(d_time.values())))
     print("Average: {0}".format(avg))
 
