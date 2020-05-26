@@ -114,3 +114,43 @@ def cluster_accuracy(labels_true, labels_pred):
 
     return 1. * n_correct_cluster / n_cluster
 
+
+def over_division_cluster_ratio(labels_true, labels_pred):
+    from sklearn.metrics.cluster import contingency_matrix
+    a_true = np.array(labels_true)
+    a_pred = np.array(labels_pred)
+    n_cluster = np.unique(a_true).shape[0]
+    cm = contingency_matrix(a_true, a_pred, sparse=True)
+
+    nz_true, nz_pred = cm.nonzero()
+
+    n_fail_cluster = 0
+    for uniq_label_true, uniq_cnt_true in zip(*np.unique(nz_true, return_counts=True)):
+        # multiple estimated cluster for 1 answer cluster?
+        if uniq_cnt_true > 1:
+            n_fail_cluster += 1
+
+    return 1. * n_fail_cluster / n_cluster
+
+
+def over_aggregation_cluster_ratio(labels_true, labels_pred):
+    from sklearn.metrics.cluster import contingency_matrix
+    a_true = np.array(labels_true)
+    a_pred = np.array(labels_pred)
+    n_cluster = np.unique(a_true).shape[0]
+    cm = contingency_matrix(a_true, a_pred, sparse=True)
+
+    nz_true, nz_pred = cm.nonzero()
+
+    n_fail_cluster = 0
+    for uniq_label_true in np.unique(nz_true):
+        index_uniq_true = (nz_true == uniq_label_true)
+        index_uniq_pred = (nz_pred == nz_pred[index_uniq_true][0])
+        # multiple answer cluster for 1 estimated cluster?
+        if nz_true[index_uniq_pred].shape[0] > 1:
+            n_fail_cluster += 1
+
+    return 1. * n_fail_cluster / n_cluster
+
+
+

@@ -11,32 +11,37 @@ from amulog import lt_common
 
 class TestCRF(unittest.TestCase):
 
-    def setUp(self):
-        self.data_train = [["ssh N D",
-                            "login N D",
-                            "failure N V",
-                            "from N D",
-                            "192.168.100.1 N V"],
-                           ["su N D",
-                            "user N D",
-                            "sat N V",
-                            "enabled N D"]]
-        self.data_test = ["ssh", "auth", "failure",
-                          "from", "192.168.100.1", "user", "sat"]
+    _path_trainfile = None
+    _path_model = None
 
-        fd, self._path_trainfile = tempfile.mkstemp()
+    @classmethod
+    def setUpClass(cls):
+        cls.data_train = [["ssh N D",
+                           "login N D",
+                           "failure N V",
+                           "from N D",
+                           "192.168.100.1 N V"],
+                          ["su N D",
+                           "user N D",
+                           "sat N V",
+                           "enabled N D"]]
+        cls.data_test = ["ssh", "auth", "failure",
+                         "from", "192.168.100.1", "user", "sat"]
+
+        fd, cls._path_trainfile = tempfile.mkstemp()
         with os.fdopen(fd, 'w') as f:
             l_buf = []
-            for lines in self.data_train:
+            for lines in cls.data_train:
                 l_buf.append("\n".join(lines))
             f.write("\n\n".join(l_buf))
 
-        fd, self._path_model = tempfile.mkstemp()
+        fd, cls._path_model = tempfile.mkstemp()
         os.close(fd)
 
-    def tearDown(self):
-        os.remove(self._path_trainfile)
-        os.remove(self._path_model)
+    @classmethod
+    def tearDownClass(cls):
+        os.remove(cls._path_trainfile)
+        os.remove(cls._path_model)
 
     def test_tagging(self):
         from amulog.alg.crf import init_ltgen

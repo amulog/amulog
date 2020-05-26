@@ -16,7 +16,7 @@ data_dir = "/".join((package_name, "data"))
 data_files = ["/".join((data_dir, fn)) for fn in os.listdir(data_dir)]
 
 setup(name='amulog',
-      version='0.0.6',
+      version='0.0.7',
       description='A system log management tool with automatically generated log templates.',
       long_description=load_readme(),
       long_description_content_type='text/markdown',

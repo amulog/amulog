@@ -9,6 +9,7 @@ from collections import defaultdict
 from amulog import common
 from amulog import lt_common
 from amulog.eval import cluster_metrics
+from amulog.eval import structure_metrics
 
 _logger = logging.getLogger(__package__)
 
@@ -240,19 +241,31 @@ class MeasureLTGen:
             else:
                 yield self.restore_tpl(labels, l_w)
 
-    def iter_tid_answer(self):
-        return self._d_answer["l_tid"].__iter__()
+    def tid_list_answer(self, pass_none=False):
+        if pass_none:
+            return [tid for tid in self._d_answer["l_tid"]
+                    if tid is not None]
+        else:
+            return self._d_answer["l_tid"]
 
-    def iter_tid_trial(self, trial_id):
-        return self._d_trial[trial_id]["l_tid"].__iter__()
+    def tid_list_trial(self, trial_id, pass_none=False):
+        if pass_none:
+            return [tid for tid in self._d_trial[trial_id]["l_tid"]
+                    if tid is not None]
+        else:
+            return self._d_trial[trial_id]["l_tid"]
 
-    def tid_list_answer(self):
-        return [tid for tid in self._d_answer["l_tid"]
-                if tid is not None]
+    def valid_tid_list_answer(self):
+        return self.tid_list_answer(pass_none=True)
 
-    def tid_list_trial(self, trial_id):
-        return [tid for tid in self._d_trial[trial_id]["l_tid"]
-                if tid is not None]
+    def valid_tid_list_trial(self, trial_id):
+        return self.tid_list_trial(trial_id, pass_none=True)
+
+    def iter_cluster_answer(self):
+        return self._d_answer["n_lines"].keys().__iter__()
+
+    def iter_cluster_trial(self, trial_id):
+        return np.unique(self.tid_list_trial(trial_id, pass_none=True))
 
     def number_of_trials(self):
         return self._number_of_trials
@@ -272,85 +285,93 @@ class MeasureLTGen:
 
     def number_of_trial_clusters(self, trial_id=None):
         if trial_id is None:
-            l_cnt = [self.number_of_trial_clusters(i)
+            l_cnt = [np.unique(self.valid_tid_list_trial(i)).shape[0]
                      for i in range(self.number_of_trials())]
-            if len(l_cnt) == 0:
+            if len(l_cnt) == 1:
                 return l_cnt[0]
             else:
                 return np.average(l_cnt)
         else:
-            return np.unique(self.tid_list_trial(trial_id)).shape[0]
+            return np.unique(self.valid_tid_list_trial(trial_id)).shape[0]
 
     # accuracy methods
-    def _word_accuracy_trial(self, trial_id):
-        # n_words: Number of all words in dataset
-        n_words = self._d_answer["n_words"]
-        # n_c_words: Number of words correctly labeled in dataset
-        n_c_words = self._d_trial[trial_id]["n_c_words"]
-
-        return 1.0 * n_c_words / n_words
-
-    def word_accuracy(self, trial_id=None):
+    def word_accuracy(self, trial_id=None, recalculation=False):
         if trial_id is None:
-            l_acc = [self._word_accuracy_trial(i)
+            l_acc = [self.word_accuracy(i, recalculation)
                      for i in range(self.number_of_trials())]
             return np.average(l_acc)
+        elif recalculation:
+            iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
+            iterable_tpl_trial = self.iter_tpl_trial(trial_id, pass_none=True)
+            return structure_metrics.word_accuracy(
+                iterable_tpl_answer, iterable_tpl_trial)
         else:
-            return self._word_accuracy_trial(trial_id)
+            # n_words: Number of all words in dataset
+            n_words = self._d_answer["n_words"]
+            # n_c_words: Number of words correctly labeled in dataset
+            n_c_words = self._d_trial[trial_id]["n_c_words"]
+            return 1.0 * n_c_words / n_words
 
-    def _line_accuracy_trial(self, trial_id):
-        # n_lines: Number of all lines in dataset
-        n_lines = self._d_answer["n_lines"]
-        # n_c_lines: Number of lines correctly labeled in dataset
-        n_c_lines = self._d_trial[trial_id]["n_c_lines"]
-
-        return 1.0 * n_c_lines / n_lines
-
-    def line_accuracy(self, trial_id=None):
+    def line_accuracy(self, trial_id=None, recalculation=False):
         if trial_id is None:
-            l_acc = [self._line_accuracy_trial(i)
+            l_acc = [self.line_accuracy(i, recalculation)
                      for i in range(self.number_of_trials())]
             return np.average(l_acc)
+        elif recalculation:
+            iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
+            iterable_tpl_trial = self.iter_tpl_trial(trial_id, pass_none=True)
+            return structure_metrics.line_accuracy(
+                iterable_tpl_answer, iterable_tpl_trial)
         else:
-            return self._line_accuracy_trial(trial_id)
+            # n_lines: Number of all lines in dataset
+            n_lines = self._d_answer["n_lines"]
+            # n_c_lines: Number of lines correctly labeled in dataset
+            n_c_lines = self._d_trial[trial_id]["n_c_lines"]
+            return 1.0 * n_c_lines / n_lines
 
-    def _tpl_word_accuracy_trial(self, trial_id):
-        # d_n_words: Number of words in a template cluster
-        d_n_words = self._d_answer["d_n_words"]
-        # d_n_c_words: Number of words correctly labeled in a template cluster
-        d_n_c_words = self._d_trial[trial_id]["d_n_c_words"]
-
-        l_acc = []
-        for key in d_n_words:  # key: str(tid)
-            l_acc.append(d_n_c_words.get(key, 0) / d_n_words.get(key, 0))
-        return np.average(l_acc)
-
-    def tpl_word_accuracy(self, trial_id=None):
+    def tpl_word_accuracy(self, trial_id=None, recalculation=False):
         if trial_id is None:
-            l_acc = [self._tpl_word_accuracy_trial(i)
+            l_acc = [self.tpl_word_accuracy(i, recalculation)
                      for i in range(self.number_of_trials())]
             return np.average(l_acc)
+        elif recalculation:
+            iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
+            iterable_tpl_trial = self.iter_tpl_trial(trial_id, pass_none=True)
+            l_tid_answer = self.tid_list_answer(pass_none=True)
+            return structure_metrics.tpl_word_accuracy(
+                iterable_tpl_answer, iterable_tpl_trial, l_tid_answer)
         else:
-            return self._tpl_word_accuracy_trial(trial_id)
+            # d_n_words: Number of words in a template cluster
+            d_n_words = self._d_answer["d_n_words"]
+            # d_n_c_words: Number of words correctly labeled in a template cluster
+            d_n_c_words = self._d_trial[trial_id]["d_n_c_words"]
 
-    def _tpl_accuracy_trial(self, trial_id):
-        # d_n_lines: Number of lines in a template cluster
-        d_n_lines = self._d_answer["d_n_lines"]
-        # d_n_c_lines: Number of lines correctly labeled in a template cluster
-        d_n_c_lines = self._d_trial[trial_id]["d_n_c_lines"]
+            l_acc = []
+            for key in d_n_words:  # key: str(tid)
+                l_acc.append(d_n_c_words.get(key, 0) / d_n_words.get(key, 0))
+            return np.average(l_acc)
 
-        l_acc = []
-        for key in d_n_lines:
-            l_acc.append(d_n_c_lines.get(key, 0) / d_n_lines.get(key, 0))
-        return np.average(l_acc)
-
-    def tpl_accuracy(self, trial_id=None):
+    def tpl_accuracy(self, trial_id=None, recalculation=False):
         if trial_id is None:
-            l_acc = [self._tpl_accuracy_trial(i)
+            l_acc = [self.tpl_accuracy(i, recalculation)
                      for i in range(self.number_of_trials())]
             return np.average(l_acc)
+        elif recalculation:
+            iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
+            iterable_tpl_trial = self.iter_tpl_trial(trial_id, pass_none=True)
+            l_tid_answer = self.tid_list_answer(pass_none=True)
+            return structure_metrics.tpl_accuracy(
+                iterable_tpl_answer, iterable_tpl_trial, l_tid_answer)
         else:
-            return self._tpl_accuracy_trial(trial_id)
+            # d_n_lines: Number of lines in a template cluster
+            d_n_lines = self._d_answer["d_n_lines"]
+            # d_n_c_lines: Number of lines correctly labeled in a template cluster
+            d_n_c_lines = self._d_trial[trial_id]["d_n_c_lines"]
+
+            l_acc = []
+            for key in d_n_lines:
+                l_acc.append(d_n_c_lines.get(key, 0) / d_n_lines.get(key, 0))
+            return np.average(l_acc)
 
     def tpl_word_accuracy_dist(self, trial_id):
         # d_n_words: Number of words in a template cluster
@@ -375,6 +396,30 @@ class MeasureLTGen:
             tid = int(key)
             ret[tid] = d_n_c_lines.get(key, 0) / d_n_lines.get(key, 0)
         return ret
+
+    def tpl_desc_fail_ratio(self, trial_id=None):
+        if trial_id is None:
+            l_acc = [self._tpl_word_accuracy_trial(i)
+                     for i in range(self.number_of_trials())]
+            return np.average(l_acc)
+        else:
+            iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
+            iterable_tpl_trial = self.iter_tpl_trial(trial_id, pass_none=True)
+            l_tid_answer = self.tid_list_answer(pass_none=True)
+            return structure_metrics.tpl_desc_fail_ratio(
+                iterable_tpl_answer, iterable_tpl_trial, l_tid_answer)
+
+    def tpl_var_fail_ratio(self, trial_id=None):
+        if trial_id is None:
+            l_acc = [self._tpl_word_accuracy_trial(i)
+                     for i in range(self.number_of_trials())]
+            return np.average(l_acc)
+        else:
+            iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
+            iterable_tpl_trial = self.iter_tpl_trial(trial_id, pass_none=True)
+            l_tid_answer = self.tid_list_answer(pass_none=True)
+            return structure_metrics.tpl_var_fail_ratio(
+                iterable_tpl_answer, iterable_tpl_trial, l_tid_answer)
 
     # def word_accuracy_precision_recall_fmeasure(self, trial_id,
     #                                             standard_label="variable"):
@@ -407,8 +452,8 @@ class MeasureLTGen:
                        for i in range(self.number_of_trials())]
             return np.average(l_score)
         else:
-            l_tid_answer = self.tid_list_answer()
-            l_tid_trial = self.tid_list_trial(trial_id)
+            l_tid_answer = self.valid_tid_list_answer()
+            l_tid_trial = self.valid_tid_list_trial(trial_id)
             return cluster_metrics.rand_score(l_tid_answer, l_tid_trial)
 
     def adjusted_rand_score(self, trial_id=None):
@@ -418,8 +463,8 @@ class MeasureLTGen:
             return np.average(l_score)
         else:
             from sklearn.metrics import adjusted_rand_score
-            l_tid_answer = self.tid_list_answer()
-            l_tid_trial = self.tid_list_trial(trial_id)
+            l_tid_answer = self.valid_tid_list_answer()
+            l_tid_trial = self.valid_tid_list_trial(trial_id)
             return adjusted_rand_score(l_tid_answer, l_tid_trial)
 
     def f1_score(self, trial_id=None):
@@ -428,8 +473,8 @@ class MeasureLTGen:
                        for i in range(self.number_of_trials())]
             return np.average(l_score)
         else:
-            l_tid_answer = self.tid_list_answer()
-            l_tid_trial = self.tid_list_trial(trial_id)
+            l_tid_answer = self.valid_tid_list_answer()
+            l_tid_trial = self.valid_tid_list_trial(trial_id)
             return cluster_metrics.precision_recall_fscore(
                 l_tid_answer, l_tid_trial)[2]
 
@@ -439,8 +484,8 @@ class MeasureLTGen:
                        for i in range(self.number_of_trials())]
             return np.average(l_score)
         else:
-            l_tid_answer = self.tid_list_answer()
-            l_tid_trial = self.tid_list_trial(trial_id)
+            l_tid_answer = self.valid_tid_list_answer()
+            l_tid_trial = self.valid_tid_list_trial(trial_id)
             return cluster_metrics.parsing_accuracy(l_tid_answer, l_tid_trial)
 
     def cluster_accuracy(self, trial_id=None):
@@ -449,29 +494,31 @@ class MeasureLTGen:
                        for i in range(self.number_of_trials())]
             return np.average(l_score)
         else:
-            l_tid_answer = self.tid_list_answer()
-            l_tid_trial = self.tid_list_trial(trial_id)
+            l_tid_answer = self.valid_tid_list_answer()
+            l_tid_trial = self.valid_tid_list_trial(trial_id)
             return cluster_metrics.cluster_accuracy(l_tid_answer, l_tid_trial)
 
+    def overdiv_ratio(self, trial_id=None):
+        if trial_id is None:
+            l_score = [self.overdiv_ratio(i)
+                       for i in range(self.number_of_trials())]
+            return np.average(l_score)
+        else:
+            l_tid_answer = self.valid_tid_list_answer()
+            l_tid_trial = self.valid_tid_list_trial(trial_id)
+            return cluster_metrics.over_division_cluster_ratio(l_tid_answer,
+                                                               l_tid_trial)
 
-#def iter_plines(conf, targets):
-#    from amulog import log_db
-#    from amulog import host_alias
-#    lp = log_db.load_log2seq(conf)
-#    ha = host_alias.init_hostalias(conf)
-#    drop_undefhost = conf.getboolean("database", "undefined_host")
-#
-#    for f in log_db.iter_files(targets):
-#        for msg in f:
-#            pline = log_db.parse_line(msg, lp)
-#            if pline is None:
-#                continue
-#            pline = log_db.normalize_host(msg, pline, ha, None, drop_undefhost)
-#            if pline is None:
-#                pass
-#            else:
-#                log_db.log2seq_weight_save(pline)
-#                yield pline
+    def overagg_ratio(self, trial_id=None):
+        if trial_id is None:
+            l_score = [self.overagg_ratio(i)
+                       for i in range(self.number_of_trials())]
+            return np.average(l_score)
+        else:
+            l_tid_answer = self.valid_tid_list_answer()
+            l_tid_trial = self.valid_tid_list_trial(trial_id)
+            return cluster_metrics.over_aggregation_cluster_ratio(
+                l_tid_answer, l_tid_trial)
 
 
 def measure_accuracy_answer(conf, targets, n_trial=None):
@@ -517,7 +564,7 @@ def measure_accuracy_trial_offline(conf, targets, n_trial=None, mlt=None):
         input_lines = list(log_db.iter_plines(conf, targets))
         d_tid = ltgen.process_offline(input_lines)
         iterobj = zip(input_lines,
-                      mlt.iter_tid_answer(),
+                      mlt.tid_list_answer(),
                       mlt.iter_tpl_answer(pass_none=False))
         for mid, (pline, tid_answer, tpl_answer) in enumerate(iterobj):
             if tid_answer is None:
@@ -555,11 +602,11 @@ def measure_accuracy_trial_online(conf, targets_train, targets_test,
         ltgen = lt_common.init_ltgen_methods(conf, table)
 
         if targets_train is not None:
-            for pline in log_db.iter_plines(conf, targets_train):
-                ltgen.process_line(pline)
+            iterobj = log_db.iter_plines(conf, targets_train)
+            ltgen.process_offline(iterobj)
 
         iterobj = zip(log_db.iter_plines(conf, targets_test),
-                      mlt.iter_tid_answer(),
+                      mlt.tid_list_answer(),
                       mlt.iter_tpl_answer(pass_none=False))
         for pline, tid_answer, tpl_answer in iterobj:
             if tid_answer is None:
@@ -576,46 +623,67 @@ def measure_accuracy_trial_online(conf, targets_train, targets_test,
     return mlt
 
 
-def print_metrics(conf, n_trial, mlt=None):
-    if mlt is None:
-        mlt = MeasureLTGen(conf, n_trial)
-        mlt.load()
-
-    print("number of trials: {0}".format(mlt.number_of_trials()))
-    n_message = mlt.number_of_messages()
-    print("number of messages: {0}".format(n_message))
-    if n_message == 0:
-        return
-
-    print("number of clusters in answer: {0}".format(
-        mlt.number_of_answer_clusters()))
-    print("number of clusters in trial: {0}".format(
-        mlt.number_of_trial_clusters()))
-    print()
-
-    print("word accuracy: {0}".format(mlt.word_accuracy()))
-    print("line accuracy: {0}".format(mlt.line_accuracy()))
-    print("tpl accuracy: {0}".format(mlt.tpl_accuracy()))
-    print("tpl word accuracy: {0}".format(mlt.tpl_word_accuracy()))
-    print("rand score: {0}".format(mlt.rand_score()))
-    print("adjusted rand score: {0}".format(mlt.adjusted_rand_score()))
-    print("f1 score: {0}".format(mlt.f1_score()))
-    print("parsing accuracy: {0}".format(mlt.parsing_accuracy()))
-    print("cluster accuracy: {0}".format(mlt.cluster_accuracy()))
-
-
 def get_templates(conf, n_trial, trial_id=0, answer=False):
+    """Get template list after all log parsing.
+    In online algorithms, template structure can be changed while processing.
+    This function pick up a result for the last message with each template.
+    """
     mlt = MeasureLTGen(conf, n_trial)
     mlt.load()
 
     if answer:
-        iterobj = mlt.iter_tpl_answer(pass_none=True)
+        tids = np.array(mlt.tid_list_answer())
+        iterobj = mlt.iter_tpl_answer()
     else:
-        iterobj = mlt.iter_tpl_trial(trial_id, pass_none=True)
+        tids = np.array(mlt.tid_list_trial(trial_id))
+        iterobj = mlt.iter_tpl_trial(trial_id)
 
-    tpls = {tuple(tpl) for tpl in iterobj}
-    for tpl in tpls:
-        yield tpl
+    d_last_index = defaultdict(int)
+    for mid, tid in enumerate(tids):
+        if tid is not None:
+            d_last_index[tid] = mid
+    d_last_index_rev = {mid: tid for tid, mid in d_last_index.items()}
+
+    d_tpl = {}
+    for mid, tpl in enumerate(iterobj):
+        if mid in d_last_index_rev:
+            tid = d_last_index_rev[mid]
+            d_tpl[tid] = tpl
+
+    return d_tpl
+
+
+def offline_structure_metrics(conf, n_trial, trial_id=0, partial=False):
+    mlt = MeasureLTGen(conf, n_trial)
+    mlt.load()
+
+    d_tpl = get_templates(conf, n_trial, trial_id)
+    tids = mlt.tid_list_trial(trial_id, pass_none=True)
+    word_acc = structure_metrics.word_accuracy(
+        mlt.iter_tpl_answer(pass_none=True),
+        map(lambda x: d_tpl[x], tids))
+    line_acc = structure_metrics.line_accuracy(
+        mlt.iter_tpl_answer(pass_none=True),
+        map(lambda x: d_tpl[x], tids))
+    tpl_acc = structure_metrics.tpl_accuracy(
+        mlt.iter_tpl_answer(pass_none=True),
+        map(lambda x: d_tpl[x], tids), tids)
+    tpl_word_acc = structure_metrics.tpl_word_accuracy(
+        mlt.iter_tpl_answer(pass_none=True),
+        map(lambda x: d_tpl[x], tids), tids)
+
+    if partial:
+        tpl_desc_fail = structure_metrics.tpl_desc_fail_ratio(
+            mlt.iter_tpl_answer(pass_none=True),
+            map(lambda x: d_tpl[x], tids), tids)
+        tpl_var_fail = structure_metrics.tpl_var_fail_ratio(
+            mlt.iter_tpl_answer(pass_none=True),
+            map(lambda x: d_tpl[x], tids), tids)
+        ret = (word_acc, line_acc, tpl_acc, tpl_word_acc,
+               tpl_desc_fail, tpl_var_fail)
+        return ret
+    else:
+        return word_acc, line_acc, tpl_acc, tpl_word_acc
 
 
 def search_fail_template(conf, n_trial, trial_id=0, pass_similar=True):
@@ -623,7 +691,7 @@ def search_fail_template(conf, n_trial, trial_id=0, pass_similar=True):
     mlt.load()
 
     s_pass = set()
-    iterobj = zip(mlt.iter_org(), mlt.iter_tid_answer(),
+    iterobj = zip(mlt.iter_org(), mlt.tid_list_answer(),
                   mlt.iter_label_answer(), mlt.iter_label_trial(trial_id))
     for l_w, tid_answer, labels_answer, labels_trial in iterobj:
         if pass_similar and tid_answer in s_pass:
@@ -649,7 +717,7 @@ def search_diff_template(conf1, conf2, n_trial,
 
     s_pass = set()
     iterobj = zip(mlt1.iter_org(),
-                  mlt1.iter_tid_answer(),
+                  mlt1.tid_list_answer(),
                   mlt1.iter_label_answer(),
                   mlt1.iter_label_trial(trial_id1),
                   mlt2.iter_label_trial(trial_id2))
@@ -723,8 +791,8 @@ def search_fail_overdiv(conf, n_trial, trial_id=0, n_samples=1):
     mlt.load()
 
     # overdiv cluster information
-    a_tid_answer = np.array(mlt.tid_list_answer())
-    a_tid_trial = np.array(mlt.tid_list_trial(trial_id))
+    a_tid_answer = np.array(mlt.valid_tid_list_answer())
+    a_tid_trial = np.array(mlt.valid_tid_list_trial(trial_id))
     l_cluster = _sample_partial_cluster(a_tid_answer, a_tid_trial, n_samples)
 
     timer.lap("lap1")
@@ -764,8 +832,8 @@ def search_fail_overagg(conf, n_trial, trial_id=0, n_samples=1):
     mlt.load()
 
     # overagg cluster information
-    a_tid_answer = np.array(mlt.tid_list_answer())
-    a_tid_trial = np.array(mlt.tid_list_trial(trial_id))
+    a_tid_answer = np.array(mlt.valid_tid_list_answer())
+    a_tid_trial = np.array(mlt.valid_tid_list_trial(trial_id))
     l_cluster = _sample_partial_cluster(a_tid_trial, a_tid_answer, n_samples)
 
     # make sample tpl list to show
@@ -801,12 +869,12 @@ def search_diff_overdiv(conf1, conf2, n_trial, trial_id=0, n_samples=1):
     mlt2.load()
 
     # clusters accurate in conf1
-    a_tid_answer = np.array(mlt1.tid_list_answer())
-    a_tid_trial1 = np.array(mlt1.tid_list_trial(trial_id))
+    a_tid_answer = np.array(mlt1.valid_tid_list_answer())
+    a_tid_trial1 = np.array(mlt1.valid_tid_list_trial(trial_id))
     tids = _get_complete_clusters(a_tid_answer, a_tid_trial1)
 
     # cluster information that is overdiv in conf2
-    a_tid_trial2 = np.array(mlt2.tid_list_trial(trial_id))
+    a_tid_trial2 = np.array(mlt2.valid_tid_list_trial(trial_id))
     l_cls_all = _sample_partial_cluster(a_tid_answer, a_tid_trial2, n_samples)
     l_cluster = [(tid_true, div) for tid_true, div
                  in l_cls_all if tid_true in tids]
@@ -843,12 +911,12 @@ def search_diff_overagg(conf1, conf2, n_trial, trial_id=0, n_samples=1):
     mlt2.load()
 
     # clusters accurate in conf1
-    a_tid_answer = np.array(mlt1.tid_list_answer())
-    a_tid_trial1 = np.array(mlt1.tid_list_trial(trial_id))
+    a_tid_answer = np.array(mlt1.valid_tid_list_answer())
+    a_tid_trial1 = np.array(mlt1.valid_tid_list_trial(trial_id))
     tids = _get_complete_clusters(a_tid_answer, a_tid_trial1)
 
     # cluster information that is overagg in conf2
-    a_tid_trial2 = np.array(mlt2.tid_list_trial(trial_id))
+    a_tid_trial2 = np.array(mlt2.valid_tid_list_trial(trial_id))
     l_cls_all = _sample_partial_cluster(a_tid_trial2, a_tid_answer, n_samples)
     l_cluster = []
     for tid_trial2, div in l_cls_all:

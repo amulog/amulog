@@ -17,7 +17,7 @@ _logger = logging.getLogger(__package__)
 SUBLIB = ["eval", "crf"]
 
 
-def get_targets_arg(ns, conf):
+def get_targets_arg(ns):
     if ns.recur:
         targets = common.recur_dir(ns.files)
     else:
@@ -37,22 +37,14 @@ def get_targets(ns, conf):
     if ns is None or len(ns.files) == 0:
         return get_targets_conf(conf)
     else:
-        return get_targets_arg(ns, conf)
+        return get_targets_arg(ns)
 
 
-def data_filter(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    targets = get_targets(ns, conf)
-    dirname = ns.dirname
-    if ns.incr:
-        method = "incremental"
-    else:
-        method = "commit"
-    from . import lt_import
-
-    lt_import.filter_org(conf, targets, dirname, method=method)
+def is_online(conf):
+    from .alg import is_online as alg_is_online
+    mode = conf["log_template"]["processing_mode"]
+    lt_methods = config.getlist(conf, "log_template", "lt_methods")
+    return alg_is_online(mode, lt_methods)
 
 
 def data_from_db(ns):
@@ -86,19 +78,6 @@ def data_from_data(ns):
     log_db.data_from_data(conf, targets, dirname, method, reset)
 
 
-def lt_from_data(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    targets = get_targets(ns, conf)
-    check_import = ns.check_import
-
-    from . import lt_misc
-    s_tpl = lt_misc.generate_lt(conf, targets, check_import)
-    for tpl in s_tpl:
-        print(" ".join(tpl))
-
-
 def db_make(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -109,20 +88,10 @@ def db_make(ns):
 
     timer = common.Timer("db-make", output=_logger)
     timer.start()
-    log_db.process_files_online(conf, targets, True, dry=dry)
-    timer.stop()
-
-
-def db_make_init(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    targets = get_targets(ns, conf)
-    from . import log_db
-
-    timer = common.Timer("db-make-init", output=_logger)
-    timer.start()
-    log_db.process_files_offline(conf, targets)
+    if is_online(conf):
+        log_db.process_files_online(conf, targets, True, dry=dry)
+    else:
+        log_db.process_files_offline(conf, targets, dry=dry)
     timer.stop()
 
 
@@ -130,25 +99,16 @@ def db_add(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
-    targets = get_targets_arg(ns, conf)
+    targets = get_targets_arg(ns)
     from . import log_db
+
+    if not is_online(conf):
+        msg = "db_add is not available with offline template generation"
+        sys.exit(msg)
 
     timer = common.Timer("db-add", output=_logger)
     timer.start()
     log_db.process_files_online(conf, targets, False)
-    timer.stop()
-
-
-def db_update(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    targets = get_targets_arg(ns, conf)
-    from . import log_db
-
-    timer = common.Timer("db-update", output=_logger)
-    timer.start()
-    log_db.process_files_online(conf, targets, False, isnew_check=True)
     timer.stop()
 
 
@@ -220,17 +180,17 @@ def show_lt_import(ns):
             print(" ".join(ltobj.ltw))
 
 
-def show_lt_import_exception(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-
-    form = ns.format
-    assert form in ("log", "message")
-    targets = get_targets_arg(ns, conf)
-    from . import lt_import
-
-    lt_import.search_exception(conf, targets, form)
+#def show_lt_import_exception(ns):
+#    conf = config.open_config(ns.conf_path)
+#    lv = logging.DEBUG if ns.debug else logging.INFO
+#    config.set_common_logging(conf, logger=_logger, lv=lv)
+#
+#    form = ns.format
+#    assert form in ("log", "message")
+#    targets = get_targets_arg(ns)
+#    from . import lt_import
+#
+#    lt_import.search_exception(conf, targets, form)
 
 
 def show_lt_words(ns):
@@ -606,17 +566,6 @@ ARG_DBSEARCH = [["conditions"],
 # description, List[args, kwargs], func
 # defined after functions because these settings use functions
 DICT_ARGSET = {
-    "data-filter": ["Straighten data and remove lines of undefined template.",
-                    [OPT_CONFIG, OPT_DEBUG, OPT_RECUR,
-                     [["-d", "--dirname"],
-                      {"dest": "dirname", "metavar": "DIRNAME",
-                       "action": "store",
-                       "help": "directory name to output"}],
-                     [["-i", "--incr"],
-                      {"dest": "incr", "action": "store_true",
-                       "help": "output incrementally, use with small memory"}],
-                     ARG_FILES_OPT],
-                    data_filter],
     "data-from-db": ["Generate log data from DB.",
                      [OPT_CONFIG, OPT_DEBUG,
                       [["-d", "--dirname"],
@@ -645,33 +594,14 @@ DICT_ARGSET = {
                           "help": "reset log file directory before processing"}],
                         ],
                        data_from_data],
-    "lt-from-data": ["Generate log templates (not using DB).",
-                     [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
-                      [["-i", "--import"],
-                       {"dest": "check_import", "action": "store_true",
-                        "help": ("ignore messages corresponding to "
-                                 "imported log template definition "
-                                 "(i.e., process only unknown messages)")}], ],
-                     lt_from_data],
     "db-make": [("Initialize database and add log data. "
                  "This fuction works incrementaly."),
                 [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_DRY,
                  ARG_FILES_OPT],
                 db_make],
-    "db-make-init": [("Initialize database and add log data "
-                      "for given dataset. "
-                      "This function does not consider "
-                      "to add other data afterwards."),
-                     [OPT_CONFIG, OPT_DEBUG, OPT_RECUR,
-                      ARG_FILES_OPT],
-                     db_make_init],
     "db-add": ["Add log data to existing database.",
                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES],
                db_add],
-    "db-update": [("Add newer log data (seeing timestamp range) "
-                   "to existing database."),
-                  [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES],
-                  db_update],
     "db-anonymize": [("Remove variables in log messages. "
                       "(Not anonymize hostnames; to be added)"),
                      [OPT_CONFIG, OPT_DEBUG],
@@ -700,17 +630,17 @@ DICT_ARGSET = {
                          {"dest": "external", "action": "store_true",
                           "help": "output in external format (for RE)"}]],
                        show_lt_import],
-    "show-lt-import-exception": [("Output log messages in a file "
-                                  "that is not defined "
-                                  "in lt_import definitions."),
-                                 [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES,
-                                  [["-f", "--format"],
-                                   {"dest": "format", "action": "store",
-                                    "default": "log",
-                                    "help": ("message format to load: "
-                                             "log: with header,"
-                                             "message: without header")}]],
-                                 show_lt_import_exception],
+#    "show-lt-import-exception": [("Output log messages in a file "
+#                                  "that is not defined "
+#                                  "in lt_import definitions."),
+#                                 [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES,
+#                                  [["-f", "--format"],
+#                                   {"dest": "format", "action": "store",
+#                                    "default": "log",
+#                                    "help": ("message format to load: "
+#                                             "log: with header,"
+#                                             "message: without header")}]],
+#                                 show_lt_import_exception],
     "show-host": ["Show all hostnames in database.",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_host],

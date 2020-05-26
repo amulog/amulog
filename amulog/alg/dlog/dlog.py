@@ -137,7 +137,7 @@ class LTGenDlog(lt_common.LTGen):
         return ret
 
     def process_line(self, pline):
-        raise ValueError("Dlog does not work online")
+        raise ValueError("Dlog does not support incremental processing")
 
 
 def init_ltgen(conf, table, **_):

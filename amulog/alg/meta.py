@@ -2,17 +2,19 @@
 # coding: utf-8
 
 
-ONLINE_ALG = ["shiso", "drain", "fttree", "lenma"]
+ONLINE_ALG = ["shiso", "drain", "lenma", "fttree"]
 OFFLINE_ALG = ["va", "dlog"]
 ANY_ALG = ["import", "import-ext", "re", "crf"]
 
 
-def is_online(alg_name):
-    if alg_name in ONLINE_ALG:
+def is_online(mode, alg_names):
+    if mode == "online":
         return True
-    elif alg_name in OFFLINE_ALG:
+    elif mode == "offline":
         return False
-    elif alg_name in ANY_ALG:
-        return True
     else:
-        raise ValueError
+        for alg_name in alg_names:
+            if alg_name in OFFLINE_ALG:
+                return False
+        else:
+            return True

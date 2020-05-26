@@ -92,6 +92,13 @@ default_year =
 
 [log_template]
 
+# log processing mode, one of [online, offline, auto]
+# online processes log messages incrementally
+# offline processed log messages all together
+# auto selects available mode for the template generation method to use.
+# note: multiprocessing is only available in offline mode
+processing_mode = auto
+
 # 1st step algorithms / methods to generate log templates
 # [shiso, va, crf, import] are available
 lt_methods = drain

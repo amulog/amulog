@@ -15,16 +15,20 @@ from . import testlog
 
 class TestLTGen(unittest.TestCase):
 
-    def setUp(self):
-        fd_testlog, self._path_testlog = tempfile.mkstemp()
+    _path_testlog = None
+
+    @classmethod
+    def setUpClass(cls):
+        fd_testlog, cls._path_testlog = tempfile.mkstemp()
         os.close(fd_testlog)
         tlg = testlog.TestLogGenerator(testlog.DEFAULT_CONFIG, seed=3)
-        tlg.dump_log(self._path_testlog)
+        tlg.dump_log(cls._path_testlog)
 
-        self._conf = config.open_config()
+        cls._conf = config.open_config()
 
-    def tearDown(self):
-        os.remove(self._path_testlog)
+    @classmethod
+    def tearDownClass(cls):
+        os.remove(cls._path_testlog)
 
     def _try_method(self, conf, online=True):
         table = lt_common.TemplateTable()

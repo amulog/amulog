@@ -38,11 +38,6 @@ def get_targets_eval(conf):
     return ret_train, ret_test
 
 
-def is_online_conf(conf):
-    from amulog.alg import is_online
-    return is_online(conf["log_template"]["lt_methods"])
-
-
 def measure_accuracy_answer(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -67,7 +62,8 @@ def measure_accuracy_trial(ns):
     targets_train, targets_test = get_targets_eval(conf)
     n_trial = int(conf["eval"]["n_trial_accuracy"])
 
-    if is_online_conf(conf):
+    from amulog.__main__ import is_online
+    if is_online(conf):
         maketpl.measure_accuracy_trial_online(conf, targets_train,
                                               targets_test, n_trial)
     else:
@@ -97,7 +93,64 @@ def show_accuracy(ns):
 
     from . import maketpl
     n_trial = int(conf["eval"]["n_trial_accuracy"])
-    maketpl.print_metrics(conf, n_trial)
+    mlt = maketpl.MeasureLTGen(conf, n_trial)
+    mlt.load()
+
+    print("number of trials: {0}".format(mlt.number_of_trials()))
+    n_message = mlt.number_of_messages()
+    print("number of messages: {0}".format(n_message))
+    if n_message == 0:
+        return
+
+    print("number of clusters in answer: {0}".format(
+        mlt.number_of_answer_clusters()))
+    print("number of clusters in trial: {0}".format(
+        mlt.number_of_trial_clusters()))
+    print()
+
+    print("word accuracy: {0}".format(mlt.word_accuracy()))
+    print("line accuracy: {0}".format(mlt.line_accuracy()))
+    print("tpl accuracy: {0}".format(mlt.tpl_accuracy()))
+    print("tpl word accuracy: {0}".format(mlt.tpl_word_accuracy()))
+
+    if ns.partial:
+        print("tpl description failure ratio: {0}".format(
+            mlt.tpl_desc_fail_ratio()))
+        print("tpl variable failure ratio: {0}".format(
+            mlt.tpl_var_fail_ratio()))
+
+    print("rand score: {0}".format(mlt.rand_score()))
+    print("adjusted rand score: {0}".format(mlt.adjusted_rand_score()))
+    print("f1 score: {0}".format(mlt.f1_score()))
+    print("parsing accuracy: {0}".format(mlt.parsing_accuracy()))
+    print("cluster accuracy: {0}".format(mlt.cluster_accuracy()))
+
+    if ns.partial:
+        print("over-division cluster ratio: {0}".format(
+            mlt.overdiv_ratio()))
+        print("over-aggregation cluster ratio: {0}".format(
+            mlt.overagg_ratio()))
+
+
+def show_accuracy_offline(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from amulog.__main__ import is_online
+    if not is_online(conf):
+        sys.exit("{0} is offline, use show_accuracy".format(ns.conf_path))
+
+    from . import maketpl
+    n_trial = int(conf["eval"]["n_trial_accuracy"])
+    ret = maketpl.offline_structure_metrics(conf, n_trial, partial=ns.partial)
+    print("word accuracy: {0}".format(ret[0]))
+    print("line accuracy: {0}".format(ret[1]))
+    print("tpl accuracy: {0}".format(ret[2]))
+    print("tpl word accuracy: {0}".format(ret[3]))
+    if ns.partial:
+        print("tpl description failure ratio: {0}".format(ret[4]))
+        print("tpl variable failure ratio: {0}".format(ret[5]))
 
 
 def show_templates(ns):
@@ -107,7 +160,7 @@ def show_templates(ns):
 
     from . import maketpl
     n_trial = int(conf["eval"]["n_trial_accuracy"])
-    for tpl in maketpl.get_templates(conf, n_trial):
+    for tpl in maketpl.get_templates(conf, n_trial).values():
         print(" ".join(tpl))
 
 
@@ -227,6 +280,9 @@ OPT_SAMPLES = [["-s", "--samples"],
                {"dest": "samples", "metavar": "SAMPLES",
                 "action": "store", "type": int, "default": 1,
                 "help": "number of samples for each cluster"}]
+OPT_PARTIAL = [["-p", "--partial"],
+               {"dest": "partial", "action": "store_true",
+                "help": "show partial metrics (detailed output)"}]
 ARG_FILES_OPT = [["files"],
                  {"metavar": "PATH", "nargs": "*",
                   "help": ("files or directories as input "
@@ -261,8 +317,11 @@ DICT_ARGSET = {
                              [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],
                              measure_time_offline],
     "show-accuracy": ["Load and show results of measuring accuracy",
-                      [OPT_CONFIG, OPT_DEBUG],
+                      [OPT_CONFIG, OPT_DEBUG, OPT_PARTIAL],
                       show_accuracy],
+    "show-accuracy-offline": ["Show offline accuracy of online result",
+                              [OPT_CONFIG, OPT_DEBUG, OPT_PARTIAL],
+                              show_accuracy_offline],
     "search-fail-template": ["Show failed templates in template accuracy",
                              [OPT_CONFIG, OPT_DEBUG, OPT_ALL],
                              search_fail_template],
