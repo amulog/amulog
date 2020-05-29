@@ -397,28 +397,28 @@ class MeasureLTGen:
             ret[tid] = d_n_c_lines.get(key, 0) / d_n_lines.get(key, 0)
         return ret
 
-    def tpl_desc_fail_ratio(self, trial_id=None):
+    def tpl_desc_accuracy(self, trial_id=None):
         if trial_id is None:
-            l_acc = [self._tpl_word_accuracy_trial(i)
+            l_acc = [self.tpl_desc_accuracy(i)
                      for i in range(self.number_of_trials())]
             return np.average(l_acc)
         else:
             iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
             iterable_tpl_trial = self.iter_tpl_trial(trial_id, pass_none=True)
             l_tid_answer = self.tid_list_answer(pass_none=True)
-            return structure_metrics.tpl_desc_fail_ratio(
+            return structure_metrics.tpl_desc_accuracy(
                 iterable_tpl_answer, iterable_tpl_trial, l_tid_answer)
 
-    def tpl_var_fail_ratio(self, trial_id=None):
+    def tpl_var_accuracy(self, trial_id=None):
         if trial_id is None:
-            l_acc = [self._tpl_word_accuracy_trial(i)
+            l_acc = [self.tpl_var_accuracy(i)
                      for i in range(self.number_of_trials())]
             return np.average(l_acc)
         else:
             iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
             iterable_tpl_trial = self.iter_tpl_trial(trial_id, pass_none=True)
             l_tid_answer = self.tid_list_answer(pass_none=True)
-            return structure_metrics.tpl_var_fail_ratio(
+            return structure_metrics.tpl_var_accuracy(
                 iterable_tpl_answer, iterable_tpl_trial, l_tid_answer)
 
     # def word_accuracy_precision_recall_fmeasure(self, trial_id,
@@ -673,10 +673,10 @@ def offline_structure_metrics(conf, n_trial, trial_id=0, partial=False):
         map(lambda x: d_tpl[x], tids), tids)
 
     if partial:
-        tpl_desc_fail = structure_metrics.tpl_desc_fail_ratio(
+        tpl_desc_fail = structure_metrics.tpl_desc_accuracy(
             mlt.iter_tpl_answer(pass_none=True),
             map(lambda x: d_tpl[x], tids), tids)
-        tpl_var_fail = structure_metrics.tpl_var_fail_ratio(
+        tpl_var_fail = structure_metrics.tpl_var_accuracy(
             mlt.iter_tpl_answer(pass_none=True),
             map(lambda x: d_tpl[x], tids), tids)
         ret = (word_acc, line_acc, tpl_acc, tpl_word_acc,

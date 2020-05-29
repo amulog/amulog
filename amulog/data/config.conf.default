@@ -213,6 +213,8 @@ variable_regex =
 [log_template_drain]
 depth = 3
 threshold = 0.3
+
+# if empty, drain use drain_regex.conf
 preprocess_rule =
 
 

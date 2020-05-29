@@ -56,7 +56,7 @@ def tpl_word_accuracy(tpls_true, tpls_pred, labels_true):
     return np.average(l_word_accuracy)
 
 
-def tpl_desc_fail_ratio(tpls_true, tpls_pred, labels_true):
+def tpl_desc_accuracy(tpls_true, tpls_pred, labels_true):
     d_n_desc = defaultdict(int)
     d_n_correct_desc = defaultdict(int)
     for tpl_true, tpl_pred, cluster in zip(tpls_true, tpls_pred,
@@ -71,7 +71,7 @@ def tpl_desc_fail_ratio(tpls_true, tpls_pred, labels_true):
     return np.average(l_ratio)
 
 
-def tpl_var_fail_ratio(tpls_true, tpls_pred, labels_true):
+def tpl_var_accuracy(tpls_true, tpls_pred, labels_true):
     d_n_var = defaultdict(int)
     d_n_correct_var = defaultdict(int)
     for tpl_true, tpl_pred, cluster in zip(tpls_true, tpls_pred,

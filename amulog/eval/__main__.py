@@ -114,10 +114,10 @@ def show_accuracy(ns):
     print("tpl word accuracy: {0}".format(mlt.tpl_word_accuracy()))
 
     if ns.partial:
-        print("tpl description failure ratio: {0}".format(
-            mlt.tpl_desc_fail_ratio()))
-        print("tpl variable failure ratio: {0}".format(
-            mlt.tpl_var_fail_ratio()))
+        print(" tpl description accuracy: {0}".format(
+            mlt.tpl_desc_accuracy()))
+        print(" tpl variable accuracy: {0}".format(
+            mlt.tpl_var_accuracy()))
 
     print("rand score: {0}".format(mlt.rand_score()))
     print("adjusted rand score: {0}".format(mlt.adjusted_rand_score()))
@@ -149,8 +149,8 @@ def show_accuracy_offline(ns):
     print("tpl accuracy: {0}".format(ret[2]))
     print("tpl word accuracy: {0}".format(ret[3]))
     if ns.partial:
-        print("tpl description failure ratio: {0}".format(ret[4]))
-        print("tpl variable failure ratio: {0}".format(ret[5]))
+        print(" tpl description accuracy: {0}".format(ret[4]))
+        print(" tpl variable accuracy: {0}".format(ret[5]))
 
 
 def show_templates(ns):
@@ -261,6 +261,18 @@ def measure_time_offline(ns):
     print("Average: {0}".format(avg))
 
 
+def compare_parameter(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from . import param_searcher
+    targets = get_targets_conf(conf)
+    iterable_results = param_searcher.compare_parameters(conf, targets, ns.method)
+    for params, d_metrics in iterable_results:
+        print(params, d_metrics)
+
+
 # common argument settings
 OPT_DEBUG = [["--debug"],
              {"dest": "debug", "action": "store_true",
@@ -287,6 +299,9 @@ ARG_FILES_OPT = [["files"],
                  {"metavar": "PATH", "nargs": "*",
                   "help": ("files or directories as input "
                            "(optional; defaultly read from config")}]
+ARG_METHOD = [["method"],
+              {"metavar": "METHOD",
+               "help": "log template generation method to search"}]
 ARG_2_CONFIG = [["confs"],
                 {"metavar": "CONFIG", "nargs": 2,
                  "help": "2 config file path to compare"}]
@@ -344,6 +359,10 @@ DICT_ARGSET = {
                                      "divided in surplus only in conf2"),
                                     [OPT_DEBUG, OPT_SAMPLES, ARG_2_CONFIG],
                                     search_diff_cluster_overagg],
+    "compare-parameter": [("Calculate metrics for parameter candidates"
+                           "of log template generation"),
+                          [OPT_DEBUG, OPT_CONFIG, ARG_METHOD],
+                          compare_parameter],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

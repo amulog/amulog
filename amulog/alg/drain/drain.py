@@ -52,7 +52,10 @@ class LTGenDrain(lt_common.LTGen):
 
         # search by preceding tokens
         for i in range(self._depth - 2):
-            key = tokens[i]
+            try:
+                key = tokens[i]
+            except IndexError:
+                key = None
             if key not in node.child:
                 node.child[key] = Node()
             node = node.child[key]
