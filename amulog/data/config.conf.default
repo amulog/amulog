@@ -167,8 +167,11 @@ import_format_ext_esc = false
 
 # Log template matching algorithm
 # [hash, table]
-ext_seatch_method = table
+ext_search_method = table
 hash_strlen = 5
+
+# shuffle loaded templates if true
+shuffle = false
 
 
 [log_template_va]

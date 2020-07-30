@@ -44,7 +44,8 @@ def is_online(conf):
     from .alg import is_online as alg_is_online
     mode = conf["log_template"]["processing_mode"]
     lt_methods = config.getlist(conf, "log_template", "lt_methods")
-    return alg_is_online(mode, lt_methods)
+    multiproc = conf.getboolean("log_template", "ltgen_multiprocess")
+    return alg_is_online(mode, lt_methods, multiproc)
 
 
 def data_from_db(ns):
@@ -180,19 +181,6 @@ def show_lt_import(ns):
             print(" ".join(ltobj.ltw))
 
 
-#def show_lt_import_exception(ns):
-#    conf = config.open_config(ns.conf_path)
-#    lv = logging.DEBUG if ns.debug else logging.INFO
-#    config.set_common_logging(conf, logger=_logger, lv=lv)
-#
-#    form = ns.format
-#    assert form in ("log", "message")
-#    targets = get_targets_arg(ns)
-#    from . import lt_import
-#
-#    lt_import.search_exception(conf, targets, form)
-
-
 def show_lt_words(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -216,9 +204,14 @@ def show_lt_descriptions(ns):
 
 
 def show_lt_variables(ns):
-    import re
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+    from . import log_db
 
-    def repl_var(d):
+    d = log_db.agg_words(conf, target="variable")
+    if ns.repld:
+        import re
         reobj = re.compile(r"[0-9]+")
         keys = list(d.keys())
         for k in keys:
@@ -228,14 +221,6 @@ def show_lt_variables(ns):
             else:
                 d[new_k] += d.pop(k)
 
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
-
-    d = log_db.agg_words(conf, target="variable")
-    if ns.repld:
-        repl_var(d)
     print(common.cli_table(sorted(d.items(), key=lambda x: x[1],
                                   reverse=True)))
 
@@ -419,7 +404,7 @@ def parse_condition(conditions):
     """
     d = {}
     for arg in conditions:
-        if not "=" in arg:
+        if "=" not in arg:
             raise SyntaxError
         key = arg.partition("=")[0]
         if key == "ltid":
@@ -443,7 +428,7 @@ def parse_condition(conditions):
     return d
 
 
-def conf_defaults(ns):
+def conf_defaults(_):
     config.show_default_config()
 
 
@@ -538,8 +523,8 @@ OPT_RECUR = [["-r", "--recur"],
              {"dest": "recur", "action": "store_true",
               "help": "recursively search files to process"}]
 OPT_DRY = [["-d", "--dry"],
-             {"dest": "dry", "action": "store_true",
-              "help": "do not store data into db"}]
+           {"dest": "dry", "action": "store_true",
+            "help": "do not store data into db"}]
 OPT_TERM = [["-t", "--term"],
             {"dest": "dt_range",
              "metavar": "DATE1 DATE2", "nargs": 2,
@@ -630,17 +615,6 @@ DICT_ARGSET = {
                          {"dest": "external", "action": "store_true",
                           "help": "output in external format (for RE)"}]],
                        show_lt_import],
-#    "show-lt-import-exception": [("Output log messages in a file "
-#                                  "that is not defined "
-#                                  "in lt_import definitions."),
-#                                 [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES,
-#                                  [["-f", "--format"],
-#                                   {"dest": "format", "action": "store",
-#                                    "default": "log",
-#                                    "help": ("message format to load: "
-#                                             "log: with header,"
-#                                             "message: without header")}]],
-#                                 show_lt_import_exception],
     "show-host": ["Show all hostnames in database.",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_host],
@@ -897,4 +871,6 @@ def _main():
 
 
 if __name__ == "__main__":
-    _main()
+    import cProfile
+    cProfile.run('_main()')
+    #_main()

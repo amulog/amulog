@@ -17,10 +17,14 @@ class LTGenImport(lt_common.LTGenStateless):
     def __init__(self, table, filename, mode, ltmap, lp, shuffle=False):
         super(LTGenImport, self).__init__(table)
         self._table = table
-        self._d_def = common.IDDict(lambda x: tuple(x))
+        self._d_def = common.IDDict(self._keyfunc)
         self._ltmap = lt_search.init_searcher(ltmap)
         self._lp = lp
         self._open_def(filename, mode, shuffle)
+
+    @staticmethod
+    def _keyfunc(x):
+        return tuple(x)
 
     def _open_def(self, filename, mode, shuffle):
         if filename.strip() == "":

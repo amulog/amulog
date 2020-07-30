@@ -127,3 +127,26 @@ def init_ltgen(conf, table, **_):
     else:
         message_type_func = None
     return LTGenFTTree(table, max_child, cut_depth, message_type_func)
+
+
+def get_param_candidates():
+    from itertools import product
+    params = []
+    for th, n_cnt in product((2, 3, 6, 12, 24), (2, 3, 4)):
+        params.append({"max_child": th,
+                       "cut_depth": n_cnt})
+    return params
+
+
+def init_ltgen_with_params(conf, table, params, **_):
+    max_child = params["max_child"]
+    cut_depth = params["cut_depth"]
+    type_func_name = conf.get("log_template_fttree", "type_func")
+    if type_func_name == "top":
+        message_type_func = LTGenFTTree.message_type_top
+    elif type_func_name == "length":
+        message_type_func = LTGenFTTree.message_type_length
+    else:
+        message_type_func = None
+    return LTGenFTTree(table, max_child, cut_depth, message_type_func)
+

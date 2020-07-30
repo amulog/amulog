@@ -7,8 +7,10 @@ OFFLINE_ALG = ["va", "dlog"]
 ANY_ALG = ["import", "import-ext", "re", "crf"]
 
 
-def is_online(mode, alg_names):
-    if mode == "online":
+def is_online(mode, alg_names, multiproc):
+    if multiproc:
+        return False
+    elif mode == "online":
         return True
     elif mode == "offline":
         return False

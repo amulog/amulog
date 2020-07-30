@@ -5,8 +5,10 @@ import os
 import re
 import pickle
 import logging
+import numpy as np
 from collections import defaultdict
 from importlib import import_module
+from abc import ABC, abstractmethod
 
 from . import config
 from . import strutil
@@ -15,6 +17,9 @@ REPLACER = "**"
 REPLACER_HEAD = "*"
 REPLACER_TAIL = "*"
 REPLACER_REGEX = re.compile(r"\*[A-Z]*?\*")  # shortest match
+
+# for multiprocessing
+_LTGEN_MP_LOCAL = None
 
 _logger = logging.getLogger(__package__)
 
@@ -37,13 +42,13 @@ class LTManager(object):
 
     # adding lt to db (ltgen do not add)
 
-    def __init__(self, conf, db, lttable, reset_db):
+    def __init__(self, conf, db, lttable, table, reset_db):
         self._reset_db = reset_db
         self.filename = conf.get("log_template", "indata_filename")
 
         self._db = db
         self._lttable = lttable
-        self._table = TemplateTable()
+        self._table = table
         self._ltgen = None
         self._ltspl = None
         self._ltgroup = None
@@ -66,16 +71,19 @@ class LTManager(object):
             l_w = pline["words"]
             l_s = pline["symbols"]
             tid = d_tid[mid]
-            tpl = self._table[tid]
-            ltw = self._ltspl.replace_variable(l_w, tpl, REPLACER)
-            ltid = self._ltspl.search(tid, ltw)
-            if ltid is None:
-                ltline = self.add_lt(ltw, l_s)
-                self._table.addcand(tid, ltline.ltid)
+            if tid is None:
+                yield None
             else:
-                self.count_lt(ltid)
-                ltline = self._lttable[ltid]
-            yield ltline
+                tpl = self._ltgen.get_tpl(tid)
+                ltw = self._ltspl.replace_variable(l_w, tpl, REPLACER)
+                ltid = self._ltspl.search(tid, ltw)
+                if ltid is None:
+                    ltline = self.add_lt(ltw, l_s)
+                    self._table.addcand(tid, ltline.ltid)
+                else:
+                    self.count_lt(ltid)
+                    ltline = self._lttable[ltid]
+                yield ltline
 
     def process_line(self, pline):
 
@@ -104,7 +112,8 @@ class LTManager(object):
         if tid is None:
             return None
 
-        tpl = self._table[tid]
+        tpl = self._ltgen.get_tpl(tid)
+        #tpl = self._table[tid]
         ltw = self._ltspl.replace_variable(l_w, tpl, REPLACER)
         if state == LTGen.state_added:
             ltline = self.add_lt(ltw, l_s)
@@ -224,7 +233,7 @@ class LTTable:
         self.ltdict[ltid] = LogTemplate(ltid, ltgid, ltw, lts, count)
 
     def add_lt(self, ltline):
-        assert not ltline.ltid in self.ltdict
+        assert ltline.ltid not in self.ltdict
         self.ltdict[ltline.ltid] = ltline
 
     def remove_lt(self, ltid):
@@ -377,14 +386,19 @@ class TemplateTable:
         return self._d_tpl, self._d_cand
 
 
-class LTGen(object):
-    stateful = True
+class LTGen(ABC):
     state_added = 0
     state_changed = 1
     state_unchanged = 2
 
-    def __init__(self, table: TemplateTable):
-        self._table = table
+    def __init__(self, table):
+        if table is None:
+            self._table = TemplateTable()
+        else:
+            self._table = table
+
+    def is_stateful(self):
+        return True
 
     def get_tpl(self, tid):
         return self._table[tid]
@@ -432,6 +446,7 @@ class LTGen(object):
             d[mid] = tid
         return d
 
+    @abstractmethod
     def process_line(self, pline):
         """Estimate log template for given message.
         This method works in incremental processing phase.
@@ -450,31 +465,56 @@ class LTGen(object):
         This function is called by process_init_data."""
         pass
 
+    @abstractmethod
     def load(self, loadobj):
         raise NotImplementedError
 
+    @abstractmethod
     def dumpobj(self):
         raise NotImplementedError
 
 
-class LTGenStateless(LTGen):
+class LTGenOffline(LTGen, ABC):
+
+    @abstractmethod
+    def process_offline(self, plines):
+        raise NotImplementedError
+
+    def process_line(self, pline):
+        msg = "offline LTGen does not support incremental processing"
+        raise RuntimeError(msg)
+
+    def load(self, _):
+        # offline LTGen does not support suspension and restart
+        pass
+
+    def dumpobj(self):
+        # offline LTGen does not support suspension and restart
+        return None
+
+
+class LTGenStateless(LTGen, ABC):
 
     """Subclasses of LTGenStateless is acceptable
     for multiprocessing in offline template generation."""
 
-    stateful = False
-
+    @abstractmethod
     def generate_tpl(self, pline):
         raise NotImplementedError
+
+    def is_stateful(self):
+        return False
 
     def process_line(self, pline):
         tpl = self.generate_tpl(pline)
         return self.update_table(tpl)
 
     def load(self, loadobj):
+        # stateless
         pass
 
     def dumpobj(self):
+        # stateless
         return None
 
 
@@ -484,6 +524,9 @@ class LTGenJoint(LTGen):
         super().__init__(table)
         self._l_ltgen = l_ltgen
         self._import_index = ltgen_import_index
+
+    def is_stateful(self):
+        return any([ltgen.is_stateful() for ltgen in self._l_ltgen])
 
     def _update_ltmap(self, pline, index, tid, state):
         from .lt_import import LTGenImport
@@ -517,42 +560,50 @@ class LTGenJoint(LTGen):
         return [ltgen.dumpobj() for ltgen in self._l_ltgen]
 
 
-class LTGenMultiProcess(LTGen):
+class LTGenMultiProcess(LTGenOffline):
 
     _ltgen: LTGenStateless
 
     def __init__(self, table: TemplateTable, n_proc, kwargs):
         super().__init__(table)
         self._n_proc = n_proc
-        self._ltgen = init_ltgen(**kwargs)
-        assert not self._ltgen.stateful, \
-            "multiprocessing is limited to stateless methods"
+#        self._ltgen = init_ltgen(**kwargs)
+#        assert not self._ltgen.is_stateful(), \
+#            "multiprocessing is limited to stateless methods"
+        assert(n_proc < 20)
 
         from multiprocessing import Pool
-        self._pool = Pool(processes=self._n_proc)
-
-    def load(self, _):
-        pass
-
-    def dumpobj(self):
-        return None
+        self._pool = Pool(processes=self._n_proc,
+                          initializer=self._pool_init, initargs=(kwargs,))
 
     @staticmethod
-    def _task(args):
-        ltgen, message_id, pline = args
-        template = ltgen.generate_tpl(pline)
-        return message_id, template
+    def _pool_init(ltgen_kwargs):
+        global _LTGEN_MP_LOCAL
+        _LTGEN_MP_LOCAL = init_ltgen(**ltgen_kwargs)
+        assert not _LTGEN_MP_LOCAL.is_stateful(), \
+            "multiprocessing is limited to stateless methods"
 
-    def process_line(self, _):
-        raise ValueError("use process_offline")
+    @staticmethod
+    def _pool_task(args):
+        ret = []
+        for message_id, pline in args:
+            template = _LTGEN_MP_LOCAL.generate_tpl(pline)
+            ret.append((message_id, template))
+        return ret
 
-    def process_offline(self, plines):
-        l_args = [(self._ltgen, mid, pline)
-                  for mid, pline in enumerate(plines)]
+        #message_id, pline = args
+        #template = _LTGEN_MP_LOCAL.generate_tpl(pline)
+        #return message_id, template
+
+    def _process_offline_pool(self, plines):
+        l_tmp_args = [(mid, pline)
+                      for mid, pline in enumerate(plines)]
+        l_args = np.array_split(l_tmp_args, self._n_proc * 10)
         try:
             d_tpl = {}
-            for mid, tpl in self._pool.imap_unordered(self._task, l_args):
-                d_tpl[mid] = tpl
+            for ret in self._pool.imap_unordered(self._pool_task, l_args):
+                for mid, tpl in ret:
+                    d_tpl[mid] = tpl
             self._pool.close()
         except KeyboardInterrupt:
             self._pool.terminate()
@@ -563,6 +614,9 @@ class LTGenMultiProcess(LTGen):
                 tid, _ = self.update_table(tpl)
                 ret[mid] = tid
             return ret
+
+    def process_offline(self, plines):
+        return self._process_offline_pool(plines)
 
 
 class LTGroup(object):
@@ -622,10 +676,6 @@ class LTPostProcess(object):
 
         self.sym_header = REPLACER_HEAD
         self.sym_footer = REPLACER_TAIL
-        #self.sym_header = conf.get("log_template",
-        #                           "labeled_variable_symbol_header")
-        #self.sym_footer = conf.get("log_template",
-        #                           "labeled_variable_symbol_footer")
 
     def _labeled_variable(self, w):
         return "".join((self.sym_header, w, self.sym_footer))
@@ -708,10 +758,12 @@ def init_ltgen(conf, table, method, shuffle=False):
         return alg_module.init_ltgen(**kwargs)
 
 
-def init_ltgen_methods(conf, table, lt_methods=None, shuffle=False,
+def init_ltgen_methods(conf, table, lt_methods=None, shuffle=None,
                        multiprocess=None):
     if lt_methods is None:
         lt_methods = config.getlist(conf, "log_template", "lt_methods")
+    if shuffle is None:
+        shuffle = conf.getboolean("log_template_import", "shuffle")
     if multiprocess is None:
         multiprocess = conf.getboolean("log_template", "ltgen_multiprocess")
     ltgen_kwargs = {"conf": conf,
@@ -724,8 +776,7 @@ def init_ltgen_methods(conf, table, lt_methods=None, shuffle=False,
             n_proc = int(n_proc)
         else:
             n_proc = None
-        assert len(lt_methods) == 1, \
-            "for multiprocessing, lt_methods should be single"
+        ltgen_kwargs["table"] = None
         ltgen_kwargs["method"] = lt_methods[0]
         return LTGenMultiProcess(table, n_proc, ltgen_kwargs)
     elif len(lt_methods) > 1:
@@ -742,12 +793,13 @@ def init_ltgen_methods(conf, table, lt_methods=None, shuffle=False,
         raise ValueError
 
 
-def init_ltmanager(conf, db, table, reset_db):
+def init_ltmanager(conf, db, lttable, reset_db):
     """Initializing ltmanager by loading argument parameters."""
-    # sym = conf.get("log_template", "variable_symbol")
-    ltm = LTManager(conf, db, table, reset_db)
 
-    ltm.set_ltgen(init_ltgen_methods(conf, ltm._table))
+    table = TemplateTable()
+    ltm = LTManager(conf, db, lttable, table, reset_db)
+
+    ltm.set_ltgen(init_ltgen_methods(conf, table))
 
     ltg_alg = conf.get("log_template", "ltgroup_alg")
     if ltg_alg == "shiso":
@@ -772,7 +824,7 @@ def init_ltmanager(conf, db, table, reset_db):
     ltm.set_ltgroup(ltgroup)
 
     post_alg = config.gettuple(conf, "log_template", "post_alg")
-    ltspl = LTPostProcess(conf, ltm._table, ltm._lttable, post_alg)
+    ltspl = LTPostProcess(conf, table, lttable, post_alg)
     ltm.set_ltspl(ltspl)
 
     if os.path.exists(ltm.filename) and not reset_db:

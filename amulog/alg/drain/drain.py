@@ -94,3 +94,26 @@ def init_ltgen(conf, table, **_):
     vreobj = VariableRegex(conf, preprocess_fn)
 
     return LTGenDrain(table, threshold, depth, vreobj)
+
+
+def get_param_candidates():
+    import numpy as np
+    from itertools import product
+    params = []
+    for th, depth in product(np.arange(0, 1.1, 0.1), (3, 4, 5)):
+        params.append({"threshold": th,
+                       "depth": depth})
+    return params
+
+
+def init_ltgen_with_params(conf, table, params, **_):
+    threshold = params["threshold"]
+    depth = params["depth"]
+
+    from amulog.lt_regex import VariableRegex
+    preprocess_fn = conf.get("log_template_drain", "preprocess_rule")
+    if preprocess_fn.strip() == "":
+        preprocess_fn = DEFAULT_REGEX_CONFIG
+    vreobj = VariableRegex(conf, preprocess_fn)
+
+    return LTGenDrain(table, threshold, depth, vreobj)

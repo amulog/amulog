@@ -97,3 +97,21 @@ def init_ltgen(conf, table, **_):
 
     return LTGenLenMa(table, threshold=threshold, n_same_count=n_same_count,
                       use_head_rule=use_head_rule)
+
+
+def get_param_candidates():
+    from itertools import product
+    params = []
+    for th, n_cnt in product((0., 0.5, 0.7, 0.8, 0.9, 0.95, 0.99), (2, 3, 4)):
+        params.append({"threshold": th,
+                       "n_same_count": n_cnt})
+    return params
+
+
+def init_ltgen_with_params(conf, table, params, **_):
+    threshold = params["threshold"]
+    n_same_count = params["n_same_count"]
+    use_head_rule = conf.getboolean("log_template_lenma", "use_head_rule")
+
+    return LTGenLenMa(table, threshold=threshold, n_same_count=n_same_count,
+                      use_head_rule=use_head_rule)

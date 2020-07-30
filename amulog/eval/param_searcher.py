@@ -1,66 +1,103 @@
-from amulog import log_db
+import logging
+from collections import defaultdict
+
+from amulog import common
 from amulog import lt_common
-from amulog import lt_import
-from amulog.eval import cluster_metrics
+from . import maketpl
+
+_logger = logging.getLogger(__package__)
 
 
-class ParameterSearcher(object):
+class ParameterSearcher(maketpl.MeasureLTGen):
 
-    metrics_candidates = [cluster_metrics.cluster_accuracy,
-                          cluster_metrics.over_division_cluster_ratio,
-                          cluster_metrics.over_aggregation_cluster_ratio]
+    FILEPATH_DIGIT_LENGTH = 4
 
-    def __init__(self, conf, param_candidates, metrics_candidates=None):
-        self._conf = conf
-        self._param_candidates = param_candidates
-        if metrics_candidates is None:
-            self._metrics_candidates = self.metrics_candidates
-        else:
-            self._metrics_candidates = metrics_candidates
+    def __init__(self, conf, n_trial):
+        super().__init__(conf, n_trial)
+        self._params = None
 
-    def _get_ltgen(self, table, params):
-        raise NotImplementedError
+    def _init_trial_info(self):
+        common.mkdir(self._output_dir_trial(self._conf))
+        if self._n_trial is None:
+            return
+        assert self._n_trial < 10 ** self.FILEPATH_DIGIT_LENGTH
+        self._d_trial = {"params": self._params,
+                         "l_tid": list(),
+                         "n_c_lines": int(),
+                         "d_n_c_lines": defaultdict(int),
+                         "n_c_words": int(),
+                         "d_n_c_words": defaultdict(int),
+                         }
 
-    def measure(self, plines):
-        table_answer = lt_common.TemplateTable()
-        ltgen_answer = lt_import.init_ltgen_import(self._conf, table_answer)
-        d_tid_answer = ltgen_answer.process_offline(plines)
-        l_tid_answer = [tid for mid, tid
-                        in sorted(d_tid_answer.items(), key=lambda x: x[0])
-                        if tid is not None]
+    @staticmethod
+    def _output_dir_trial(conf):
+        return conf["eval"]["ltgen_param_dir"]
 
-        for params in self._param_candidates:
-            table = lt_common.TemplateTable()
-            ltgen = self._get_ltgen(table, params)
-            d_tid_trial = ltgen.process_offline(plines)
-            l_tid_trial = [tid for mid, tid
-                           in sorted(d_tid_trial.items(), key=lambda x: x[0])
-                           if d_tid_answer[mid] is not None]
+    def init_trial(self, trial_id, params=None):
+        common.rm(self._trial_label_path(trial_id))
+        self._current_trial = trial_id
+        self._params = params
+        self._init_trial_info()
 
-            d_metrics = {}
-            for metrics_func in self.metrics_candidates:
-                kwargs = {"labels_true": l_tid_answer,
-                          "labels_pred": l_tid_trial}
-                val = metrics_func(**kwargs)
-                d_metrics[metrics_func.__name__] = val
+    def load_trial(self, trial_id):
+        self._current_trial = trial_id
+        self._load_trial_info()
+        self._params = self._d_trial["params"]
 
-            del table
-            del ltgen
-            del d_tid_trial
-            del l_tid_trial
-            yield params, d_metrics
+    def get_params(self):
+        return self._params
 
 
-def compare_parameters(conf, targets, method):
-    try:
-        from importlib import import_module
-        modname = "amulog.alg." + method
-        alg_module = import_module(modname)
-        ps = alg_module.ParameterSearcher(conf)
-    except ImportError as e:
-        raise e
-    else:
-        plines = list(log_db.iter_plines(conf, targets))
-        results = ps.measure(plines)
+def _get_param_candidates(method):
+    from importlib import import_module
+    modname = "amulog.alg.{0}".format(method)
+    alg_module = import_module(modname)
+    return alg_module.get_param_candidates()
 
-    return results
+
+def _init_ltgen_with_params(conf, table, method, params):
+    from importlib import import_module
+    modname = "amulog.alg." + method
+    alg_module = import_module(modname)
+    return alg_module.init_ltgen_with_params(conf, table, params)
+
+
+def measure_parameters(conf, targets, method):
+    param_candidates = list(_get_param_candidates(method))
+    n_trial = len(param_candidates)
+    ps = ParameterSearcher(conf, n_trial)
+    ps.load()
+
+    from amulog import log_db
+    for trial_id, params in enumerate(param_candidates):
+        timer = common.Timer("measure-parameters trial{0}".format(
+            trial_id), output=_logger)
+        timer.start()
+        ps.init_trial(trial_id, params)
+        table = lt_common.TemplateTable()
+        ltgen = _init_ltgen_with_params(conf, table, method, params)
+
+        input_lines = list(log_db.iter_plines(conf, targets))
+        d_tid = ltgen.process_offline(input_lines)
+        iterobj = zip(input_lines,
+                      ps.tid_list_answer(),
+                      ps.iter_tpl_answer())
+        for mid, (pline, tid_answer, tpl_answer) in enumerate(iterobj):
+            if tid_answer is None:
+                tid_trial = None
+                tpl_trial = None
+            else:
+                tid_trial = d_tid[mid]
+                if tid_trial is None:
+                    tpl_trial = None
+                else:
+                    try:
+                        tpl_trial = ltgen.get_tpl(tid_trial)
+                    except:
+                        import pdb; pdb.set_trace()
+            ps.add_trial(tid_trial, tpl_trial,
+                         tid_answer, tpl_answer, pline["words"])
+        ps.dump_trial()
+        timer.stop()
+
+    return ps

@@ -417,6 +417,7 @@ class LogDB:
         if edit:
             if self.db.db_exists():
                 if reset_db:
+                    _logger.info("DB reset")
                     self.db.reset()
                     self._init_tables()
                     self._init_area()

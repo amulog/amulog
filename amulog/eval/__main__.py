@@ -16,6 +16,11 @@ def get_targets_conf(conf):
     return amulog_main.get_targets_conf(conf)
 
 
+def get_targets_arg(ns):
+    from amulog import __main__ as amulog_main
+    return amulog_main.get_targets_arg(ns)
+
+
 def get_targets_eval(conf):
 
     def _get_targets(input_path):
@@ -96,7 +101,29 @@ def show_accuracy(ns):
     mlt = maketpl.MeasureLTGen(conf, n_trial)
     mlt.load()
 
-    print("number of trials: {0}".format(mlt.number_of_trials()))
+    functions = ["number_of_trial_clusters",
+                 "word_accuracy",
+                 "line_accuracy",
+                 "tpl_accuracy",
+                 "tpl_word_accuracy",
+                 "rand_score",
+                 "adjusted_rand_score",
+                 "f1_score",
+                 "parsing_accuracy",
+                 "cluster_accuracy",
+                 "v_measure_score"]
+
+    if ns.partial:
+        functions.extend(["tpl_description_accuracy",
+                          "tpl_variable_accuracy",
+                          "overdiv_ratio",
+                          "overagg_ratio",
+                          "homogeneity_score",
+                          "completeness_score"])
+
+    d_avg = maketpl.get_accuracy_average(conf, n_trial, functions)
+
+    print("number of trials: {0}".format(n_trial))
     n_message = mlt.number_of_messages()
     print("number of messages: {0}".format(n_message))
     if n_message == 0:
@@ -105,31 +132,39 @@ def show_accuracy(ns):
     print("number of clusters in answer: {0}".format(
         mlt.number_of_answer_clusters()))
     print("number of clusters in trial: {0}".format(
-        mlt.number_of_trial_clusters()))
+        d_avg["number_of_trial_clusters"]))
     print()
 
-    print("word accuracy: {0}".format(mlt.word_accuracy()))
-    print("line accuracy: {0}".format(mlt.line_accuracy()))
-    print("tpl accuracy: {0}".format(mlt.tpl_accuracy()))
-    print("tpl word accuracy: {0}".format(mlt.tpl_word_accuracy()))
+    print("word accuracy: {0}".format(d_avg["word_accuracy"]))
+    print("line accuracy: {0}".format(d_avg["line_accuracy"]))
+    print("tpl accuracy: {0}".format(d_avg["tpl_accuracy"]))
+    print("tpl word accuracy: {0}".format(d_avg["tpl_word_accuracy"]))
 
     if ns.partial:
         print(" tpl description accuracy: {0}".format(
-            mlt.tpl_desc_accuracy()))
+            d_avg["tpl_description_accuracy"]))
         print(" tpl variable accuracy: {0}".format(
-            mlt.tpl_var_accuracy()))
+            d_avg["tpl_variable_accuracy"]))
 
-    print("rand score: {0}".format(mlt.rand_score()))
-    print("adjusted rand score: {0}".format(mlt.adjusted_rand_score()))
-    print("f1 score: {0}".format(mlt.f1_score()))
-    print("parsing accuracy: {0}".format(mlt.parsing_accuracy()))
-    print("cluster accuracy: {0}".format(mlt.cluster_accuracy()))
+    print("rand score: {0}".format(d_avg["rand_score"]))
+    print("adjusted rand score: {0}".format(d_avg["adjusted_rand_score"]))
+    print("f1 score: {0}".format(d_avg["f1_score"]))
+    print("parsing accuracy: {0}".format(d_avg["parsing_accuracy"]))
+    print("cluster accuracy: {0}".format(d_avg["cluster_accuracy"]))
 
     if ns.partial:
-        print("over-division cluster ratio: {0}".format(
-            mlt.overdiv_ratio()))
-        print("over-aggregation cluster ratio: {0}".format(
-            mlt.overagg_ratio()))
+        print(" over-division cluster ratio: {0}".format(
+            d_avg["overdiv_ratio"]))
+        print(" over-aggregation cluster ratio: {0}".format(
+            d_avg["overagg_ratio"]))
+
+    print("v-measure score: {0}".format(d_avg["v_measure_score"]))
+
+    if ns.partial:
+        print(" homogeneity score: {0}".format(
+            d_avg["homogeneity_score"]))
+        print(" completeness score: {0}".format(
+            d_avg["completeness_score"]))
 
 
 def show_accuracy_offline(ns):
@@ -160,7 +195,7 @@ def show_templates(ns):
 
     from . import maketpl
     n_trial = int(conf["eval"]["n_trial_accuracy"])
-    for tpl in maketpl.get_templates(conf, n_trial).values():
+    for tpl in maketpl.get_templates(conf, n_trial, answer=ns.answer).values():
         print(" ".join(tpl))
 
 
@@ -231,6 +266,19 @@ def search_diff_cluster_overagg(ns):
     maketpl.search_diff_overagg(conf1, conf2, n_trial, n_samples=ns.samples)
 
 
+def measure_parameters(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from . import param_searcher
+    timer = common.Timer("measure-parameters", output=_logger)
+    timer.start()
+    targets = get_targets_arg(ns)
+    param_searcher.measure_parameters(conf, targets, ns.method)
+    timer.stop()
+
+
 def measure_time_online(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -256,21 +304,10 @@ def measure_time_offline(ns):
     d_time = maketpl.measure_time_offline(conf, targets_test)
 
     import numpy as np
+    times = [str(t) for t in d_time.values()]
     avg = np.average(list(d_time.values()))
-    print("Trials: {0}".format(", ".join(d_time.values())))
+    print("Trials: {0}".format(", ".join(times)))
     print("Average: {0}".format(avg))
-
-
-def compare_parameter(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-
-    from . import param_searcher
-    targets = get_targets_conf(conf)
-    iterable_results = param_searcher.compare_parameters(conf, targets, ns.method)
-    for params, d_metrics in iterable_results:
-        print(params, d_metrics)
 
 
 # common argument settings
@@ -295,6 +332,9 @@ OPT_SAMPLES = [["-s", "--samples"],
 OPT_PARTIAL = [["-p", "--partial"],
                {"dest": "partial", "action": "store_true",
                 "help": "show partial metrics (detailed output)"}]
+ARG_FILES = [["files"],
+             {"metavar": "PATH", "nargs": "+",
+              "help": "files or directories as input"}]
 ARG_FILES_OPT = [["files"],
                  {"metavar": "PATH", "nargs": "*",
                   "help": ("files or directories as input "
@@ -323,20 +363,18 @@ DICT_ARGSET = {
                                         "This works in offline mode."),
                                        [OPT_CONFIG, OPT_DEBUG],
                                        measure_accuracy_trial_offline],
-    "measure-time-online": [("Measure processing of log template generation. "
-                             "This works in online mode."),
-                            [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],
-                            measure_time_online],
-    "measure-time-offline": [("Measure processing of log template generation. "
-                              "This works in offline mode."),
-                             [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],
-                             measure_time_offline],
     "show-accuracy": ["Load and show results of measuring accuracy",
                       [OPT_CONFIG, OPT_DEBUG, OPT_PARTIAL],
                       show_accuracy],
     "show-accuracy-offline": ["Show offline accuracy of online result",
                               [OPT_CONFIG, OPT_DEBUG, OPT_PARTIAL],
                               show_accuracy_offline],
+    "show-templates": ["Show templates in accuracy measurement results",
+                       [OPT_CONFIG, OPT_DEBUG,
+                        [["-a", "--answer"],
+                         {"dest": "answer", "action": "store_true",
+                          "help": "show ground truth templates"}]],
+                       show_templates],
     "search-fail-template": ["Show failed templates in template accuracy",
                              [OPT_CONFIG, OPT_DEBUG, OPT_ALL],
                              search_fail_template],
@@ -359,10 +397,18 @@ DICT_ARGSET = {
                                      "divided in surplus only in conf2"),
                                     [OPT_DEBUG, OPT_SAMPLES, ARG_2_CONFIG],
                                     search_diff_cluster_overagg],
-    "compare-parameter": [("Calculate metrics for parameter candidates"
+    "measure-parameter": [("Measure accuracy for parameter candidates"
                            "of log template generation"),
-                          [OPT_DEBUG, OPT_CONFIG, ARG_METHOD],
-                          compare_parameter],
+                          [OPT_DEBUG, OPT_CONFIG, OPT_RECUR, ARG_METHOD, ARG_FILES],
+                          measure_parameters],
+    "measure-time-online": [("Measure processing time of log template generation. "
+                             "This works in online mode."),
+                            [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],
+                            measure_time_online],
+    "measure-time-offline": [("Measure processing time of log template generation. "
+                              "This works in offline mode."),
+                             [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],
+                             measure_time_offline],
 }
 
 USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])

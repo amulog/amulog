@@ -40,7 +40,7 @@ class Node:
         self.cnt += num
 
 
-class LTGenDlog(lt_common.LTGen):
+class LTGenDlog(lt_common.LTGenOffline):
 
     def __init__(self, table, vreobj):
         super().__init__(table)
@@ -112,8 +112,8 @@ class LTGenDlog(lt_common.LTGen):
             if w == lt_common.REPLACER:
                 tpl.append(w)
             else:
-                if w not in node.childs:
-                    import pdb; pdb.set_trace()
+                # if w not in node.childs:
+                #     import pdb; pdb.set_trace()
                 node = node.childs[w]
                 tpl.append(w if node.part_of_tpl else lt_common.REPLACER)
         return tpl
@@ -135,9 +135,6 @@ class LTGenDlog(lt_common.LTGen):
             tid, _ = self.update_table(tpl)
             ret[mid] = tid
         return ret
-
-    def process_line(self, pline):
-        raise ValueError("Dlog does not support incremental processing")
 
 
 def init_ltgen(conf, table, **_):

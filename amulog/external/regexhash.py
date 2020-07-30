@@ -5,7 +5,7 @@
 from collections import defaultdict
 
 
-class RegexTable:
+class RegexTable(object):
 
     def __init__(self, l_tpl, l_regex):
         assert len(l_tpl) == len(l_regex)
@@ -30,9 +30,11 @@ class RegexTable:
 class RegexHashTable(RegexTable):
 
     def __init__(self, l_tpl, l_regex, headlen=5):
-        super().__init__(l_tpl, l_regex)
         assert isinstance(headlen, int)
+        assert headlen > 0
         self._headlen = headlen
+        self._table = None
+        super().__init__(l_tpl, l_regex)
 
     def _make_table(self, l_tpl, l_regex):
         table = defaultdict(list)
@@ -40,7 +42,7 @@ class RegexHashTable(RegexTable):
             if self._head_isstable(tpl, self._headlen):
                 key = tpl[:self._headlen]
             else:
-                key = None
+                key = ""
             table[key].append((tplid, reobj))
         return table
 
@@ -57,13 +59,13 @@ class RegexHashTable(RegexTable):
     def search(self, mes):
         key = mes[:self._headlen]
         if key not in self._table:
-            key = None
+            key = ""
 
         for tplid, reobj in self._table[key]:
             matchobj = reobj.match(mes)
             if matchobj:
                 return tplid, matchobj
-        for tplid, reobj in self._table[None]:
+        for tplid, reobj in self._table[""]:
             matchobj = reobj.match(mes)
             if matchobj:
                 return tplid, matchobj
@@ -71,5 +73,5 @@ class RegexHashTable(RegexTable):
 
     def shuffle(self):
         import random
-        for key, subtable in self._table:
+        for key, subtable in self._table.items():
             random.shuffle(subtable)
