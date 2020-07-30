@@ -49,7 +49,7 @@ class LTGenImport(lt_common.LTGenStateless):
                         mode))
                 if len(mes) == 0:
                     continue
-                ltw, lts = self._lp.process_message(mes)
+                ltw, lts = self._lp.process_statement(mes)
                 self.add_definition(ltw)
                 cnt += 1
         _logger.info("{0} template imported".format(cnt))

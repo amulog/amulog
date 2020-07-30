@@ -2,6 +2,7 @@
 
 import sys
 import os
+import re
 from setuptools import setup
 
 
@@ -15,8 +16,11 @@ package_name = 'amulog'
 data_dir = "/".join((package_name, "data"))
 data_files = ["/".join((data_dir, fn)) for fn in os.listdir(data_dir)]
 
-setup(name='amulog',
-      version='0.0.7',
+with open(os.path.join(os.path.dirname(__file__), package_name, '__init__.py')) as f:
+    version = re.search("__version__ = '([^']+)'", f.read()).group(1)
+
+setup(name=package_name,
+      version=version,
       description='A system log management tool with automatically generated log templates.',
       long_description=load_readme(),
       long_description_content_type='text/markdown',
@@ -27,7 +31,7 @@ setup(name='amulog',
                         'scipy>=1.2.0',
                         'scikit-learn>=0.20.2',
                         'python-dateutil>=2.8.0',
-                        'log2seq>=0.0.3', ],
+                        'log2seq>=0.1.3', ],
       classifiers=[
           'Development Status :: 4 - Beta',
           'Environment :: Console',
