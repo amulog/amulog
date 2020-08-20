@@ -1,0 +1,5 @@
+log2seq>=0.1.4
+numpy>=1.9.2
+scipy>=1.2.0
+scikit-learn>=0.20.2
+python-dateutil>=2.8.0

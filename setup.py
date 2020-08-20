@@ -10,6 +10,13 @@ def load_readme():
     with open('README.md', 'r') as f:
         return f.read()
 
+def load_requirements():
+    """Parse requirements.txt"""
+    reqs_path = os.path.join('.', 'requirements.txt')
+    with open(reqs_path, 'r') as f:
+        requirements = [line.rstrip() for line in f]
+    return requirements
+
 
 sys.path.append("./tests")
 package_name = 'amulog'
@@ -28,11 +35,7 @@ setup(name=package_name,
       author='Satoru Kobayashi',
       author_email='sat@nii.ac.jp',
       url='https://github.com/cpflat/amulog/',
-      install_requires=['numpy>=1.9.2',
-                        'scipy>=1.2.0',
-                        'scikit-learn>=0.20.2',
-                        'python-dateutil>=2.8.0',
-                        'log2seq>=0.1.4', ],
+      install_requires=load_requirements(),
       classifiers=[
           'Development Status :: 4 - Beta',
           'Environment :: Console',
