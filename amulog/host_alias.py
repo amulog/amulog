@@ -152,7 +152,7 @@ class HostAlias(object):
 
 
 def init_hostalias(conf):
-    ha_fn = conf["database"]["host_alias_filename"]
+    ha_fn = conf["manager"]["host_alias_filename"]
     ha = HostAlias(ha_fn)
     return ha
 

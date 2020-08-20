@@ -470,7 +470,7 @@ def search_edge_label_extype(conf, label1, label2):
             if (l_group[0] == label1 and l_group[1] == label2) or \
                     (l_group[1] == label1 and l_group[0] == label2):
                 if not rflag:
-                    print("# {0}".format(r.filename))
+                    print("# {0}".format(r._filename))
                     rflag = True
                 r._print_edge(edge, False)
                 r._print_edge_lt(edge)

@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 
+import amulog.manager
 from amulog import common
 from amulog import lt_common
 from . import maketpl
@@ -77,7 +78,7 @@ def measure_parameters(conf, targets, method):
         table = lt_common.TemplateTable()
         ltgen = _init_ltgen_with_params(conf, table, method, params)
 
-        input_lines = list(log_db.iter_plines(conf, targets))
+        input_lines = list(amulog.manager.iter_plines(conf, targets))
         d_tid = ltgen.process_offline(input_lines)
         iterobj = zip(input_lines,
                       ps.tid_list_answer(),

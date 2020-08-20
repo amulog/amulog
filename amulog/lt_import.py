@@ -4,6 +4,7 @@
 import os
 import logging
 
+import amulog.manager
 from amulog import common
 from amulog import strutil
 from amulog import lt_common
@@ -80,5 +81,5 @@ def init_ltgen_import(conf, table, shuffle=False, **_):
     mode = conf.get("log_template_import", "import_format")
     ltmap = conf.get("log_template_import", "search_method")
     from amulog import log_db
-    lp = log_db.load_log2seq(conf)
+    lp = amulog.manager.load_log2seq(conf)
     return LTGenImport(table, fn, mode, ltmap, lp, shuffle)

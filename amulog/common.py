@@ -158,6 +158,10 @@ def rm_dirchild(dirpath):
         os.remove(fpath)
 
 
+def filepath_local(current_path, fn):
+    return os.path.dirname(os.path.abspath(current_path)) + "/" + fn
+
+
 def last_modified(args, latest=False):
     """Get the last modified time of a file or a set of files.
 

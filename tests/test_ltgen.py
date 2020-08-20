@@ -6,8 +6,9 @@ import copy
 import unittest
 import tempfile
 
+from amulog import common
 from amulog import config
-from amulog import log_db
+from amulog import manager
 from amulog import lt_common
 
 from . import testlog
@@ -32,9 +33,9 @@ class TestLTGen(unittest.TestCase):
 
     def _try_method(self, conf, online=True):
         table = lt_common.TemplateTable()
-        ltgen = lt_common.init_ltgen_methods(conf, table)
+        ltgen = manager.init_ltgen_methods(conf, table)
 
-        iterobj = log_db.iter_plines(conf, [self._path_testlog])
+        iterobj = manager.iter_plines(conf, [self._path_testlog])
         if online:
             for pline in iterobj:
                 ltgen.process_line(pline)
@@ -46,8 +47,7 @@ class TestLTGen(unittest.TestCase):
     def test_import(self):
         conf = copy.deepcopy(self._conf)
         conf['log_template']['lt_methods'] = "import"
-        tpl_path = "/".join((os.path.dirname(os.path.abspath(__file__)),
-                             "./testlog_tpl.txt"))
+        tpl_path = common.filepath_local(__file__, "testlog_tpl.txt")
         conf['log_template_import']['def_path'] = tpl_path
         table = self._try_method(conf)
 

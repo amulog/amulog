@@ -18,10 +18,6 @@ src_recur = false
 # If empty, output log on stderr
 logging = auto.log
 
-# Output lines that are not stored into DB
-# Reasons: no_tpl, unknown_host
-fail_output = lt_fail
-
 # Another configparser filename, to add any options without warnings
 # Use this to define new options for private use
 # In imported configparser file, existing options in defaults will be ignored
@@ -29,8 +25,7 @@ import =
 
 # Do NOT provide this option, keep blank
 # This option is used in internal functions
-base_filename = 
-
+base_filename =
 
 
 [database]
@@ -60,34 +55,37 @@ mysql_passwd = test
 # use symbol that will not appear in raw log messages
 split_symbol = @@
 
-# Script for log2seq
-parser_script = 
 
-# Network area groups of host names
-# For exapmle:
-# area_filename = area_def.txt
-# If empty, no group defined
-area_filename = 
+[manager]
+
+# Output filename of internal data for log template generation
+# Used to restart template generation with command db-add
+indata_filename = .amulog.dump
+
+# Log2seq parser definition script (in python)
+parser_script =
 
 # Hostname alias definition file
 # Description example:
 #   host 192.168.0.1 host.domain    <- host will be recorded in DB
 # If empty, no host will be replaced
-host_alias_filename = 
+host_alias_filename =
+
+# Number of processes for multiprocessing
+# if None, use os.cpu_count()
+n_process =
+
+# online batch size (lines) is a unit to commit messages to db
+# offline batch size is a unit for parallel processing
+online_batchsize = 1000
+offline_batchsize = 100000
 
 # Discard logs from undefined hosts in host_alias definition file
 undefined_host = false
 
-## A sequence of areas that cover all needed hosts.
-## If a host does not belong to any hosts here,
-## messages from the host is ignored.
-#areas_to_register = 
-
-# If no year string in log message, add following year
-# (Use this year of localtime with empty value)
-# For example:
-# default_year = 2112
-default_year = 
+# Output lines that are not stored into DB
+# Reasons: no_tpl, unknown_host
+fail_output = lt_fail
 
 
 [log_template]
@@ -103,28 +101,11 @@ processing_mode = auto
 # [shiso, va, crf, import] are available
 lt_methods = drain
 
-# Use multiprocessing (only available for stateless methods)
-ltgen_multiprocess = false
-
-# Number of processes for multiprocessing
-# if None, use os.cpu_count()
-n_proc =
-
 # 2nd step algorithms / methods
 # especially for classifying log templates with different length
 # [shiso, none] are available
 # (none : with no grouping)
 ltgroup_alg = none
-
-# Post process algorithms / methods
-# [host, dummy] are available
-# Note : If you use postprocess to split variables,
-#        it is not recommended to use ltgroup (=> ltgroup_alg = none)
-post_alg = dummy
-
-# Output filename of internal data for log template generation
-# Used to restart template generation with command db-add
-indata_filename = ltgen.dump
 
 
 [log_template_import]
@@ -210,7 +191,7 @@ ltgroup_mem_ngram = true
 
 
 [log_template_re]
-variable_regex =
+variable_rule =
 
 
 [log_template_drain]

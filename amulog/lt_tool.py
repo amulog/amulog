@@ -9,6 +9,7 @@ the structures of log template manager."""
 
 import sys
 
+import amulog.manager
 from . import config
 from . import log_db
 from . import lt_common
@@ -83,7 +84,7 @@ def _str_lt(ltid, ld):
 
 
 def merge_ltid(ld, ltid1, ltid2):
-    ld.init_ltmanager()
+    amulog.manager.init_ltmanager()
     sym = ld.ltm.sym
     print("merge following log templates...")
     print(_str_lt(ltid1, ld))
@@ -127,7 +128,7 @@ def separate_ltid(ld, ltid, vid, value):
         print()
         return new_lt, cnt
 
-    ld.init_ltmanager()
+    amulog.manager.init_ltmanager()
     sym = ld.ltm.sym
     print("separate following log template...")
     print(_str_lt(ltid, ld))
@@ -156,7 +157,7 @@ def separate_ltid(ld, ltid, vid, value):
 
 
 def split_ltid(ld, ltid, vid):
-    ld.init_ltmanager()
+    amulog.manager.init_ltmanager()
     sym = ld.ltm.sym
     print("split following log template...")
     print(_str_lt(ltid, ld))
@@ -212,7 +213,7 @@ def split_ltid(ld, ltid, vid):
 
 
 def fix_ltid(ld, ltid, l_vid):
-    ld.init_ltmanager()
+    amulog.manager.init_ltmanager()
     sym = ld.ltm.sym
     print("make variable (with no variety) into description word...")
     print(_str_lt(ltid, ld))
@@ -249,7 +250,7 @@ def fix_ltid(ld, ltid, l_vid):
 
 
 def free_ltid(ld, ltid, l_wid):
-    ld.init_ltmanager()
+    amulog.manager.init_ltmanager()
     sym = ld.ltm.sym
     print("make description word into variable (with no variety)...")
     print(_str_lt(ltid, ld))

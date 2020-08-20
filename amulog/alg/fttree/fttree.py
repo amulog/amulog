@@ -89,15 +89,15 @@ class LTGenFTTree(lt_common.LTGen):
                for w in pline["words"]]
         return tpl
 
-    def process_offline(self, plines):
+    def process_offline(self, d_pline):
         # make word dictionary
-        for pline in plines:
+        for pline in d_pline.values():
             for w in pline["words"]:
                 self._d_words[w] += 1
 
         # make tree
         ret = {}
-        for mid, pline in enumerate(plines):
+        for mid, pline in d_pline.items():
             tpl = self._add_line(pline)
             ret[mid] = self.update_table(tpl)
         return ret

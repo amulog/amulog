@@ -40,12 +40,11 @@ def get_targets(ns, conf):
         return get_targets_arg(ns)
 
 
-def is_online(conf):
+def is_online(conf, parallel):
     from .alg import is_online as alg_is_online
     mode = conf["log_template"]["processing_mode"]
     lt_methods = config.getlist(conf, "log_template", "lt_methods")
-    multiproc = conf.getboolean("log_template", "ltgen_multiprocess")
-    return alg_is_online(mode, lt_methods, multiproc)
+    return alg_is_online(mode, lt_methods, parallel)
 
 
 def data_from_db(ns):
@@ -75,8 +74,8 @@ def data_from_data(ns):
         method = "commit"
     reset = ns.reset
 
-    from . import log_db
-    log_db.data_from_data(conf, targets, dirname, method, reset)
+    from . import manager
+    manager.data_from_data(conf, targets, dirname, method, reset)
 
 
 def db_make(ns):
@@ -84,15 +83,14 @@ def db_make(ns):
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
     targets = get_targets(ns, conf)
-    dry = ns.dry
-    from . import log_db
 
+    from . import manager
     timer = common.Timer("db-make", output=_logger)
     timer.start()
-    if is_online(conf):
-        log_db.process_files_online(conf, targets, True, dry=dry)
+    if is_online(conf, ns.parallel):
+        manager.process_files_online(conf, targets, True)
     else:
-        log_db.process_files_offline(conf, targets, dry=dry)
+        manager.process_files_offline(conf, targets, True, ns.parallel)
     timer.stop()
 
 
@@ -101,15 +99,15 @@ def db_add(ns):
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
     targets = get_targets_arg(ns)
-    from . import log_db
 
-    if not is_online(conf):
-        msg = "db_add is not available with offline template generation"
-        sys.exit(msg)
+    from . import manager
 
     timer = common.Timer("db-add", output=_logger)
     timer.start()
-    log_db.process_files_online(conf, targets, False)
+    if is_online(conf, ns.parallel):
+        manager.process_files_online(conf, targets, False)
+    else:
+        manager.process_files_offline(conf, targets, False, ns.parallel)
     timer.stop()
 
 
@@ -123,14 +121,6 @@ def db_anonymize(ns):
     timer.start()
     log_db.anonymize(conf)
     timer.stop()
-
-
-def reload_area(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
-    log_db.reload_area(conf)
 
 
 def show_db_info(ns):
@@ -519,6 +509,9 @@ OPT_CONFIG_SET = [["-s", "--configset"],
                   {"dest": "configset", "metavar": "CONFIG_SET",
                    "default": None,
                    "help": "use config group definition file"}]
+OPT_PARALLEL = [["-p", "--parallel"],
+                {"dest": "parallel", "action": "store_true",
+                 "help": "parallel processing in offline mode"}]
 OPT_RECUR = [["-r", "--recur"],
              {"dest": "recur", "action": "store_true",
               "help": "recursively search files to process"}]
@@ -579,21 +572,16 @@ DICT_ARGSET = {
                           "help": "reset log file directory before processing"}],
                         ],
                        data_from_data],
-    "db-make": [("Initialize database and add log data. "
-                 "This fuction works incrementaly."),
-                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_DRY,
-                 ARG_FILES_OPT],
+    "db-make": ["Initialize database and add log data. ",
+                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_PARALLEL, ARG_FILES_OPT],
                 db_make],
     "db-add": ["Add log data to existing database.",
-               [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES],
+               [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_PARALLEL, ARG_FILES],
                db_add],
     "db-anonymize": [("Remove variables in log messages. "
                       "(Not anonymize hostnames; to be added)"),
                      [OPT_CONFIG, OPT_DEBUG],
                      db_anonymize],
-    "db-reload-area": ["Reload area definition file from config.",
-                       [OPT_CONFIG, OPT_DEBUG],
-                       reload_area],
     "show-db-info": ["Show abstruction of database status.",
                      [OPT_CONFIG, OPT_DEBUG, OPT_TERM],
                      show_db_info],
@@ -871,6 +859,4 @@ def _main():
 
 
 if __name__ == "__main__":
-    import cProfile
-    cProfile.run('_main()')
-    #_main()
+    _main()
