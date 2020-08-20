@@ -472,7 +472,7 @@ def iter_lines(targets):
 def iter_plines(conf, targets, pass_none=True):
     lp = load_log2seq(conf)
     ha = host_alias.init_hostalias(conf)
-    drop_undefhost = conf.getboolean("database", "undefined_host")
+    drop_undefhost = conf.getboolean("manager", "undefined_host")
 
     for line in iter_lines(targets):
         pline = parse_line(strutil.add_esc(line), lp)
