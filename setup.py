@@ -16,7 +16,8 @@ package_name = 'amulog'
 data_dir = "/".join((package_name, "data"))
 data_files = ["/".join((data_dir, fn)) for fn in os.listdir(data_dir)]
 
-with open(os.path.join(os.path.dirname(__file__), package_name, '__init__.py')) as f:
+init_path = os.path.join(os.path.dirname(__file__), package_name, '__init__.py')
+with open(init_path) as f:
     version = re.search("__version__ = '([^']+)'", f.read()).group(1)
 
 setup(name=package_name,
@@ -31,7 +32,7 @@ setup(name=package_name,
                         'scipy>=1.2.0',
                         'scikit-learn>=0.20.2',
                         'python-dateutil>=2.8.0',
-                        'log2seq>=0.1.3', ],
+                        'log2seq>=0.1.4', ],
       classifiers=[
           'Development Status :: 4 - Beta',
           'Environment :: Console',

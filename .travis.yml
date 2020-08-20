@@ -1,0 +1,17 @@
+language: python
+python:
+- '3.6'
+- '3.7'
+- '3.8'
+install:
+- pip install -r requirements.txt
+script:
+- python -m unittest
+deploy:
+  provider: pypi
+  username: __token__
+  password:
+    secure: cFsbmSOFZBJDvHKzBsGlWcEdMlRUItvaZRPayg7EhdW9GElWCLFzXaH7MClCoLJHIWzPBa89si1QKx+tNQ2ttgX/2KtYWT5cf9egRnpzZDxittFQcHu+gBKHNg8SXD+AeTSVFQUyQ8ZFj44dDbqIRwfw1AGWVAg4X+BA6Mil8qzTLIVyOPZYflw3KbkxPs7ep82QK+0QdQu9sMxtHEgM4ys5N+Cwc1v01JIm4y3eZf10m5GXntAwPnY/13TaxcvcOa0Yco4TABP2IGBEje7UHwpAOc41JAHygVJ2n85SVx8BnWX8176AFl9TGdNZFghxfF/3xS7/vBzP9LhZASkLSPfJIrIw+O6zeH0VagPEu4o+Aqj5yz9MOzJECHF68CLn1BfT4tYMSoiqAAeQEeNrnembzoQyI6PSqmY0vr+F+jNAWxp9QaVUVJJxZ3hyGMwhc0+INGd+QFl9A/9S4XF4BzALABMeqGSLFbSguKqZ5mcFTSFMEbJqB+si1jAg8hczm8bGw0CCtP5tPjFQfJQFomhUqmvuAt12Emx4tjP6XjxHUVN6xLG1OsC6lVF+64w3YUDG1vKF1t1aakeM1YQtIm7CY3BfchkgYPG9fmffGgM1ZaRIVcvmesmfgsM+nopt8BF6XE5f14266I8ofYkPaXaIXVLEzh9xVYnO43t1rTM=
+  skip_existing: true
+  on:
+    tags: true
