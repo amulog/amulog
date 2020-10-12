@@ -179,18 +179,16 @@ class LogData:
         ) + datetime.timedelta(days=1)
         return top_dt, end_dt
 
-    def whole_host_lt(self, top_dt=None, end_dt=None, area=None):
+    def whole_host_lt(self, top_dt=None, end_dt=None):
         """List[str, str]: Sequence of all combinations of
         hostname and ltids in DB."""
-        return self.db.whole_host_lt(top_dt=top_dt, end_dt=end_dt,
-                                     area=area)
+        return self.db.whole_host_lt(top_dt=top_dt, end_dt=end_dt)
 
-    def whole_host_ltg(self, top_dt=None, end_dt=None, area=None):
+    def whole_host_ltg(self, top_dt=None, end_dt=None):
         """List[str, str]: Sequence of all combinations of
         hostname and ltgids in DB."""
         ret = set()
-        for host, ltid in self.whole_host_lt(top_dt=top_dt, end_dt=end_dt,
-                                             area=area):
+        for host, ltid in self.whole_host_lt(top_dt=top_dt, end_dt=end_dt):
             ret.add((host, self.ltgid_from_ltid(ltid)))
         return list(set(ret))
 
@@ -250,17 +248,17 @@ class LogData:
         """
         return [self.lttable[ltid] for ltid in self.db.get_ltg_members(ltgid)]
 
-    def host_area(self, host):
-        """Get area names that given host belongs to.
-
-        Args:
-            host (str): A hostname.
-
-        Returns:
-            List[str]: A sequence of area names that given host belongs to.
-
-        """
-        return self.db.host_area(host)
+#    def host_area(self, host):
+#        """Get area names that given host belongs to.
+#
+#        Args:
+#            host (str): A hostname.
+#
+#        Returns:
+#            List[str]: A sequence of area names that given host belongs to.
+#
+#        """
+#        return self.db.host_area(host)
 
     @staticmethod
     def _str_ltline(ltline):
@@ -338,6 +336,9 @@ class LogData:
         if self.ltm is not None:
             self.ltm.dump()
 
+    def drop_all(self):
+        self.db.drop_all()
+
 
 class LogDB:
     """Interface of DB transaction for log data.
@@ -354,17 +355,11 @@ class LogDB:
 
         db_type = conf.get("database", "database")
         if db_type == "sqlite3":
-            dbpath = conf.get("database", "sqlite3_filename")
-            if dbpath is None:
-                # for compatibility
-                dbpath = conf.get("database", "db_filename")
-            self.db = db_common.sqlite3(dbpath)
+            from . import db_sqlite
+            self.db = db_sqlite.init_db_conn(conf)
         elif db_type == "mysql":
-            host = conf.get("database", "mysql_host")
-            dbname = conf.get("database", "mysql_dbname")
-            user = conf.get("database", "mysql_user")
-            passwd = conf.get("database", "mysql_passwd")
-            self.db = db_common.mysql(host, dbname, user, passwd)
+            from . import db_mysql
+            self.db = db_mysql.init_db_conn(conf)
         else:
             raise ValueError("invalid database type ({0})".format(
                 db_type))
@@ -392,27 +387,27 @@ class LogDB:
 
     def _init_tables(self):
         table_name = "log"
-        l_key = [db_common.tablekey("lid", "integer",
+        l_key = [db_common.TableKey("lid", "integer",
                                     # ("primary_key", "auto_increment", "not_null")),
                                     ("primary_key", "not_null")),
-                 db_common.tablekey("ltid", "integer"),
-                 db_common.tablekey("dt", "datetime"),
-                 db_common.tablekey("host", "text"),
-                 db_common.tablekey("words", "text")]
+                 db_common.TableKey("ltid", "integer", tuple()),
+                 db_common.TableKey("dt", "datetime", tuple()),
+                 db_common.TableKey("host", "text", tuple()),
+                 db_common.TableKey("words", "text", tuple())]
         sql = self.db.create_table_sql(table_name, l_key)
         self.db.execute(sql)
 
         table_name = "lt"
-        l_key = [db_common.tablekey("ltid", "integer", ("primary_key",)),
-                 db_common.tablekey("ltw", "text"),
-                 db_common.tablekey("lts", "text"),
-                 db_common.tablekey("count", "integer")]
+        l_key = [db_common.TableKey("ltid", "integer", ("primary_key",)),
+                 db_common.TableKey("ltw", "text", tuple()),
+                 db_common.TableKey("lts", "text", tuple()),
+                 db_common.TableKey("count", "integer", tuple())]
         sql = self.db.create_table_sql(table_name, l_key)
         self.db.execute(sql)
 
         table_name = "ltg"
-        l_key = [db_common.tablekey("ltid", "integer", ("primary_key",)),
-                 db_common.tablekey("ltgid", "integer")]
+        l_key = [db_common.TableKey("ltid", "integer", ("primary_key",)),
+                 db_common.TableKey("ltgid", "integer", tuple())]
         sql = self.db.create_table_sql(table_name, l_key)
         self.db.execute(sql)
 
@@ -423,17 +418,17 @@ class LogDB:
 
         table_name = "log"
         index_name = "log_index"
-        l_key = [db_common.tablekey("lid", "integer"),
-                 db_common.tablekey("ltid", "integer"),
-                 db_common.tablekey("dt", "datetime"),
-                 db_common.tablekey("host", "text", (100,))]
+        l_key = [db_common.TableKey("lid", "integer", tuple()),
+                 db_common.TableKey("ltid", "integer", tuple()),
+                 db_common.TableKey("dt", "datetime", tuple()),
+                 db_common.TableKey("host", "text", (100,))]
         if index_name not in l_table_name:
             sql = self.db.create_index_sql(table_name, index_name, l_key)
             self.db.execute(sql)
 
         table_name = "ltg"
         index_name = "ltg_index"
-        l_key = [db_common.tablekey("ltgid", "integer")]
+        l_key = [db_common.TableKey("ltgid", "integer", tuple()), ]
         if index_name not in l_table_name:
             sql = self.db.create_index_sql(table_name, index_name, l_key)
             self.db.execute(sql)
@@ -456,7 +451,7 @@ class LogDB:
         else:
             d_val["lid"] = lid
 
-        l_ss = [db_common.setstate(k, k) for k in d_val.keys()]
+        l_ss = [db_common.StateSet(k, k) for k in d_val.keys()]
         sql = self.db.insert_sql(table_name, l_ss)
         self.db.execute(sql, d_val)
 
@@ -514,27 +509,27 @@ class LogDB:
         for c in d_cond.keys():
             if c == "ltgid":
                 sql = self.db.select_sql("ltg", ["ltid"],
-                                         [db_common.cond(c, "=", c)])
-                l_cond.append(db_common.cond("ltid", "in", sql, False))
+                                         [db_common.Condition(c, "=", c, True)])
+                l_cond.append(db_common.Condition("ltid", "in", sql, False))
             elif c == "area":
                 sql = self.db.select_sql("area", ["host"],
-                                         [db_common.cond(c, "=", c)])
-                l_cond.append(db_common.cond("host", "in", sql, False))
+                                         [db_common.Condition(c, "=", c, True)])
+                l_cond.append(db_common.Condition("host", "in", sql, False))
             elif c == "top_dt":
-                l_cond.append(db_common.cond("dt", ">=", c))
+                l_cond.append(db_common.Condition("dt", ">=", c))
                 args[c] = self.db.strftime(d_cond[c])
             elif c == "end_dt":
-                l_cond.append(db_common.cond("dt", "<", c))
+                l_cond.append(db_common.Condition("dt", "<", c, True))
                 args[c] = self.db.strftime(d_cond[c])
             else:
-                l_cond.append(db_common.cond(c, "=", c))
+                l_cond.append(db_common.Condition(c, "=", c, True))
         sql = self.db.select_sql(table_name, l_key, l_cond)
         return self.db.execute(sql, args)
 
     def get_line(self, lid):
         table_name = "log"
         l_key = ["lid", "ltid", "dt", "host", "words"]
-        l_cond = [db_common.cond("lid", "=", "lid")]
+        l_cond = [db_common.Condition("lid", "=", "lid", True)]
         sql = self.db.select_sql(table_name, l_key, l_cond)
         args = {"lid": lid}
 
@@ -569,22 +564,22 @@ class LogDB:
         for k, v in d_update.items():
             # assert k in ("ltid", "top_dt", "end_dt", "host")
             keyname = "update_" + k
-            l_ss.append(db_common.setstate(k, keyname))
+            l_ss.append(db_common.StateSet(k, keyname))
             args[keyname] = v
         l_cond = []
         for c in d_cond.keys():
             if c == "ltgid":
                 sql = self.db.select_sql("ltg", ["ltid"],
-                                         [db_common.cond(c, "=", c)])
-                l_cond.append(db_common.cond("ltid", "in", sql, False))
+                                         [db_common.Condition(c, "=", c, True)])
+                l_cond.append(db_common.Condition("ltid", "in", sql, False))
             elif c == "top_dt":
-                l_cond.append(db_common.cond("dt", ">=", c))
+                l_cond.append(db_common.Condition("dt", ">=", c, True))
                 args[c] = self.db.strftime(d_cond[c])
             elif c == "end_dt":
-                l_cond.append(db_common.cond("dt", "<", c))
+                l_cond.append(db_common.Condition("dt", "<", c, True))
                 args[c] = self.db.strftime(d_cond[c])
             else:
-                l_cond.append(db_common.cond(c, "=", c))
+                l_cond.append(db_common.Condition(c, "=", c, True))
         sql = self.db.update_sql(table_name, l_ss, l_cond)
         self.db.execute(sql, args)
 
@@ -615,11 +610,11 @@ class LogDB:
         l_cond = []
         args = {}
         if top_dt is not None:
-            l_cond.append(db_common.cond("dt", ">=", "top_dt"))
+            l_cond.append(db_common.Condition("dt", ">=", "top_dt", True))
             # args["top_dt"] = top_dt
             args["top_dt"] = self.db.strftime(top_dt)
         if end_dt is not None:
-            l_cond.append(db_common.cond("dt", "<", "end_dt"))
+            l_cond.append(db_common.Condition("dt", "<", "end_dt", True))
             # args["end_dt"] = end_dt
             args["end_dt"] = self.db.strftime(end_dt)
 
@@ -633,11 +628,11 @@ class LogDB:
         l_cond = []
         args = {}
         if top_dt is not None:
-            l_cond.append(db_common.cond("dt", ">=", "top_dt"))
+            l_cond.append(db_common.Condition("dt", ">=", "top_dt", True))
             args["top_dt"] = self.db.strftime(top_dt)
             # args["top_dt"] = top_dt
         if end_dt is not None:
-            l_cond.append(db_common.cond("dt", "<", "end_dt"))
+            l_cond.append(db_common.Condition("dt", "<", "end_dt", True))
             # args["end_dt"] = end_dt
             args["end_dt"] = self.db.strftime(end_dt)
         sql = self.db.select_sql(table_name, l_key, l_cond, opt=["distinct"])
@@ -647,10 +642,10 @@ class LogDB:
     def add_lt(self, ltline):
         table_name = "lt"
         l_ss = []
-        l_ss.append(db_common.setstate("ltid", "ltid"))
-        l_ss.append(db_common.setstate("ltw", "ltw"))
-        l_ss.append(db_common.setstate("lts", "lts"))
-        l_ss.append(db_common.setstate("count", "count"))
+        l_ss.append(db_common.StateSet("ltid", "ltid"))
+        l_ss.append(db_common.StateSet("ltw", "ltw"))
+        l_ss.append(db_common.StateSet("lts", "lts"))
+        l_ss.append(db_common.StateSet("count", "count"))
         if ltline.lts is None:
             lts = None
         else:
@@ -669,8 +664,8 @@ class LogDB:
     def add_ltg(self, ltid, ltgid):
         table_name = "ltg"
         l_ss = []
-        l_ss.append(db_common.setstate("ltid", "ltid"))
-        l_ss.append(db_common.setstate("ltgid", "ltgid"))
+        l_ss.append(db_common.StateSet("ltid", "ltid"))
+        l_ss.append(db_common.StateSet("ltgid", "ltgid"))
         args = {"ltid": ltid, "ltgid": ltgid}
         sql = self.db.insert_sql(table_name, l_ss)
         self.db.execute(sql, args)
@@ -680,15 +675,15 @@ class LogDB:
         l_ss = []
         args = {}
         if ltw is not None:
-            l_ss.append(db_common.setstate("ltw", "ltw"))
+            l_ss.append(db_common.StateSet("ltw", "ltw"))
             args["ltw"] = self._splitter.join(ltw)
         if lts is not None:
-            l_ss.append(db_common.setstate("lts", "lts"))
+            l_ss.append(db_common.StateSet("lts", "lts"))
             args["lts"] = self._splitter.join(lts)
         if count is not None:
-            l_ss.append(db_common.setstate("count", "count"))
+            l_ss.append(db_common.StateSet("count", "count"))
             args["count"] = count
-        l_cond = [db_common.cond("ltid", "=", "ltid")]
+        l_cond = [db_common.Condition("ltid", "=", "ltid", True)]
         args["ltid"] = ltid
 
         sql = self.db.update_sql(table_name, l_ss, l_cond)
@@ -699,13 +694,13 @@ class LogDB:
 
         # remove from lt
         table_name = "lt"
-        l_cond = [db_common.cond("ltid", "=", "ltid")]
+        l_cond = [db_common.Condition("ltid", "=", "ltid", True)]
         sql = self.db.delete_sql(table_name, l_cond)
         self.db.execute(sql, args)
 
         # remove from ltg
         table_name = "ltg"
-        l_cond = [db_common.cond("ltid", "=", "ltid")]
+        l_cond = [db_common.Condition("ltid", "=", "ltid", True)]
         sql = self.db.delete_sql(table_name, l_cond)
         self.db.execute(sql, args)
 
@@ -762,7 +757,7 @@ class LogDB:
     def get_ltg_members(self, ltgid):
         table_name = "ltg"
         l_key = ["ltid"]
-        l_cond = [db_common.cond("ltgid", "=", "ltgid")]
+        l_cond = [db_common.Condition("ltgid", "=", "ltgid")]
         args = {"ltgid": ltgid}
         sql = self.db.select_sql(table_name, l_key, l_cond)
         cursor = self.db.execute(sql, args)
@@ -771,6 +766,9 @@ class LogDB:
     def reset_ltg(self):
         sql = self.db.delete_sql("ltg")
         self.db.execute(sql)
+
+    def drop_all(self):
+        self.db.reset()
 
 
 class RestoreOriginalData(object):

@@ -39,20 +39,18 @@ database = sqlite3
 sqlite3_filename = log.db
 
 # Database hostname for mysql
-mysql_host = localhost
+mysql_host = mysql
 
 # Database name for mysql
-mysql_dbname = logcausality
+mysql_dbname = amulog
 
 # Mysql username
-mysql_user = test
+mysql_user = root
 
 # Mysql user password
 mysql_passwd = test
 
 # Store log data with following splitter symbol string
-# If log_template.sym_ignore is False,
-# use symbol that will not appear in raw log messages
 split_symbol = @@
 
 

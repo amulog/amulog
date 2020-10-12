@@ -14,7 +14,7 @@ from . import common
 from . import config
 
 _logger = logging.getLogger(__package__)
-SUBLIB = ["eval", "crf"]
+SUBLIB = ["eval"]
 
 
 def get_targets_arg(ns):
@@ -521,8 +521,8 @@ OPT_DRY = [["-d", "--dry"],
 OPT_TERM = [["-t", "--term"],
             {"dest": "dt_range",
              "metavar": "DATE1 DATE2", "nargs": 2,
-             "help": ("datetime range, start and end in %Y-%M-%d style."
-                      "(optional; defaultly use all data in database)")}]
+             "help": ("datetime range, start and end in YY-MM-dd style. "
+                      "(optional; defaultly use all data)")}]
 ARG_FILE = [["file"],
             {"metavar": "PATH", "action": "store",
              "help": "filepath to output"}]
@@ -837,7 +837,7 @@ USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])
 USAGE = ("usage: {0} MODE [options and arguments] ...\n\n"
          "mode:\n".format(sys.argv[0])) + USAGE_COMMANDS + \
         "\n\nsee \"{0} MODE -h\" to refer detailed usage".format(sys.argv[0]) + \
-        "\nalso see sub-liblary {0}".format(" ".join(["logdag.{0}".format(n)
+        "\nalso see sub-liblary {0}".format(" ".join(["amulog.{0}".format(n)
                                                       for n in SUBLIB]))
 
 
