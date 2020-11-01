@@ -516,7 +516,7 @@ class LogDB:
                                          [db_common.Condition(c, "=", c, True)])
                 l_cond.append(db_common.Condition("host", "in", sql, False))
             elif c == "top_dt":
-                l_cond.append(db_common.Condition("dt", ">=", c))
+                l_cond.append(db_common.Condition("dt", ">=", c, True))
                 args[c] = self.db.strftime(d_cond[c])
             elif c == "end_dt":
                 l_cond.append(db_common.Condition("dt", "<", c, True))

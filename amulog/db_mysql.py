@@ -110,6 +110,9 @@ class Mysql(db_common.Database):
         cursor = self.execute(sql)
         return [row[0] for row in cursor]
 
+    def get_column_names(self, table_name):
+        raise NotImplementedError
+
 
 def init_db_conn(conf):
     host = conf.get("database", "mysql_host")

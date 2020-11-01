@@ -1,4 +1,3 @@
-import os
 import datetime
 from collections import namedtuple
 from abc import ABC, abstractmethod
@@ -40,6 +39,9 @@ class Database(ABC):
 
     @abstractmethod
     def get_table_names(self):
+        raise NotImplementedError
+
+    def get_column_names(self, table_name):
         raise NotImplementedError
 
     # sql methods, basically classmethod or staticmethod

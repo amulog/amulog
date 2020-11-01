@@ -57,6 +57,18 @@ class Sqlite3(db_common.Database):
         cursor = self.execute(sql)
         return [row[0] for row in cursor]
 
+    def get_column_names(self, table_name):
+        sql = ("select sql from sqlite_master "
+               "where type='table' and name='{0}'".format(table_name))
+        cursor = self.execute(sql)
+        row = cursor.__iter__().__next__()
+        table_sql = row[0]
+
+        tmp_columns = table_sql.partition("(")[-1].rstrip(")")
+        column_names = [part.strip(" ").split(" ")[0]
+                        for part in tmp_columns.split(",")]
+        return column_names
+
     # sql methods, basically classmethod or staticmethod
     @classmethod
     def datetime(cls, ret):
