@@ -757,7 +757,7 @@ class LogDB:
     def get_ltg_members(self, ltgid):
         table_name = "ltg"
         l_key = ["ltid"]
-        l_cond = [db_common.Condition("ltgid", "=", "ltgid")]
+        l_cond = [db_common.Condition("ltgid", "=", "ltgid", True)]
         args = {"ltgid": ltgid}
         sql = self.db.select_sql(table_name, l_key, l_cond)
         cursor = self.db.execute(sql, args)

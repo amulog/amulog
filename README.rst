@@ -125,7 +125,7 @@ Following command exports all log templates in the database:
     $ python3 -m amulog show-db-import -c test.conf > exported_tpl.txt
 
 You can modify the exported templates manually.
-Note that some special letters (:code:`\,@,*`) are escaped in the exported templates.
+Note that some special letters (:code:`\\`, :code:`@`, :code:`*`) are escaped in the exported templates.
 
 To import the templates, save following config as :code:`test2.conf`.
 
@@ -173,8 +173,9 @@ If you use this code, please consider citing:
 ::
 
     @inproceedings{Kobayashi_CNSM2020,
-      author = {Kobayashi, Satoru and Yuya, Yamashiro and Otomo, Kazuki and Fukuda, Kensuke and Esaki, Hiroshi},
+      author = {Kobayashi, Satoru and Yamashiro, Yuya and Otomo, Kazuki and Fukuda, Kensuke and Esaki, Hiroshi},
       booktitle = {Proceedings of the 16th International Conference on Network and Service Management (CNSM'20)},
       title = {amulog: A General Log Analysis Framework for Diverse Template Generation Methods},
+      pages={1-5},
       year = {2020}
     }
