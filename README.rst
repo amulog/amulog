@@ -75,13 +75,16 @@ For the first step, save following config as :code:`test.conf` on an empty direc
 Then modify :code:`general.src_path` option to a logfile you want to load.
 (If you want to use multiple files, change :code:`general.src_recur` into true and specify directory name to :code:`general.src_path`.)
 
-#### Generate database
+
+Generate database
+-----------------
 
 Try following command to generate database:
 
 ::
 
     $ python -m amulog db-make -c test.conf
+
 
 Check database
 --------------
