@@ -176,7 +176,7 @@ If you use this code, please consider citing:
 ::
 
     @inproceedings{Kobayashi_CNSM2020,
-      author = {Kobayashi, Satoru and Yamashiro, Yuya and Otomo, Kazuki and Fukuda, Kensuke and Esaki, Hiroshi},
+      author = {Kobayashi, Satoru and Yamashiro, Yuya and Otomo, Kazuki and Fukuda, Kensuke},
       booktitle = {Proceedings of the 16th International Conference on Network and Service Management (CNSM'20)},
       title = {amulog: A General Log Analysis Framework for Diverse Template Generation Methods},
       pages={1-5},
