@@ -78,6 +78,20 @@ def data_from_data(ns):
     manager.data_from_data(conf, targets, dirname, method, reset)
 
 
+def data_parse(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+    targets = get_targets(ns, conf)
+
+    from . import strutil
+    from . import manager
+    lp = manager.load_log2seq(conf)
+    for line in manager.iter_lines(targets):
+        pline = manager.parse_line(strutil.add_esc(line), lp)
+        print(pline)
+
+
 def db_make(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -518,11 +532,11 @@ OPT_RECUR = [["-r", "--recur"],
 OPT_DRY = [["-d", "--dry"],
            {"dest": "dry", "action": "store_true",
             "help": "do not store data into db"}]
-OPT_TERM = [["-t", "--term"],
-            {"dest": "dt_range",
-             "metavar": "DATE1 DATE2", "nargs": 2,
-             "help": ("datetime range, start and end in YY-MM-dd style. "
-                      "(optional; defaultly use all data)")}]
+#OPT_TERM = [["-t", "--term"],
+#            {"dest": "dt_range",
+#             "metavar": "DATE1 DATE2", "nargs": 2,
+#             "help": ("datetime range, start and end in YY-MM-dd style. "
+#                      "(optional; defaultly use all data)")}]
 ARG_FILE = [["file"],
             {"metavar": "PATH", "action": "store",
              "help": "filepath to output"}]
@@ -572,6 +586,9 @@ DICT_ARGSET = {
                           "help": "reset log file directory before processing"}],
                         ],
                        data_from_data],
+    "data-parse": ["Check log data parsing with log2seq.",
+                   [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],
+                   data_parse],
     "db-make": ["Initialize database and add log data. ",
                 [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_PARALLEL, ARG_FILES_OPT],
                 db_make],

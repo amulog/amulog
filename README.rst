@@ -35,9 +35,11 @@ Main features
 
 - Support multiple databases: sqlite and mysql
 - Smart log segmentation with `log2seq <https://github.com/cpflat/log2seq>`_
-- Multiple template generation algorithms like: Drain, SHISO, LenMa, FT-tree, Dlog, etc.
-- Import/Export log templates
-- Edit log templates manually
+- Multiple template generation algorithms such as: Drain, SHISO, LenMa, FT-tree, Dlog, etc.
+- Support Online (incremental) and Offline (hindsight) use
+- Suspend and resume the template generation process
+- Import and Export log templates if you need
+- Edit log templates manually if you need
 - Search API with datetime, hostname and log template IDs
 
 
