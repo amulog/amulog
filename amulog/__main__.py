@@ -600,7 +600,7 @@ DICT_ARGSET = {
                      [OPT_CONFIG, OPT_DEBUG],
                      db_anonymize],
     "show-db-info": ["Show abstruction of database status.",
-                     [OPT_CONFIG, OPT_DEBUG, OPT_TERM],
+                     [OPT_CONFIG, OPT_DEBUG],
                      show_db_info],
     "show-lt": ["Show all log templates in database.",
                 [OPT_CONFIG, OPT_DEBUG,
