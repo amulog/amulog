@@ -453,7 +453,23 @@ def normalize_pline(pline, ha, drop_undefhost=False):
     return pline
 
 
-def iter_lines(targets):
+def _open_file(fp, **kwargs):
+    ext = os.path.splitext(fp)[-1].lstrip(".")
+    if ext == "bz2":
+        import bz2
+        open_func = bz2.open
+    elif ext == "gz":
+        import gzip
+        open_func = gzip.open
+    else:
+        ext = "text"
+        open_func = open
+
+    _logger.info("processing {0} file {1}".format(ext, fp))
+    return open_func(fp, 'rt', **kwargs)
+
+
+def iter_lines(targets, encoding="utf-8", errors="ignore"):
     for fp in targets:
         if os.path.isdir(fp):
             sys.stderr.write(
@@ -463,8 +479,7 @@ def iter_lines(targets):
         else:
             if not os.path.isfile(fp):
                 raise IOError("File {0} not found".format(fp))
-            with open(fp, 'r', encoding='utf-8') as f:
-                _logger.info("log_db processing file {0}".format(fp))
+            with _open_file(fp, encoding=encoding, errors=errors) as f:
                 for line in f:
                     yield line
 
