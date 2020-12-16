@@ -51,9 +51,10 @@ class LTGenDrain(lt_common.LTGen):
         node = self._root.child[length]
 
         # search by preceding tokens
+        ptokens = [w for w in tokens if w != lt_common.REPLACER]
         for i in range(self._depth - 2):
             try:
-                key = tokens[i]
+                key = ptokens[i]
             except IndexError:
                 key = None
             if key not in node.child:
