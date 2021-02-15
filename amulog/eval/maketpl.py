@@ -12,7 +12,7 @@ from amulog import lt_common
 from amulog.eval import cluster_metrics
 from amulog.eval import structure_metrics
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__package__.partition(".")[0])
 
 
 class MeasureLTGen:
@@ -475,7 +475,6 @@ def measure_accuracy_answer(conf, targets, n_trial=None):
     mlt = MeasureLTGen(conf, n_trial)
     mlt.init_answer()
 
-    from amulog import log_db
     from amulog import lt_import
     table_answer = lt_common.TemplateTable()
     ltgen_answer = lt_import.init_ltgen_import(conf, table_answer)
@@ -500,7 +499,6 @@ def measure_accuracy_trial_offline(conf, targets, n_trial=None, mlt=None):
         mlt = MeasureLTGen(conf, n_trial)
         mlt.load()
 
-    from amulog import log_db
     for trial_id in range(n_trial):
         timer = common.Timer("measure-accuracy-offline trial{0}".format(
             trial_id), output=_logger)
@@ -510,7 +508,9 @@ def measure_accuracy_trial_offline(conf, targets, n_trial=None, mlt=None):
         ltgen = amulog.manager.init_ltgen_methods(conf, table)
 
         input_lines = list(amulog.manager.iter_plines(conf, targets))
-        d_tid = ltgen.process_offline(input_lines)
+        d_plines = {mid: pline for mid, pline in enumerate(input_lines)}
+        d_tid = ltgen.process_offline(d_plines)
+
         iterobj = zip(input_lines,
                       mlt.tid_list_answer(),
                       mlt.iter_tpl_answer())
@@ -551,7 +551,8 @@ def measure_accuracy_trial_online(conf, targets_train, targets_test,
 
         if targets_train is not None:
             iterobj = amulog.manager.iter_plines(conf, targets_train)
-            ltgen.process_offline(iterobj)
+            d_plines = {mid: pline for mid, pline in enumerate(iterobj)}
+            ltgen.process_offline(d_plines)
 
         iterobj = zip(amulog.manager.iter_plines(conf, targets_test),
                       mlt.tid_list_answer(),

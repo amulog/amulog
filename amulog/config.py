@@ -84,21 +84,21 @@ class GroupDef():
                 yield group, val
 
 
-def gettuple(conf, section, name):
+def gettuple(conf, section, name, sep=","):
     ret = conf.get(section, name)
     if ret.strip() == "":
         return tuple()
     else:
-        return tuple(e.strip() for e in ret.split(",")
+        return tuple(e.strip() for e in ret.split(sep)
                      if not len(e.strip()) == 0)
 
 
-def getlist(conf, section, name):
+def getlist(conf, section, name, sep=","):
     ret = conf.get(section, name)
     if ret.strip() == "":
         return []
     else:
-        return [e.strip() for e in ret.split(",")
+        return [e.strip() for e in ret.split(sep)
                 if not len(e.strip()) == 0]
 
 
@@ -545,9 +545,12 @@ def set_common_logging(conf, logger=None, logger_name=None,
     else:
         raise TypeError
 
-    for l in temp_loggers:
-        l.setLevel(lv)
-        l.addHandler(ch)
+    for logger in temp_loggers:
+        logger.setLevel(lv)
+        logger.addHandler(ch)
+        if lv <= logging.DEBUG:
+            logger.debug("logger is on debug mode")
+
     return ch
 
 

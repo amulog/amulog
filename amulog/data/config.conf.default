@@ -50,7 +50,7 @@ mysql_user = root
 # Mysql user password
 mysql_passwd = test
 
-# Store log data with following splitter symbol string
+# Store log data in database with following splitter symbol string
 split_symbol = @@
 
 

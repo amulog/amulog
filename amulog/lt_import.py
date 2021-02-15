@@ -53,19 +53,21 @@ class LTGenImport(lt_common.LTGenStateless):
                 ltw, lts = self._lp.process_statement(mes)
                 self.add_definition(ltw)
                 cnt += 1
-        _logger.info("{0} template imported".format(cnt))
+        _logger.info("LTGenImport: {0} template imported".format(cnt))
         if shuffle:
             self._ltmap.shuffle()
 
     def add_definition(self, ltw):
         defid = self._d_def.add(ltw)
         self._ltmap.add(defid, ltw)
+        _logger.debug("defid {0}: {1}".format(defid, ltw))
 
     def update_definition(self, old_ltw, new_ltw):
-        defid = self._ltmap.search(old_ltw)
-        self._ltmap.remove(defid, old_ltw)
+        defid = self._ltmap.remove(old_ltw)
+        _logger.debug("defid remove {0}: {1}".format(defid, old_ltw))
         self._d_def.set_item(defid, new_ltw)
         self._ltmap.add(defid, new_ltw)
+        _logger.debug("defid {0}: {1}".format(defid, new_ltw))
 
     def generate_tpl(self, pline):
         defid = self._ltmap.search(pline["words"])

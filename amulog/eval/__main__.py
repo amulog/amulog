@@ -8,7 +8,7 @@ import argparse
 from amulog import common
 from amulog import config
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__package__.partition(".")[0])
 
 
 def get_targets_conf(conf):
@@ -68,7 +68,7 @@ def measure_accuracy_trial(ns):
     n_trial = int(conf["eval"]["n_trial_accuracy"])
 
     from amulog.__main__ import is_online
-    if is_online(conf):
+    if is_online(conf, False):
         maketpl.measure_accuracy_trial_online(conf, targets_train,
                                               targets_test, n_trial)
     else:
@@ -173,7 +173,7 @@ def show_accuracy_offline(ns):
     config.set_common_logging(conf, logger=_logger, lv=lv)
 
     from amulog.__main__ import is_online
-    if not is_online(conf):
+    if not is_online(conf, False):
         sys.exit("{0} is offline, use show_accuracy".format(ns.conf_path))
 
     from . import maketpl
@@ -289,8 +289,9 @@ def measure_time_online(ns):
     d_time = maketpl.measure_time_online(conf, targets_train, targets_test)
 
     import numpy as np
+    times = [str(t) for t in d_time.values()]
     avg = np.average(list(d_time.values()))
-    print("Trials: {0}".format(", ".join(d_time.values())))
+    print("Trials: {0}".format(", ".join(times)))
     print("Average: {0}".format(avg))
 
 

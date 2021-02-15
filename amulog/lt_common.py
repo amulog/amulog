@@ -160,8 +160,9 @@ class TemplateTable:
 
     @staticmethod
     def _key_template(template):
-        l_word = [strutil.add_esc(w) for w in template]
-        return "@".join(l_word)
+        # l_word = [strutil.add_esc(w) for w in template]
+        # return "@".join(l_word)
+        return tuple(template)
 
     def exists(self, template):
         key = self._key_template(template)
@@ -348,30 +349,41 @@ class LTGenJoint(LTGen):
         self._l_ltgen = l_ltgen
         self._import_index = ltgen_import_index
 
+        class_names = [c.__class__.__name__ for c in self._l_ltgen]
+        _logger.warning("LTGenJoint init with {0}".format(class_names))
+
     def is_stateful(self):
         return any([ltgen.is_stateful() for ltgen in self._l_ltgen])
 
     def _update_ltmap(self, pline, index, tid, state):
         from .lt_import import LTGenImport
         if (self._import_index is not None) and \
-                (not index == self._import_index):
+                (index != self._import_index):
             ltgen_import: LTGenImport = self._l_ltgen[self._import_index]
+            new_tpl = self._table.get_template(tid)
             if state == self.state_added:
-                ltgen_import.add_definition(pline["words"])
+                ltgen_import.add_definition(new_tpl)
+                msg = "LTGenJoint new template: {0}".format(new_tpl)
+                _logger.debug(msg)
             elif state == self.state_changed:
                 old_tpl = self._table.get_updated()
-                new_tpl = self._table.get_template(tid)
                 ltgen_import.update_definition(old_tpl, new_tpl)
+                msg = "LTGenJoint template update: {0} -> {1}".format(
+                    old_tpl, new_tpl)
+                _logger.debug(msg)
 
     def process_line(self, pline):
+        _logger.debug("LTGenJoint input: {0}".format(pline["words"]))
         for index, ltgen in enumerate(self._l_ltgen):
             tid, state = ltgen.process_line(pline)
             if tid is not None:
+                msg = ("LTGenJoint: method {0} ".format(index) +
+                       "successfully generate a template")
+                _logger.debug(msg)
                 self._update_ltmap(pline, index, tid, state)
                 return tid, state
         else:
-            msg = "Template for a message not matched/generated: {0}".format(
-                pline["message"])
+            msg = "Template not matched/generated: {0}".format(pline["words"])
             _logger.debug(msg)
             return None, None
 

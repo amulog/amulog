@@ -326,10 +326,11 @@ def init_ltgen_methods(conf, table, lt_methods=None, shuffle=None):
     if len(lt_methods) > 1:
         l_ltgen = []
         import_index = None
-        for mid, method_name in enumerate(lt_methods):
-            l_ltgen.append(init_ltgen(conf, table, method_name, shuffle))
+        for index, method_name in enumerate(lt_methods):
+            ltgen = init_ltgen(conf, table, method_name, shuffle)
+            l_ltgen.append(ltgen)
             if method_name == "import":
-                import_index = mid
+                import_index = index
         return lt_common.LTGenJoint(table, l_ltgen, import_index)
     elif len(lt_methods) == 1:
         return init_ltgen(conf, table, lt_methods[0], shuffle)

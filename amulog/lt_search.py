@@ -10,6 +10,9 @@ _logger = logging.getLogger(__package__)
 class LTSearch(object):
 
     def __init__(self):
+        self._init_ltsearch()
+
+    def _init_ltsearch(self):
         self._l_lt = []
 
     def add(self, ltid, l_w):
@@ -38,7 +41,7 @@ class LTSearch(object):
 class LTSearchTree(LTSearch):
     # Search tree for un-incremental lt generation algorithms
 
-    def __init__(self):
+    def _init_ltsearch(self):
         self.root = self._new_node()
 
     def __str__(self):
@@ -86,14 +89,14 @@ class LTSearchTree(LTSearch):
                     point.wild = self._new_node(point, w)
                 point = point.wild
             else:
-                if not w in point.windex:
+                if w not in point.windex:
                     point.windex[w] = self._new_node(point, w)
                 point = point.windex[w]
         else:
             point.set_ltid(ltid)
 
     def _trace(self, ltwords):
-        _logger.debug("tracing message {0}".format(ltwords))
+        # _logger.debug("LTSearchTree: trace {0}".format(ltwords))
         point = self.root
         tmp_ltwords = deque(ltwords)
         check_points = []
@@ -115,50 +118,66 @@ class LTSearchTree(LTSearch):
                 # also go to wild node, when check_points poped
                 if point.wild is not None:
                     check_points.append((point, deque(tmp_ltwords)))
-                    _logger.debug("# add checkpoint ({0} (+{1}))".format(point, len(tmp_ltwords) + 1))
-                _logger.debug("{0} (+{1}) -> goto {2}".format(
-                    point, len(tmp_ltwords) + 1, w))
+                    # msg = "add checkpoint ({0} (+{1}))".format(
+                    #     point, len(tmp_ltwords) + 1)
+                    # _logger.debug("LTSearchTree: " + msg)
+                    # msg = "{0} (+{1}) -> goto {2}".format(
+                    #     point, len(tmp_ltwords) + 1, w)
+                    # _logger.debug("LTSearchTree: " + msg)
                 point = point.windex[w]
             elif point.wild is not None:
                 # w is not in windex, but have wild node
-                _logger.debug("{0} (+{1}) -> goto {2}".format(
-                    point, len(tmp_ltwords) + 1, lt_common.REPLACER))
+                # msg = "{0} (+{1}) -> goto {2}".format(
+                #     point, len(tmp_ltwords) + 1, lt_common.REPLACER)
+                # _logger.debug("LTSearchTree: " + msg)
                 point = point.wild
             else:
                 # no template to process w, go back or end
-                _logger.debug("{0} (+{1}) : no available children".format(point, len(tmp_ltwords) + 1))
+                # msg = "{0} (+{1}) : no available children".format(
+                #     point, len(tmp_ltwords) + 1)
+                # _logger.debug("LTSearchTree: " + msg)
                 if len(check_points) == 0:
-                    _logger.debug("template not found")
+                    # _logger.debug("LTSearchTree: template not found")
                     return None
                 else:
                     p, tmp_ltwords = check_points.pop()
                     # tmp_ltwords = deque(ltwords[-left_wlen:]) if left_wlen > 0 else []
                     #    # +1 : for one **(wild) node
                     point = p.wild
-                    _logger.debug("go back to a stacked branch : {0} (+{1})".format(point, len(tmp_ltwords)))
-                    _logger.debug("remaining words : {0}".format(tmp_ltwords))
+                    # msg = "go back to a stacked branch : {0} (+{1})".format(
+                    #     point, len(tmp_ltwords))
+                    # _logger.debug("LTSearchTree: " + msg)
+                    # msg = "remaining words : {0}".format(tmp_ltwords)
+                    # _logger.debug("LTSearchTree: " + msg)
 
             while len(tmp_ltwords) == 0:
                 if point.end is None:
-                    _logger.debug("{0} (+{1}) : no template in this node".format(point, len(tmp_ltwords)))
+                    # msg = "LTSearchTree: {0} (+{1}) : no template in this node".format(
+                    #     point, len(tmp_ltwords))
+                    # _logger.debug("LTSearchTree: " + msg)
                     if len(check_points) == 0:
-                        _logger.debug("all ends are empty(no templates)")
+                        # msg = "all ends are empty(no templates)"
+                        # _logger.debug("LTSearchTree: " + msg)
                         return None
                     else:
                         p, tmp_ltwords = check_points.pop()
                         # tmp_ltwords = deque(ltwords[-left_wlen:]) if left_wlen > 0 else []
                         point = p.wild
-                        _logger.debug("go back to a stacked branch : {0} (+{1})".format(point, len(tmp_ltwords)))
-                        _logger.debug("remaining words : {0}".format(tmp_ltwords))
+                        # msg = "go back to a stacked branch : {0} (+{1})".format(
+                        #     point, len(tmp_ltwords))
+                        # _logger.debug("LTSearchTree: " + msg)
+                        # msg = "remaining words : {0}".format(tmp_ltwords)
+                        # _logger.debug("LTSearchTree: " + msg)
                 else:
-                    _logger.debug("done (tpl: {0}, id: {1})".format(point, point.end))
+                    # msg = "done (tpl: {0}, id: {1})".format(point, point.end)
+                    # _logger.debug("LTSearchTree: " + msg)
                     return point
 
     def remove(self, ltid, l_w):
         point = self._trace(l_w)
         if point is None:
             _logger.warning(
-                "LTSearchTree : Failed to remove ltid {0}".format(ltid))
+                "LTSearchTree: Failed to remove ltid {0}".format(ltid))
         point.remove_ltid(ltid)
         while point.unnecessary():
             w = point.word
@@ -166,7 +185,7 @@ class LTSearchTree(LTSearch):
             if w is None:
                 point.wild = None
             else:
-                point.wdict.pop(w)
+                point.windex.pop(w)
         else:
             if self.root is None:
                 self.root = self._new_node()
@@ -241,9 +260,152 @@ class LTSearchTreeNode:
                (self.end is None)
 
 
+class LTSearchTreeNew(LTSearch):
+
+    KEY_WILDCARD = "@wild"
+    KEY_TEMPLATE_ID = "@ltid"
+
+    def _init_ltsearch(self):
+        self.root = {}
+
+    def add(self, ltid, l_w):
+        current = self.root
+        for w in l_w:
+            if w == lt_common.REPLACER:
+                key = self.KEY_WILDCARD
+            else:
+                key = w
+            if key not in current:
+                current[key] = {}
+            current = current[key]
+        else:
+            current[self.KEY_TEMPLATE_ID] = ltid
+
+    def _trace(self, ltwords):
+        current = self.root
+        tmp_ltwords = deque(ltwords)
+        stack_path = []
+        # points with 2 candidates to go, for example "word" and "**"
+        # [(node, len(left_words)), ...]
+
+        while True:
+            w = tmp_ltwords.popleft()
+            if w == lt_common.REPLACER:
+                # w is wildcard (This means the input is not a message but a template)
+                # go wildcard node
+                if self.KEY_WILDCARD in current:
+                    current = current[self.KEY_WILDCARD]
+                else:
+                    return None
+            elif w in current:
+                # w is in children of current node
+                # go the word or wildcard node
+                # If both exists, push wildcard to stack
+                if self.KEY_WILDCARD in current:
+                    stack_path.append((current, deque(tmp_ltwords)))
+                current = current[w]
+            elif self.KEY_WILDCARD in current:
+                # w is not in children, but have wildcard node
+                # go wildcard node
+                current = current[self.KEY_WILDCARD]
+            else:
+                # no template to match, go back with stack or end
+                if not stack_path:
+                    return None
+                else:
+                    node, tmp_ltwords = stack_path.pop()
+                    current = node[self.KEY_WILDCARD]
+
+            while not tmp_ltwords:
+                # not "if" but "while"
+                # because current may be end node just after stack-pop
+                # it happens when last word matches both a word and wildcard
+                if self.KEY_TEMPLATE_ID in current:
+                    # template match successfully
+                    return current[self.KEY_TEMPLATE_ID]
+                elif not stack_path:
+                    return None
+                else:
+                    # no template to match, go back with stack or end
+                    node, tmp_ltwords = stack_path.pop()
+                    current = node[self.KEY_WILDCARD]
+
+    def _trace_path(self, ltwords):
+        current = self.root
+        tmp_ltwords = deque(ltwords)
+        stack_path = []
+        ret_path = []
+        # points with 2 candidates to go, for example "word" and "**"
+        # [(node, len(left_words), ret_path), ...]
+
+        while True:
+            w = tmp_ltwords.popleft()
+            if w == lt_common.REPLACER:
+                # w is wildcard (This means the input is not a message but a template)
+                # go wildcard node
+                if self.KEY_WILDCARD in current:
+                    current = current[self.KEY_WILDCARD]
+                else:
+                    return None
+            elif w in current:
+                # w is in children of current node
+                # go the word or wildcard node
+                # If both exists, push wildcard to stack
+                if self.KEY_WILDCARD in current:
+                    stack_path.append((current, deque(tmp_ltwords), ret_path))
+                current = current[w]
+            elif self.KEY_WILDCARD in current:
+                # w is not in children, but have wildcard node
+                # go wildcard node
+                current = current[self.KEY_WILDCARD]
+            else:
+                # no template to match, go back with stack or end
+                if not stack_path:
+                    return None
+                else:
+                    node, tmp_ltwords, ret_path = stack_path.pop()
+                    current = current[self.KEY_WILDCARD]
+
+            ret_path.append(current)
+
+            while not tmp_ltwords:
+                if self.KEY_TEMPLATE_ID in current:
+                    # template match successfully
+                    return ret_path
+                elif not stack_path:
+                    return None
+                else:
+                    # no template to match, go back with stack or end
+                    node, tmp_ltwords, ret_path = stack_path.pop()
+                    current = current[self.KEY_WILDCARD]
+                    ret_path.append(current)
+
+    def search(self, words):
+        return self._trace(words)
+
+    def remove(self, tpl):
+        path = self._trace_path(tpl)
+        if path is None:
+            _logger.warning(
+                "LTSearchTree: Failed to remove tpl {0}".format(tpl))
+            return
+
+        ltid = path[-1].pop(self.KEY_TEMPLATE_ID)
+        rev_tpl = list(reversed(tpl))
+        rev_path = list(reversed(path))
+        rev_path_parent = rev_path[1:] + [self.root]
+        for w, node, parent_node in zip(rev_tpl, rev_path, rev_path_parent):
+            if w == lt_common.REPLACER:
+                w = self.KEY_WILDCARD
+            if not node:
+                # node empty: remove link from parent node
+                parent_node.pop(w)
+        return ltid
+
+
 def init_searcher(name):
     if name == "tree":
-        return LTSearchTree()
+        return LTSearchTreeNew()
     elif name == "table":
         return LTSearch()
     else:

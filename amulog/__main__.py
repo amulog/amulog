@@ -876,4 +876,6 @@ def _main():
 
 
 if __name__ == "__main__":
+    #import cProfile
+    #cProfile.run('_main()', filename='main.prof')
     _main()

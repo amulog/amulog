@@ -30,7 +30,7 @@ class VariableRegex:
             if s.strip() == "":
                 return tuple()
             else:
-                return tuple([w.strip() for w in s.split(",")])
+                return tuple([w.strip() for w in s.split(", ")])
 
         vre_conf = configparser.ConfigParser()
         loaded = vre_conf.read(fn)

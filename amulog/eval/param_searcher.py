@@ -6,7 +6,7 @@ from amulog import common
 from amulog import lt_common
 from . import maketpl
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__package__.partition(".")[0])
 
 
 class ParameterSearcher(maketpl.MeasureLTGen):
