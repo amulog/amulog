@@ -118,9 +118,9 @@ class LTGenDlog(lt_common.LTGenOffline):
                 tpl.append(w if node.part_of_tpl else lt_common.REPLACER)
         return tpl
 
-    def process_offline(self, plines):
+    def process_offline(self, d_pline):
         # make tree
-        for pline in plines:
+        for mid, pline in d_pline.items():
             primary_tpl = self._get_primary_tpl(pline["words"])
             self._add_line(primary_tpl)
 
@@ -129,7 +129,7 @@ class LTGenDlog(lt_common.LTGenOffline):
 
         # restore tpl
         ret = {}
-        for mid, pline in enumerate(plines):
+        for mid, pline in d_pline.items():
             primary_tpl = self._get_primary_tpl(pline["words"])
             tpl = self._restore_tpl(primary_tpl)
             tid, _ = self.update_table(tpl)

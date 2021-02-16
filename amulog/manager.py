@@ -423,7 +423,7 @@ def load_log2seq(conf):
 
 def parse_line(line, lp):
     try:
-        parsed_line = lp.process_line(strutil.add_esc(line))
+        parsed_line = lp.process_line(line)
     except log2seq.LogParseFailure:
         return None
     else:
