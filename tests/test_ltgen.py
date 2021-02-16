@@ -38,8 +38,8 @@ class TestLTGen(unittest.TestCase):
             for pline in iterobj:
                 ltgen.process_line(pline)
         else:
-            plines = [pline for pline in iterobj]
-            ltgen.process_offline(plines)
+            d_pline = {mid: pline for mid, pline in enumerate(iterobj)}
+            ltgen.process_offline(d_pline)
         return table
 
     def test_import(self):
