@@ -919,7 +919,6 @@ def measure_time_online(conf, targets_train, targets_test, n_trial=None):
     if n_trial is None:
         n_trial = int(conf["eval"]["n_trial_time"])
 
-    from amulog import log_db
     d_time = {}
     for trial_id in range(n_trial):
         table = lt_common.TemplateTable()
@@ -943,7 +942,6 @@ def measure_time_offline(conf, targets_test, n_trial=None):
     if n_trial is None:
         n_trial = int(conf["eval"]["n_trial_time"])
 
-    from amulog import log_db
     d_time = {}
     for trial_id in range(n_trial):
         table = lt_common.TemplateTable()
@@ -953,7 +951,8 @@ def measure_time_offline(conf, targets_test, n_trial=None):
                              output=None)
         timer.start()
         input_lines = list(amulog.manager.iter_plines(conf, targets_test))
-        ltgen.process_offline(input_lines)
+        d_plines = {mid: pline for mid, pline in enumerate(input_lines)}
+        ltgen.process_offline(d_plines)
         timer.stop()
         d_time[trial_id] = timer.total_time().total_seconds()
 
