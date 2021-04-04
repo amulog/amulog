@@ -17,7 +17,6 @@ class HostAlias(object):
 
     def __init__(self, fn):
         self._fn = fn
-        # self.fn = conf.get("database", "host_alias_filename")
         self._d_alias = defaultdict(list)  # key = alias, val = List[host]
         self._d_ralias = {}  # key = host, val = alias
         self._d_group = defaultdict(list)  # key = group, val = List[host]

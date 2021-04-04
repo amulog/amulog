@@ -248,18 +248,6 @@ class LogData:
         """
         return [self.lttable[ltid] for ltid in self.db.get_ltg_members(ltgid)]
 
-#    def host_area(self, host):
-#        """Get area names that given host belongs to.
-#
-#        Args:
-#            host (str): A hostname.
-#
-#        Returns:
-#            List[str]: A sequence of area names that given host belongs to.
-#
-#        """
-#        return self.db.host_area(host)
-
     @staticmethod
     def _str_ltline(ltline):
         return " ".join((str(ltline.ltid), "({0})".format(ltline.ltgid),
@@ -436,20 +424,31 @@ class LogDB:
     def commit(self):
         self.db.commit()
 
-    def add_line(self, ltid, dt, host, l_w, lid=None):
+    def _log_set_args(self, **kwargs):
+        d = {}
+        for k, v in kwargs.items():
+            if k == "dt":
+                d[k] = self.db.strftime(v)
+            elif k == "l_w":
+                d["words"] = self._splitter.join(v)
+            elif k in ("lid", "ltid", "host"):
+                d[k] = v
+            else:
+                raise KeyError
+        return d
+
+    #def add_line(self, ltid, dt, host, l_w, lid=None):
+    def add_line(self, **kwargs):
+        assert "ltid" in kwargs
+        assert "dt" in kwargs
+        assert "host" in kwargs
+        assert "l_w" in kwargs
         table_name = "log"
-        d_val = {
-            "ltid": ltid,
-            "dt": self.db.strftime(dt),
-            "host": host,
-            "words": self._splitter.join(l_w),
-        }
+        d_val = self._log_set_args(**kwargs)
 
         self._line_cnt += 1
-        if lid is None:
+        if "lid" not in kwargs:
             d_val["lid"] = self._line_cnt
-        else:
-            d_val["lid"] = lid
 
         l_ss = [db_common.StateSet(k, k) for k in d_val.keys()]
         sql = self.db.insert_sql(table_name, l_ss)
@@ -511,10 +510,6 @@ class LogDB:
                 sql = self.db.select_sql("ltg", ["ltid"],
                                          [db_common.Condition(c, "=", c, True)])
                 l_cond.append(db_common.Condition("ltid", "in", sql, False))
-            elif c == "area":
-                sql = self.db.select_sql("area", ["host"],
-                                         [db_common.Condition(c, "=", c, True)])
-                l_cond.append(db_common.Condition("host", "in", sql, False))
             elif c == "top_dt":
                 l_cond.append(db_common.Condition("dt", ">=", c, True))
                 args[c] = self.db.strftime(d_cond[c])
@@ -553,16 +548,17 @@ class LogDB:
         else:
             raise ValueError("Duplicated messages for lid {0}".format(lid))
 
-    def update_log(self, d_cond, d_update):
+    def update_log(self, d_cond, **kwargs):
         if len(d_cond) == 0:
             _logger.warning("called update with empty condition")
             # raise ValueError("called update with empty condition")
-        args = d_cond.copy()
+
+        d_update = self._log_set_args(**kwargs)
 
         table_name = "log"
+        args = d_cond.copy()
         l_ss = []
         for k, v in d_update.items():
-            # assert k in ("ltid", "top_dt", "end_dt", "host")
             keyname = "update_" + k
             l_ss.append(db_common.StateSet(k, keyname))
             args[keyname] = v
@@ -670,7 +666,7 @@ class LogDB:
         sql = self.db.insert_sql(table_name, l_ss)
         self.db.execute(sql, args)
 
-    def update_lt(self, ltid, ltw, lts, count):
+    def update_lt(self, ltid, ltw, lts, count=None):
         table_name = "lt"
         l_ss = []
         args = {}
@@ -938,12 +934,51 @@ def agg_words(conf, target="all"):
     return d
 
 
-def anonymize(conf):
+def anonymize(conf, output=None):
+    """Anonymize existing database.
+
+    This function replaced following contents in the existing db.
+    - Log template format
+    - Log message details
+    - Hostname
+
+    If output given, this function finally
+    output mapping json file of replaced hostnames."""
+
+    # overwrite hosts
     ld = LogData(conf, edit=True)
-    d_cond = {}
-    d_update = {"words": ""}
-    ld.db.update_log(d_cond, d_update)
-    ld.commit_db()
+    host_mapping = {}
+    hosts = set(ld.whole_host())
+    for num, host in enumerate(hosts):
+        replaced_host = "host" + str(num).zfill(len(str(len(hosts))))
+        ld.db.update_log({"host": host}, host=replaced_host)
+        host_mapping[replaced_host] = host
+
+    # overwrite lt and log words
+    lt_mapping = {}
+    for ltobj in ld.iter_lt():
+        new_ltw = [lt_common.REPLACER if w == lt_common.REPLACER
+                   else lt_common.ANONYMIZED_DESC
+                   for w in ltobj.ltw]
+        new_lts = [" "] * len(ltobj.lts)
+        new_lts[0] = ""
+        new_lts[-1] = ""
+        new_ltobj = lt_common.LogTemplate(ltobj.ltid, ltobj.ltgid,
+                                          new_ltw, new_lts, ltobj.count)
+        ld.lttable.update_lt(new_ltobj)
+        ld.db.update_lt(ltid=ltobj.ltid, ltw=new_ltw, lts=new_lts, count=ltobj.cnt)
+
+        ld.db.update_log({"ltid": ltobj.ltid}, l_w=new_ltw)
+        lt_mapping[ltobj.ltid] = {"ltw": new_ltw,
+                                  "lts": new_lts}
+
+    if output:
+        import json
+        with open(output, mode='wt', encoding='utf-8') as f:
+            obj = {"host_mapping": host_mapping,
+                   "lt_mapping": lt_mapping}
+            json.dump(obj, f)
+        print("> {0}".format(output))
 
 
 def data_from_db(conf, dirname, method, reset):

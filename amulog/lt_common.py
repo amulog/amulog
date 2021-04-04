@@ -12,6 +12,7 @@ REPLACER = "**"
 REPLACER_HEAD = "*"
 REPLACER_TAIL = "*"
 REPLACER_REGEX = re.compile(r"\*[A-Z]*?\*")  # shortest match
+ANONYMIZED_DESC = "##"
 
 _logger = logging.getLogger(__package__)
 
@@ -51,6 +52,10 @@ class LTTable:
     def add_lt(self, ltline):
         assert ltline.ltid not in self.ltdict
         self.ltdict[ltline.ltid] = ltline
+
+    def update_lt(self, ltobj):
+        assert ltobj.ltid in self.ltdict
+        self.ltdict[ltobj.ltid] = ltobj
 
     def remove_lt(self, ltid):
         self.ltdict.pop(ltid)

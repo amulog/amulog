@@ -25,12 +25,24 @@ class Node:
 
 
 class LTGenDrain(lt_common.LTGen):
+    """
+    Args:
+        table (LogTemplateTable): see lt_common.LTGen
+        threshold (int): Threshold value used in 2nd step (clustering).
+        depth (int): Tree depth used in 1st part (preceding tokens).
+            (depth - 2) top words except known variables
+            are always considered NOT variable.
+        vreobj (lt_regex.VariableRegex): Regex-based variable classifier.
+            Mainly used in 1st step (preceding tokens).
+    """
 
-    def __init__(self, table, threshold, depth, vreobj):
+    def __init__(self, table, threshold, depth, vreobj,
+                 count_replacer=False):
         super().__init__(table)
         self._threshold = threshold
         self._depth = depth
         self._vre = vreobj
+        self._count_replacer = count_replacer
         self._root = Node()
 
     def load(self, loadobj):
