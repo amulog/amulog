@@ -2,7 +2,6 @@
 # coding: utf-8
 
 import os
-import copy
 import unittest
 import tempfile
 
@@ -11,7 +10,7 @@ from amulog import config
 from amulog import manager
 from amulog import lt_common
 
-from . import testlog
+from amulog import testutil
 
 
 class TestLTGen(unittest.TestCase):
@@ -22,7 +21,7 @@ class TestLTGen(unittest.TestCase):
     def setUpClass(cls):
         fd_testlog, cls._path_testlog = tempfile.mkstemp()
         os.close(fd_testlog)
-        tlg = testlog.TestLogGenerator(testlog.DEFAULT_CONFIG, seed=3)
+        tlg = testutil.TestLogGenerator(testutil.DEFAULT_CONFIG, seed=3)
         tlg.dump_log(cls._path_testlog)
 
     @classmethod

@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-import sys
 import os
 import datetime
 import random
@@ -12,10 +8,10 @@ import numpy as np
 from amulog import config
 
 DEFAULT_CONFIG = "/".join((os.path.dirname(os.path.abspath(__file__)),
-                           "./testlog.conf"))
+                           "./data/testlog.conf"))
 
 
-class TestLogGenerator():
+class TestLogGenerator:
     _var_re = re.compile(r"\$.+?\$")
 
     def __init__(self, conf_fn, seed=None):

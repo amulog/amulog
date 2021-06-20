@@ -190,10 +190,8 @@ def dur2str(td):
     return str(val) + footer
 
 
-def load_defaults(ex_conf=None):
-    l_fn = [DEFAULT_CONFIG]
-    if not ex_conf is None and len(ex_conf) > 0:
-        l_fn = [DEFAULT_CONFIG] + ex_conf
+def load_defaults(iterable_conf_path=None):
+    l_fn = iterable_conf_path
     temp_conf = configparser.ConfigParser()
     for fn in l_fn:
         ret = temp_conf.read(fn)
@@ -204,13 +202,15 @@ def load_defaults(ex_conf=None):
 
 
 def open_config(fn=None, ex_defaults=None,
-                nodefault=False, noimport=False):
+                base_default=True, ignore_import=False):
     """
     Args:
         fn (str): Configuration file path.
         ex_defaults (List[str]): External default configurations.
                                  If you use other packages with amulog,
                                  use this to add its configurations.
+        base_default (bool): Use amulog default values for missing options.
+        ignore_import (bool): Ignore general.import.
         
     """
 
@@ -232,7 +232,7 @@ def open_config(fn=None, ex_defaults=None,
             raise IOError("config load error ({0})".format(fn))
         conf.set(LOAD_SECTION, LOAD_OPTION, fn)
 
-    if not noimport:
+    if not ignore_import:
         while conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
             if conf[IMPORT_SECTION][IMPORT_OPTION] == "":
                 break
@@ -244,8 +244,13 @@ def open_config(fn=None, ex_defaults=None,
                 raise IOError("config load error ({0})".format(import_fn))
             import_config(conf, import_conf)
 
-    if not nodefault:
-        default_conf = load_defaults(ex_defaults)
+    l_defaults = []
+    if base_default:
+        l_defaults.append(DEFAULT_CONFIG)
+    if ex_defaults:
+        l_defaults += ex_defaults
+    if l_defaults:
+        default_conf = load_defaults(l_defaults)
         import_config(conf, default_conf)
 
     return conf
@@ -362,7 +367,7 @@ def config_minimum(fn, ex_defaults=None):
 
 def config_group_edit(l_conf_name, d_rule, l_conf=None):
     if l_conf is None:
-        l_conf = [open_config(conf_path, nodefault=True, noimport=True)
+        l_conf = [open_config(conf_path, base_default=False, ignore_import=True)
                   for conf_path in l_conf_name]
     for key, l_val in d_rule.items():
         if isinstance(key, str):
@@ -390,7 +395,7 @@ def config_shadow(n=1, cond=None, incr=None, fn=None, output=None,
 
     l_ret = []
     for i in range(n):
-        conf = open_config(fn, ex_defaults, noimport=True)
+        conf = open_config(fn, ex_defaults, ignore_import=True)
         for key, val in cond.items():
             sec, opt = key.split(".")
             conf[sec][opt] = val

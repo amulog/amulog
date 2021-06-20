@@ -20,45 +20,45 @@ _logger = logging.getLogger(__package__)
 class LTTable:
 
     def __init__(self):
-        self.ltdict = {}
+        self._ltdict = {}
 
     def __iter__(self):
         return self._generator()
 
     def _generator(self):
-        for ltid in self.ltdict:
-            yield self.ltdict[ltid]
+        for ltid in self._ltdict:
+            yield self._ltdict[ltid]
 
     def __len__(self):
-        return len(self.ltdict)
+        return len(self._ltdict)
 
     def __getitem__(self, key):
         assert isinstance(key, int)
-        if key not in self.ltdict:
+        if key not in self._ltdict:
             raise IndexError("index out of range")
-        return self.ltdict[key]
+        return self._ltdict[key]
 
     def next_ltid(self):
         cnt = 0
-        while cnt in self.ltdict:
+        while cnt in self._ltdict:
             cnt += 1
         else:
             return cnt
 
     def restore_lt(self, ltid, ltgid, ltw, lts, count):
-        assert ltid not in self.ltdict
-        self.ltdict[ltid] = LogTemplate(ltid, ltgid, ltw, lts, count)
+        assert ltid not in self._ltdict
+        self._ltdict[ltid] = LogTemplate(ltid, ltgid, ltw, lts, count)
 
     def add_lt(self, ltline):
-        assert ltline.ltid not in self.ltdict
-        self.ltdict[ltline.ltid] = ltline
+        assert ltline.ltid not in self._ltdict
+        self._ltdict[ltline.ltid] = ltline
 
     def update_lt(self, ltobj):
-        assert ltobj.ltid in self.ltdict
-        self.ltdict[ltobj.ltid] = ltobj
+        assert ltobj.ltid in self._ltdict
+        self._ltdict[ltobj.ltid] = ltobj
 
     def remove_lt(self, ltid):
-        self.ltdict.pop(ltid)
+        self._ltdict.pop(ltid)
 
 
 class LogTemplate:
@@ -459,11 +459,7 @@ class LTGenJoint(LTGen):
 #        return self._process_offline_pool(plines)
 
 
-class LTGroup(object):
-
-    # usually used as super class of other ltgroup
-    # If used directly, this class will work as a dummy
-    # (ltgid is always same as ltid)
+class LTGroup(ABC):
 
     def __init__(self):
         self._init_dict()
@@ -479,10 +475,9 @@ class LTGroup(object):
         else:
             return cnt
 
-    def add(self, ltline):
-        gid = ltline.ltid
-        self.add_ltid(gid, ltline)
-        return gid
+    @abstractmethod
+    def make(self):
+        raise NotImplementedError
 
     def add_ltid(self, gid, ltline):
         self._d_group.setdefault(gid, []).append(ltline)
@@ -493,18 +488,53 @@ class LTGroup(object):
             self._d_group.setdefault(ltgid, []).append(table[ltid])
             self._d_rgroup[ltid] = ltgid
 
-    def remake_all(self, lttable):
-        self._init_dict()
-        for ltline in lttable:
-            ltgid = self.add(ltline)
-            ltline.ltgid = ltgid
-        return lttable
-
     def load(self, loadobj):
         pass
 
     def dumpobj(self):
         return None
+
+
+class LTGroupOnline(LTGroup, ABC):
+
+    def __init__(self, lttable):
+        super().__init__()
+        self.lttable = lttable
+
+    @abstractmethod
+    def add(self, ltline):
+        """Returns ltgid"""
+        raise NotImplementedError
+
+    def make(self):
+        self.remake_all()
+
+    def remake_all(self):
+        self._init_dict()
+        for ltline in self.lttable:
+            ltgid = self.add(ltline)
+            ltline.ltgid = ltgid
+
+
+class LTGroupDummy(LTGroupOnline):
+    # This class will work as a dummy
+    # (ltgid is always same as ltid)
+
+    def add(self, ltline):
+        gid = ltline.ltid
+        self.add_ltid(gid, ltline)
+        return gid
+
+
+class LTGroupOffline(LTGroup, ABC):
+
+    def __init__(self, lttable):
+        super().__init__()
+        self.lttable = lttable
+
+    @abstractmethod
+    def make(self):
+        raise NotImplementedError
 
 
 class LTPostProcess(object):

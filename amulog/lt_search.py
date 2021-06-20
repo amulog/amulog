@@ -402,6 +402,9 @@ class LTSearchTreeNew(LTSearch):
                 parent_node.pop(w)
         return ltid
 
+    def shuffle(self):
+        pass
+
 
 def init_searcher(name):
     if name == "tree":

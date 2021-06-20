@@ -125,6 +125,16 @@ class LogData:
         from . import lt_label
         self.ll = lt_label.init_ltlabel(conf)
 
+    def add_line(self, lid, ltid, dt, host, l_w):
+        """Directly add LogMessage to DB.
+        Used in Anonymize functions."""
+        self.db.add_line(lid=lid, ltid=ltid, dt=dt, host=host, l_w=l_w)
+
+    def add_lt(self, ltobj):
+        """Directly add LogTemplate to DB.
+        Used in Anonymize functions."""
+        self.db.add_lt(ltobj)
+
     def get_line(self, lid):
         return self.db.get_line(lid)
 
@@ -155,6 +165,9 @@ class LogData:
             ["{0}:{1}".format(k, v) for k, v in kargs.items()
              if v is not None])))
         return self.db.iter_lines(**kargs)
+
+    def iter_all(self):
+        return self.db.iter_all()
 
     def count_lines(self):
         """int: Number of all messages in DB."""
@@ -456,6 +469,19 @@ class LogDB:
 
         return d_val["lid"]
 
+    def iter_all(self):
+        l_order = [("lid", "asc")]
+        for row in self._select_log({}, l_order=l_order):
+            lid = int(row[0])
+            ltid = int(row[1])
+            dt = self.db.datetime(row[2])
+            host = row[3]
+            if row[4] == "":
+                l_w = []
+            else:
+                l_w = strutil.split_igesc(row[4], self._splitter)
+            yield LogMessage(lid, self.lttable[ltid], dt, host, l_w)
+
     def iter_lines(self, lid=None, ltid=None, ltgid=None, top_dt=None,
                    end_dt=None, host=None):
         d_cond = {}
@@ -497,7 +523,7 @@ class LogDB:
             else:
                 yield strutil.split_igesc(row[4], self._splitter)
 
-    def _select_log(self, d_cond):
+    def _select_log(self, d_cond, l_order=None):
         if len(d_cond) == 0:
             raise ValueError("called select with empty condition")
         args = d_cond.copy()
@@ -518,7 +544,7 @@ class LogDB:
                 args[c] = self.db.strftime(d_cond[c])
             else:
                 l_cond.append(db_common.Condition(c, "=", c, True))
-        sql = self.db.select_sql(table_name, l_key, l_cond)
+        sql = self.db.select_sql(table_name, l_key, l_cond, l_order)
         return self.db.execute(sql, args)
 
     def get_line(self, lid):
@@ -637,11 +663,12 @@ class LogDB:
 
     def add_lt(self, ltline):
         table_name = "lt"
-        l_ss = []
-        l_ss.append(db_common.StateSet("ltid", "ltid"))
-        l_ss.append(db_common.StateSet("ltw", "ltw"))
-        l_ss.append(db_common.StateSet("lts", "lts"))
-        l_ss.append(db_common.StateSet("count", "count"))
+        l_ss = [
+            db_common.StateSet("ltid", "ltid"),
+            db_common.StateSet("ltw", "ltw"),
+            db_common.StateSet("lts", "lts"),
+            db_common.StateSet("count", "count")
+        ]
         if ltline.lts is None:
             lts = None
         else:
@@ -659,9 +686,10 @@ class LogDB:
 
     def add_ltg(self, ltid, ltgid):
         table_name = "ltg"
-        l_ss = []
-        l_ss.append(db_common.StateSet("ltid", "ltid"))
-        l_ss.append(db_common.StateSet("ltgid", "ltgid"))
+        l_ss = [
+            db_common.StateSet("ltid", "ltid"),
+            db_common.StateSet("ltgid", "ltgid")
+        ]
         args = {"ltid": ltid, "ltgid": ltgid}
         sql = self.db.insert_sql(table_name, l_ss)
         self.db.execute(sql, args)
@@ -708,13 +736,16 @@ class LogDB:
         cursor = self.db.execute(sql)
         for row in cursor:
             ltid = int(row[0])
-            ltgid = int(row[1])
+            if row[1]:
+                ltgid = int(row[1])
+            else:
+                ltgid = ltid
             ltw = strutil.split_igesc(row[2], self._splitter)
-            temp = row[3]
-            if temp is None:
+            tmp = row[3]
+            if tmp is None:
                 lts = None
             else:
-                lts = strutil.split_igesc(temp, self._splitter)
+                lts = strutil.split_igesc(tmp, self._splitter)
             count = int(row[4])
             self.lttable.restore_lt(ltid, ltgid, ltw, lts, count)
 
@@ -934,25 +965,15 @@ def agg_words(conf, target="all"):
     return d
 
 
-def anonymize(conf, output=None):
-    """Anonymize existing database.
-
-    This function replaced following contents in the existing db.
-    - Log template format
-    - Log message details
-    - Hostname
-
-    If output given, this function finally
-    output mapping json file of replaced hostnames."""
-
+def _anonymize_overwrite(ld):
     # overwrite hosts
-    ld = LogData(conf, edit=True)
     host_mapping = {}
     hosts = set(ld.whole_host())
     for num, host in enumerate(hosts):
         replaced_host = "host" + str(num).zfill(len(str(len(hosts))))
         ld.db.update_log({"host": host}, host=replaced_host)
         host_mapping[replaced_host] = host
+        ld.commit_db()
 
     # overwrite lt and log words
     lt_mapping = {}
@@ -966,19 +987,107 @@ def anonymize(conf, output=None):
         new_ltobj = lt_common.LogTemplate(ltobj.ltid, ltobj.ltgid,
                                           new_ltw, new_lts, ltobj.count)
         ld.lttable.update_lt(new_ltobj)
-        ld.db.update_lt(ltid=ltobj.ltid, ltw=new_ltw, lts=new_lts, count=ltobj.cnt)
+        ld.db.update_lt(ltid=ltobj.ltid, ltw=new_ltw, lts=new_lts,
+                        count=ltobj.cnt)
 
         ld.db.update_log({"ltid": ltobj.ltid}, l_w=new_ltw)
+        lt_mapping[ltobj.ltid] = (ltobj.ltw, ltobj.lts)
+        ld.commit_db()
+
+    return host_mapping, lt_mapping
+
+
+def _anonymize_migration(ld_src, conf_dst, host_mapping, lt_mapping):
+    from . import lt_common
+    ld = LogData(conf_dst, edit=True)
+    online_batchsize = conf_dst.getint("manager", "online_batchsize")
+
+    for ltobj in ld_src.iter_lt():
+        new_ltobj = lt_common.LogTemplate(
+            ltid=ltobj.ltid,
+            ltgid=ltobj.ltgid,
+            ltw=lt_mapping[ltobj.ltid]["ltw"],
+            lts=lt_mapping[ltobj.ltid]["lts"],
+            count=ltobj.count
+        )
+        ld.add_lt(new_ltobj)
+        ld.commit_db()
+
+    online_counter = 0
+    for lm in ld_src.iter_all():
+        ld.add_line(lid=lm.lid,
+                    ltid=lm.lt.ltid,
+                    dt=lm.dt,
+                    host=host_mapping[lm.host],
+                    l_w=lt_mapping[lm.lt.ltid]["ltw"])
+        online_counter += 1
+        if online_counter >= online_batchsize:
+            ld.commit_db()
+            online_counter = 0
+
+
+def _anonymize_mapping(ld):
+    host_mapping = {}
+    host_mapping_dump = {}
+    hosts = set(ld.whole_host())
+    for num, host in enumerate(hosts):
+        replaced_host = "host" + str(num).zfill(len(str(len(hosts))))
+        host_mapping[host] = replaced_host
+        host_mapping_dump[replaced_host] = host
+
+    lt_mapping = {}
+    lt_mapping_dump = {}
+    for ltobj in ld.iter_lt():
+        new_ltw = [lt_common.REPLACER if w == lt_common.REPLACER
+                   else lt_common.ANONYMIZED_DESC
+                   for w in ltobj.ltw]
+        new_lts = [" "] * len(ltobj.lts)
+        new_lts[0] = ""
+        new_lts[-1] = ""
         lt_mapping[ltobj.ltid] = {"ltw": new_ltw,
                                   "lts": new_lts}
+        lt_mapping_dump[ltobj.ltid] = (ltobj.ltw, ltobj.lts)
+
+    return host_mapping, host_mapping_dump, lt_mapping, lt_mapping_dump
+
+
+def _dump_anonymize_mapping(host_mapping, lt_mapping, output):
+    import json
+    with open(output, mode='wt', encoding='utf-8') as f:
+        obj = {"host_mapping": host_mapping,
+               "lt_mapping": lt_mapping}
+        json.dump(obj, f)
+    return output
+
+
+def anonymize(conf, conf2=None, output=None):
+    """Anonymize existing database.
+
+    This function replaced following contents in the existing db.
+    - Log template format
+    - Log message details
+    - Hostname
+
+    If output given, this function finally
+    output mapping json file of replaced hostnames."""
+
+    ld = LogData(conf, edit=True)
+    if conf2 is not None:
+        hmap, hmapd, ltmap, ltmapd = _anonymize_mapping(ld)
+        _anonymize_migration(ld, conf2, hmap, ltmap)
+    else:
+        hmapd, ltmapd = _anonymize_overwrite(ld)
 
     if output:
-        import json
-        with open(output, mode='wt', encoding='utf-8') as f:
-            obj = {"host_mapping": host_mapping,
-                   "lt_mapping": lt_mapping}
-            json.dump(obj, f)
-        print("> {0}".format(output))
+        ret = _dump_anonymize_mapping(hmapd, ltmapd, output)
+        print("> {0}".format(ret))
+
+
+def anonymize_mapping(conf, output):
+    ld = LogData(conf, edit=True)
+    hmapd, ltmapd = _anonymize_overwrite(ld)
+    ret = _dump_anonymize_mapping(hmapd, ltmapd, output)
+    print("> {0}".format(ret))
 
 
 def data_from_db(conf, dirname, method, reset):

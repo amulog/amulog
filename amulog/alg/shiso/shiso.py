@@ -143,7 +143,7 @@ class LTGenSHISO(lt_common.LTGen):
             return True
 
 
-class LTGroupSHISO(lt_common.LTGroup):
+class LTGroupSHISO(lt_common.LTGroupOnline):
 
     def __init__(self, lttable, ngram_length=3,
                  th_lookup=0.3, th_distance=0.85, mem_ngram=True):

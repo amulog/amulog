@@ -25,12 +25,13 @@ DEFAULT_LABEL_CONF = "/".join((os.path.dirname(__file__),
                                "data/lt_label.conf.sample"))
 
 
-class LTLabel():
+class LTLabel:
 
     group_header = "group_"
     label_header = "label_"
 
-    def __init__(self, conf_fn, default_label = None, default_group = None):
+    def __init__(self, conf_fn, default_label=None, default_group=None):
+        super().__init__()
         self.conf = configparser.ConfigParser()
         self.conf.read(conf_fn)
         self.default_label = default_label
@@ -44,14 +45,14 @@ class LTLabel():
             elif sec[:len(self.label_header)] == self.label_header:
                 self.labels.append(sec[len(self.label_header):])
 
-        self.d_group = {} # key : group, val : [label, ...]
-        self.d_rgroup = {} # key : label, val : [group, ...]
+        self.d_group = {}  # key : group, val : [label, ...]
+        self.d_rgroup = {}  # key : label, val : [group, ...]
         for group in self.groups:
             section = self.group_header + group
             for label in config.gettuple(self.conf, section, "members"):
                 self.d_group.setdefault(group, []).append(label)
                 self.d_rgroup.setdefault(label, []).append(group)
-        self.rules = [] # [(label, (re_matchobj, ...)), ...]
+        self.rules = []  # [(label, (re_matchobj, ...)), ...]
         for label in self.labels:
             section = self.label_header + label
             for rulename in config.gettuple(self.conf, section, "rules"):
@@ -107,6 +108,9 @@ class LTLabel():
     #    else:
     #        return True
 
+
+
+
     def _test_rule(self, ltline, t_re):
         for reobj in t_re:
             for word in ltline.ltw:
@@ -133,7 +137,7 @@ class LTLabel():
         return self.get_group(label)
 
     def get_ltg_label(self, ltgid, l_ltline):
-        d_score = {} # key : ruleid, value : score
+        d_score = {}  # key : ruleid, value : score
         for ltline in l_ltline:
             for rid, t_rule in enumerate(self.rules):
                 label, t_re = t_rule

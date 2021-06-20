@@ -125,6 +125,17 @@ def db_add(ns):
     timer.stop()
 
 
+def db_remake_group(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from . import manager
+    timer = common.Timer("db-remake-group", output=_logger)
+    manager.remake_ltgroup(conf)
+    timer.stop()
+
+
 def db_anonymize(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -133,8 +144,21 @@ def db_anonymize(ns):
 
     timer = common.Timer("db-anonymize", output=_logger)
     timer.start()
-    log_db.anonymize(conf)
+    if ns.conf_export:
+        conf2 = config.open_config(ns.conf_export)
+    else:
+        conf2 = None
+    log_db.anonymize(conf, conf2=conf2, output=ns.output)
     timer.stop()
+
+
+def db_anonymize_mapping(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from . import log_db
+    log_db.anonymize_mapping(conf, ns.output)
 
 
 def show_db_info(ns):
@@ -233,13 +257,11 @@ def show_lt_breakdown(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
     from . import lt_tool
 
-    ld = log_db.LogData(conf)
     ltid = ns.ltid
     limit = ns.lines
-    ret = lt_tool.breakdown_ltid(ld, ltid, limit)
+    ret = lt_tool.breakdown_ltid(conf, ltid, limit)
     print(ret)
 
 
@@ -270,27 +292,23 @@ def lttool_merge(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
     from . import lt_tool
 
     ltid1 = ns.ltid1
     ltid2 = ns.ltid2
-    ld = log_db.LogData(conf)
-    lt_tool.merge_ltid(ld, ltid1, ltid2)
+    lt_tool.merge_ltid(conf, ltid1, ltid2)
 
 
 def lttool_separate(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
     from . import lt_tool
 
     ltid = ns.ltid
     vid = ns.vid
     word = ns.word
-    ld = log_db.LogData(conf)
-    lt_tool.separate_ltid(ld, ltid, vid, word)
+    lt_tool.separate_ltid(conf, ltid, vid, word)
 
 
 def lttool_split(ns):
@@ -302,21 +320,18 @@ def lttool_split(ns):
 
     ltid = ns.ltid
     vid = ns.vid
-    ld = log_db.LogData(conf)
-    lt_tool.split_ltid(ld, ltid, vid)
+    lt_tool.split_ltid(conf, ltid, vid)
 
 
 def lttool_fix(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
     from . import lt_tool
 
     ltid = ns.ltid
     l_vid = ns.vids
-    ld = log_db.LogData(conf)
-    lt_tool.fix_ltid(ld, ltid, l_vid)
+    lt_tool.fix_ltid(conf, ltid, l_vid)
 
 
 def lttool_free(ns):
@@ -328,8 +343,7 @@ def lttool_free(ns):
 
     ltid = ns.ltid
     l_wid = ns.wids
-    ld = log_db.LogData(conf)
-    lt_tool.free_ltid(ld, ltid, l_wid)
+    lt_tool.free_ltid(conf, ltid, l_wid)
 
 
 def lttool_fix_search(ns):
@@ -444,7 +458,7 @@ def conf_diff(ns):
 
 
 def conf_minimum(ns):
-    conf = config.open_config(ns.conf_path, nodefault=True, noimport=True)
+    conf = config.open_config(ns.conf_path, nodefault=True, ignore_import=True)
     conf = config.minimize(conf)
     config.write(ns.conf_path, conf)
     print("rewrite {0}".format(ns.conf_path))
@@ -595,12 +609,26 @@ DICT_ARGSET = {
     "db-add": ["Add log data to existing database.",
                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_PARALLEL, ARG_FILES],
                db_add],
+    "db-remake-group": ["Remake log template groups (offline)",
+                        [OPT_CONFIG, OPT_DEBUG],
+                        db_remake_group],
     "db-anonymize": ["Anonymize templates and hostnames.",
                      [OPT_CONFIG, OPT_DEBUG,
                       [["-o", "--output"],
                        {"dest": "output", "action": "store", "default": None,
-                        "help": "output json file of replaced-value mapping"}]],
+                        "help": "output json file of replaced-value mapping"}],
+                      [["--config-export"],
+                       {"dest": "conf_export", "metavar": "CONFIG_EXPORT",
+                        "action": "store", "default": None,
+                        "help": "generate another DB with given config"}],
+                      ],
                      db_anonymize],
+    "db-anonymize-mapping": ["Generate anonymization mapping json",
+                             [OPT_CONFIG, OPT_DEBUG,
+                              [["output"],
+                               {"metavar": "OUTPUT", "action": "store",
+                                "help": "output json file of replaced-value mapping"}],],
+                             db_anonymize_mapping],
     "show-db-info": ["Show abstruction of database status.",
                      [OPT_CONFIG, OPT_DEBUG],
                      show_db_info],

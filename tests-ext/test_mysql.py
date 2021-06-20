@@ -9,7 +9,7 @@ from amulog import config
 from amulog import log_db
 from amulog import manager
 
-from . import testlog
+from amulog import testutil
 
 
 class TestMysql(unittest.TestCase):
@@ -25,7 +25,7 @@ class TestMysql(unittest.TestCase):
         fd_ltgendump, cls._path_ltgendump = tempfile.mkstemp()
         os.close(fd_ltgendump)
 
-        tlg = testlog.TestLogGenerator(testlog.DEFAULT_CONFIG, seed=3)
+        tlg = testutil.TestLogGenerator(testutil.DEFAULT_CONFIG, seed=3)
         tlg.dump_log(cls._path_testlog)
 
     @classmethod

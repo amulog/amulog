@@ -64,7 +64,7 @@ class LTManager(object):
             self._drop_undefhost = conf.getboolean("manager", "undefined_host")
             self._ltgen = init_ltgen_methods(self._conf, self._table)
 
-        self._ltgroup = init_ltgroup(self._conf, self._table)
+        self._ltgroup = init_ltgroup(self._conf, self._lttable)
         if not self._reset_db:
             self._ltgroup.restore_ltg(self._db, self._lttable)
 
@@ -201,7 +201,8 @@ class LTManager(object):
             return None
         elif state == lt_common.LTGen.state_added:
             tpl = self._ltgen.get_tpl(tid)
-            ltline = self.add_lt(tpl, pline[log2seq.KEY_SYMBOLS])
+            ltline = self.add_lt(tpl, pline[log2seq.KEY_SYMBOLS],
+                                 add_group=True)
             self._table.add_ltid(tid, ltline.ltid)
         elif state == lt_common.LTGen.state_changed:
             tpl = self._ltgen.get_tpl(tid)
@@ -221,6 +222,10 @@ class LTManager(object):
             self.commit_db()
             self._online_counter = 0
         return ltline
+
+    def process_online_end(self):
+        if isinstance(self._ltgroup, lt_common.LTGroupOffline):
+            self.remake_ltg()
 
     def add_line(self, pline, ltline):
         """Add a log message to DB.
@@ -245,11 +250,12 @@ class LTManager(object):
         return log_db.LogMessage(new_lid, ltline,
                                  dt, host, l_w)
 
-    def add_lt(self, l_w, l_s, cnt=1):
+    def add_lt(self, l_w, l_s, cnt=1, add_group=False):
         # add new lt to db and table
         ltid = self._lttable.next_ltid()
         ltline = lt_common.LogTemplate(ltid, None, l_w, l_s, cnt)
-        if self._ltgroup is not None:
+        # if self._ltgroup is not None:
+        if add_group and isinstance(self._ltgroup, lt_common.LTGroupOnline):
             ltgid = self._ltgroup.add(ltline)
         else:
             ltgid = ltid
@@ -277,7 +283,7 @@ class LTManager(object):
 
     def remake_ltg(self):
         self._db.reset_ltg()
-        self._lttable = self._ltgroup.remake_all(self._lttable)
+        self._lttable = self._ltgroup.make()
         for ltline in self._lttable:
             self._db.add_ltg(ltline.ltid, ltline.ltgid)
 
@@ -363,11 +369,11 @@ def init_ltgen(conf, table, method, shuffle=False):
         return alg_module.init_ltgen(**kwargs)
 
 
-def init_ltgroup(conf, table):
+def init_ltgroup(conf, lttable):
     ltg_alg = conf.get("log_template", "ltgroup_alg")
     if ltg_alg == "shiso":
         from amulog.alg.shiso import shiso
-        ltgroup = shiso.LTGroupSHISO(table,
+        ltgroup = shiso.LTGroupSHISO(lttable,
                                      ngram_length=conf.getint(
                                             "log_template_shiso", "ltgroup_ngram_length"),
                                      th_lookup=conf.getfloat(
@@ -379,9 +385,12 @@ def init_ltgroup(conf, table):
                                      )
     elif ltg_alg == "ssdeep":
         from . import lt_misc
-        ltgroup = lt_misc.LTGroupFuzzyHash(table)
+        ltgroup = lt_misc.LTGroupFuzzyHash(lttable)
+    elif ltg_alg == "semantics":
+        from . import ltg_semantics
+        ltgroup = ltg_semantics.init_ltgroup_semantics(conf, lttable)
     elif ltg_alg == "none":
-        ltgroup = lt_common.LTGroup()
+        ltgroup = None
     else:
         raise ValueError("ltgroup_alg({0}) invalid".format(ltg_alg))
 
@@ -528,6 +537,7 @@ def process_files_online(conf, targets, reset_db):
     except KeyboardInterrupt:
         pass
     finally:
+        ltm.process_online_end()
         ltm.commit_db()
         ltm.dump()
 

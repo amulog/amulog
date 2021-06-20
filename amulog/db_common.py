@@ -1,12 +1,45 @@
 import datetime
-from collections import namedtuple
+from typing import NamedTuple, Iterable
 from abc import ABC, abstractmethod
 
-# namedtuple defaults is available after python 3.7
-# TableKey = namedtuple("TableKey", ("key", "type", "attr"), defaults=(tuple(),))
-TableKey = namedtuple("TableKey", ("key", "type", "attr"))
-Condition = namedtuple("Condition", ("key", "opr", "val", "repl"))
-StateSet = namedtuple("StateSet", ("key", "val"))
+
+class TableKey(NamedTuple):
+    """A namedtuple to define a column in CREATE syntax.
+    Used in CREATE TABLE and CREATE INDEX.
+    """
+    key: str  #: column name
+    type: str  #: type name, in SQL data types
+    attr: Iterable  #: attribute of the column, e.g. autoincrement
+
+
+class Condition(NamedTuple):
+    """A namedtuple to specify a condition in WHERE syntax.
+    Used in SELECT and UPDATE.
+
+    If :attr:`repl` is True, :attr:`val` is considered as a placeholder.
+    It will be replaced with the corresponding item in the "args" argument of :meth:`Database.execute`.
+    """
+    key: str  #: column name
+    opr: str  #: operand to compare key and val
+    val: str  #: compared value (or placeholder key if repl is True)
+    repl: bool  #: If true, val is considered as a placeholder.
+
+
+class StateSet(NamedTuple):
+    """A namedtuple to specify a value in VALUES syntax.
+    Used in INSERT and UPDATE.
+    """
+    key: str  #: column name
+    val: str  #: assigned value
+
+
+# to be removed
+# from collections import namedtuple
+# # namedtuple defaults is available after python 3.7
+# # TableKey = namedtuple("TableKey", ("key", "type", "attr"), defaults=(tuple(),))
+# TableKey = namedtuple("TableKey", ("key", "type", "attr"))
+# Condition = namedtuple("Condition", ("key", "opr", "val", "repl"))
+# StateSet = namedtuple("StateSet", ("key", "val"))
 
 
 class Database(ABC):
@@ -112,9 +145,9 @@ class Database(ABC):
             join_opt, table_name1, table_name2, key1, key2)
 
     @classmethod
-    def create_table_sql(cls, table_name, l_key):
+    def create_table_sql(cls, table_name, l_tablekey):
         l_def = []
-        for key in l_key:
+        for key in l_tablekey:
             type_name = cls._table_key_type(key.type)
             if len(key.attr) > 0:
                 l_attr = []
@@ -128,15 +161,16 @@ class Database(ABC):
         return sql
 
     @classmethod
-    def create_index_sql(cls, table_name, index_name, l_key):
+    def create_index_sql(cls, table_name, index_name, l_tablekey):
         sql = "create index {0} on {1}({2})".format(
             index_name, table_name,
-            ", ".join([cls._index_key(key) for key in l_key])
+            ", ".join([cls._index_key(key) for key in l_tablekey])
         )
         return sql
 
     @classmethod
-    def select_sql(cls, table_name, l_key, l_cond=None, opt=None):
+    def select_sql(cls, table_name, l_key,
+                   l_cond=None, l_order=None, opt=None):
         # now only "distinct" is allowed for opt
         sql_header = "select"
         if opt is not None and "distinct" in opt:
@@ -145,6 +179,10 @@ class Database(ABC):
                                         table_name)
         if l_cond is not None and len(l_cond) > 0:
             sql += " where {0}".format(cls._cond_state(l_cond))
+        if l_order is not None and len(l_order) > 0:
+            sql_order = ", ".join(["{0} {1}".format(col, order)
+                                   for col, order in l_order])
+            sql += " order by " + sql_order
         return sql
 
     @classmethod

@@ -10,7 +10,7 @@ from amulog import config
 from amulog import log_db
 from amulog import manager
 
-from . import testlog
+from amulog import testutil
 
 
 class TestDB(unittest.TestCase):
@@ -33,7 +33,7 @@ class TestDB(unittest.TestCase):
         cls._conf['database']['sqlite3_filename'] = cls._path_testdb
         cls._conf['manager']['indata_filename'] = cls._path_ltgendump
 
-        tlg = testlog.TestLogGenerator(testlog.DEFAULT_CONFIG, seed=3)
+        tlg = testutil.TestLogGenerator(testutil.DEFAULT_CONFIG, seed=3)
         tlg.dump_log(cls._path_testlog)
 
     @classmethod
@@ -93,7 +93,22 @@ class TestDB(unittest.TestCase):
                         ("log template generation fails? "
                          "(groups: {0})".format(ltg_num)))
 
+    def test_anonymize_overwrite(self):
+        from amulog import __main__ as amulog_main
+        targets = amulog_main.get_targets_conf(self._conf)
+        manager.process_files_online(self._conf, targets, reset_db=True)
+
+        log_db.anonymize(self._conf)
+
+        import re
+        reobj_message = re.compile(r"^[ *#]*$")
+        reobj_host = re.compile(r"^host\d+$")
+        ld = log_db.LogData(self._conf)
+        for lm in ld.iter_lines(ltid=0):
+            message = lm.restore_message()
+            self.assertTrue(reobj_message.match(message))
+            self.assertTrue(reobj_host.match(lm.host))
+
 
 if __name__ == "__main__":
     unittest.main()
-
