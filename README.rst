@@ -16,7 +16,7 @@ AMULOG (A Manager for Unstructured LOGs)
 
 .. image:: https://travis-ci.org/cpflat/amulog.svg?branch=master
    :alt: Travis CI
-   :target: https://travis-ci.org/github/cpflat/amulog
+   :target: https://travis-ci.com/github/cpflat/amulog
 
 
 Amulog is a tool to support system log management.
