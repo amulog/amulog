@@ -78,13 +78,13 @@ class LogMessage:
 
     def restore_message(self):
         """str: Get pseudo original log message
-        including headers (timestamp and hostname).
+        except headers (timestamp and hostname).
         """
         return self.lt.restore_message(self.l_w)
 
     def restore_line(self):
         """str: Get original log message contents
-        except headers (timestamp and hostname).
+        including headers (timestamp and hostname).
         """
         return " ".join((str(self.dt), str(self.host),
                          self.restore_message()))
@@ -1068,14 +1068,19 @@ def anonymize(conf, conf2=None, output=None):
     - Log message details
     - Hostname
 
+    If conf2 given, this function generate another DB
+    using conf2 configurations.
+    If not, the DB (defined in conf) is overwritten in anonimization.
+
     If output given, this function finally
     output mapping json file of replaced hostnames."""
 
-    ld = LogData(conf, edit=True)
     if conf2 is not None:
+        ld = LogData(conf, edit=False)
         hmap, hmapd, ltmap, ltmapd = _anonymize_mapping(ld)
         _anonymize_migration(ld, conf2, hmap, ltmap)
     else:
+        ld = LogData(conf, edit=True)
         hmapd, ltmapd = _anonymize_overwrite(ld)
 
     if output:
@@ -1084,8 +1089,8 @@ def anonymize(conf, conf2=None, output=None):
 
 
 def anonymize_mapping(conf, output):
-    ld = LogData(conf, edit=True)
-    hmapd, ltmapd = _anonymize_overwrite(ld)
+    ld = LogData(conf, edit=False)
+    _, hmapd, _, ltmapd = _anonymize_mapping(ld)
     ret = _dump_anonymize_mapping(hmapd, ltmapd, output)
     print("> {0}".format(ret))
 
