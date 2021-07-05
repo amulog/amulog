@@ -6,7 +6,7 @@ python:
 install:
 - pip install -r requirements.txt
 script:
-- python setup.py test
+- python -m unittest tests/*.py
 deploy:
   provider: pypi
   username: __token__

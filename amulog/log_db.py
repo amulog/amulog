@@ -430,10 +430,6 @@ class LogDB:
         self._db.commit()
 
     def _parse_input(self, **kwargs):
-        assert "ltid" in kwargs
-        assert "dt" in kwargs
-        assert "host" in kwargs
-        assert "l_w" in kwargs
         d = {}
         for k, v in kwargs.items():
             if k == "dt":
@@ -459,6 +455,10 @@ class LogDB:
 
     # def add_line(self, ltid, dt, host, l_w, lid=None):
     def add_line(self, **kwargs):
+        assert "ltid" in kwargs
+        assert "dt" in kwargs
+        assert "host" in kwargs
+        assert "l_w" in kwargs
         d_val = self._parse_input(**kwargs)
 
         self._line_cnt += 1
