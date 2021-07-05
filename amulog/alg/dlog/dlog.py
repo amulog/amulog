@@ -24,7 +24,7 @@ class Node:
     def __init__(self, word, depth):
         self.word = word
         self.depth = depth
-        self.cnt = 0
+        self.count = 0
         self.childs = {}
         self.part_of_tpl = False
 
@@ -37,7 +37,7 @@ class Node:
         return self.childs[key]
 
     def add(self, num=1):
-        self.cnt += num
+        self.count += num
 
 
 class LTGenDlog(lt_common.LTGenOffline):
@@ -85,7 +85,7 @@ class LTGenDlog(lt_common.LTGenOffline):
 
         # merge nodes of same count value
         for (word, depth), cnt in d_cnt.items():
-            if cnt == node.cnt and cnt > 1:
+            if cnt == node.count and cnt > 1:
                 new_node = Node(word, depth)
                 new_node.add(cnt)
                 node.part_of_tpl = True
@@ -93,7 +93,7 @@ class LTGenDlog(lt_common.LTGenOffline):
                 cls._merge_subtree(node, new_node)
 
         # add counts of current node
-        d_cnt += Counter({(node.word, node.depth): node.cnt})
+        d_cnt += Counter({(node.word, node.depth): node.count})
         return d_cnt
 
     def _get_primary_tpl(self, l_w):

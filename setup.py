@@ -49,9 +49,15 @@ setup(name=package_name,
           'Topic :: Software Development :: Libraries :: Python Modules'],
       license='The 3-Clause BSD License',
 
-      #packages=['amulog'],
       packages=find_packages(),
       package_data={'amulog': data_files},
       include_package_data=True,
+      entry_points={
+          'console_scripts': [
+              'amulog = amulog.__main__:main',
+              'amulog.edit = amulog.edit.__main__:main',
+              'amulog.eval = amulog.eval.__main__:main',
+          ],
+      },
       test_suite="tests"
       )

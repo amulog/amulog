@@ -9,6 +9,7 @@ import configparser
 from collections import defaultdict
 from dateutil.tz import tzlocal
 
+CONFIG_ENV = "AMULOG_CONFIG"
 DEFAULT_CONFIG = "/".join((os.path.dirname(os.path.abspath(__file__)),
                            "data/config.conf.default"))
 LOAD_SECTION = 'general'
@@ -17,7 +18,7 @@ IMPORT_SECTION = 'general'
 IMPORT_OPTION = 'import'
 
 
-class GroupDef():
+class GroupDef:
     """
     Define grouping by external text
     Rules:
@@ -190,6 +191,19 @@ def dur2str(td):
     return str(val) + footer
 
 
+def merge_config(conf1, conf2):
+    """Overwrite conf1 with conf2."""
+    for sec in conf2.sections():
+        for opt in conf2.options(sec):
+            if conf1.has_option(sec, opt):
+                pass
+            else:
+                if not conf1.has_section(sec):
+                    conf1[sec] = {}
+                conf1.set(sec, opt, conf2[sec][opt])
+    return conf1
+
+
 def load_defaults(iterable_conf_path=None):
     l_fn = iterable_conf_path
     temp_conf = configparser.ConfigParser()
@@ -201,48 +215,75 @@ def load_defaults(iterable_conf_path=None):
     return temp_conf
 
 
-def open_config(fn=None, ex_defaults=None,
+def _load_imports(conf):
+    while conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
+        if conf[IMPORT_SECTION][IMPORT_OPTION] == "":
+            break
+        import_fn = conf[IMPORT_SECTION][IMPORT_OPTION]
+        conf.remove_option(IMPORT_SECTION, IMPORT_OPTION)
+        import_conf = configparser.ConfigParser()
+        if os.path.exists(import_fn):
+            import_conf.read(import_fn)
+        else:
+            raise IOError("config load error ({0})".format(import_fn))
+        conf = merge_config(conf, import_conf)
+
+    return conf
+
+
+def open_config(fn=None, env=CONFIG_ENV,
+                ex_defaults=None,
                 base_default=True, ignore_import=False):
     """
     Args:
-        fn (str): Configuration file path.
-        ex_defaults (List[str]): External default configurations.
+        fn (str, optional): Configuration file path.
+        env (str, optional): If fn is None, use Environment Variable of given name.
+        ex_defaults (List[str], optional): External default configurations.
                                  If you use other packages with amulog,
                                  use this to add its configurations.
-        base_default (bool): Use amulog default values for missing options.
-        ignore_import (bool): Ignore general.import.
+        base_default (bool, optional): Use amulog default values for missing options.
+        ignore_import (bool, optional): Ignore general.import.
         
     """
 
-    def import_config(conf, import_conf):
-        for sec in import_conf.sections():
-            for opt in import_conf.options(sec):
-                if conf.has_option(sec, opt):
-                    pass
-                else:
-                    if not conf.has_section(sec):
-                        conf[sec] = {}
-                    conf.set(sec, opt, import_conf[sec][opt])
-        return conf
+#    def _import_config(_conf, _import_conf):
+#        for sec in _import_conf.sections():
+#            for opt in _import_conf.options(sec):
+#                if _conf.has_option(sec, opt):
+#                    pass
+#                else:
+#                    if not _conf.has_section(sec):
+#                        _conf[sec] = {}
+#                    _conf.set(sec, opt, _import_conf[sec][opt])
+#        return _conf
 
     conf = configparser.ConfigParser()
-    if fn is not None:
+
+    if fn is None and env is not None:
+        fn = os.environ.get(env)
+
+    if fn is None:
+        print("Processing with default configuration ...")
+    else:
+        if not os.path.exists(fn):
+            raise IOError("{0} not found".format(fn))
         ret = conf.read(fn)
         if len(ret) == 0:
             raise IOError("config load error ({0})".format(fn))
         conf.set(LOAD_SECTION, LOAD_OPTION, fn)
 
     if not ignore_import:
-        while conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
-            if conf[IMPORT_SECTION][IMPORT_OPTION] == "":
-                break
-            import_fn = conf.get(IMPORT_SECTION, IMPORT_OPTION)
-            conf.remove_option(IMPORT_SECTION, IMPORT_OPTION)
-            import_conf = configparser.ConfigParser()
-            ret = import_conf.read(import_fn)
-            if len(ret) == 0:
-                raise IOError("config load error ({0})".format(import_fn))
-            import_config(conf, import_conf)
+        conf = _load_imports(conf)
+#        while conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
+#            if conf[IMPORT_SECTION][IMPORT_OPTION] == "":
+#                break
+#            import_fn = conf.get(IMPORT_SECTION, IMPORT_OPTION)
+#            conf.remove_option(IMPORT_SECTION, IMPORT_OPTION)
+#            import_conf = configparser.ConfigParser()
+#            ret = import_conf.read(import_fn)
+#            if len(ret) == 0:
+#                raise IOError("config load error ({0})".format(import_fn))
+#            _import_config(conf, import_conf)
 
     l_defaults = []
     if base_default:
@@ -251,7 +292,7 @@ def open_config(fn=None, ex_defaults=None,
         l_defaults += ex_defaults
     if l_defaults:
         default_conf = load_defaults(l_defaults)
-        import_config(conf, default_conf)
+        merge_config(conf, default_conf)
 
     return conf
 
@@ -271,10 +312,10 @@ def show_config_diff(l_conf_name, l_conf=None, ex_defaults=None):
         l_conf = [open_config(conf_path, ex_defaults)
                   for conf_path in l_conf_name]
 
-    def iter_secopt(conf):
-        for sec in conf.sections():
-            for opt in conf.options(sec):
-                yield (sec, opt)
+    def iter_secopt(_conf):
+        for _sec in _conf.sections():
+            for _opt in _conf.options(_sec):
+                yield _sec, _opt
 
     keys = set()
     for conf in l_conf:
@@ -310,37 +351,42 @@ def write(name, conf):
         conf.write(f)
 
 
-def minimize(conf, ex_defaults=None):
-    def add_opt(conf, sec, opt, val):
-        if not sec in conf:
-            conf[sec] = {}
-        conf[sec][opt] = val
+def minimize(conf, ex_defaults=None, ignore_import=False):
+    # def add_opt(conf, sec, opt, val):
+    #     if sec not in conf:
+    #         conf[sec] = {}
+    #     conf[sec][opt] = val
 
     new_conf = configparser.ConfigParser()
     default_conf = open_config(None, ex_defaults)
-    import_conf = configparser.ConfigParser()
-    if conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
-        import_fn = conf[IMPORT_SECTION][IMPORT_OPTION]
-        try:
-            import_conf.read(import_fn)
-        except:
-            pass
+    if not ignore_import:
+        conf = _load_imports(conf)
+
+    # import_conf = configparser.ConfigParser()
+    # if conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
+    #     import_fn = conf[IMPORT_SECTION][IMPORT_OPTION]
+    #     if os.path.exists(import_fn):
+    #         import_conf.read(import_fn)
 
     for sec in conf.sections():
         for opt in conf.options(sec):
-            if import_conf.has_option(sec, opt):
-                if import_conf[sec][opt] == conf[sec][opt]:
-                    continue
+            # if import_conf.has_option(sec, opt):
+            #     if import_conf[sec][opt] == conf[sec][opt]:
+            #         continue
 
             if not default_conf.has_option(sec, opt):
                 # undefine key in defaults
-                add_opt(new_conf, sec, opt, conf[sec][opt])
+                if sec not in new_conf:
+                    new_conf[sec] = {}
+                new_conf[sec][opt] = conf[sec][opt]
             elif conf[sec][opt] == default_conf[sec][opt]:
                 # same value from defaults
                 pass
             else:
                 # different value from defaults
-                add_opt(new_conf, sec, opt, conf[sec][opt])
+                if sec not in new_conf:
+                    new_conf[sec] = {}
+                new_conf[sec][opt] = conf[sec][opt]
 
     return new_conf
 
@@ -419,7 +465,7 @@ def config_shadow(n=1, cond=None, incr=None, fn=None, output=None,
             raise IOError("{0} already exists, use -f to ignore".format(
                 temp_output))
 
-        write(temp_output, minimize(conf, ex_defaults))
+        write(temp_output, minimize(conf, ex_defaults, ignore_import=True))
         l_ret.append(temp_output)
         print("{0}".format(temp_output))
     return l_ret
@@ -502,9 +548,9 @@ def set_logging_stdio(logger=None, logger_name=None,
     else:
         raise TypeError
 
-    for l in temp_loggers:
-        l.setLevel(lv)
-        l.addHandler(ch)
+    for logger in temp_loggers:
+        logger.setLevel(lv)
+        logger.addHandler(ch)
     return ch
 
 
@@ -578,19 +624,5 @@ def release_common_logging(ch, logger=None, logger_name=None):
     else:
         raise TypeError
 
-    for l in temp_loggers:
-        l.removeHandler(ch)
-
-
-def test_config(conf_name):
-    conf = open_config(conf_name)
-    for section in conf.sections():
-        print("[{0}]".format(section))
-        for option, value in conf.items(section):
-            print("{0} = {1}".format(option, value))
-
-# if __name__ == "__main__":
-#    if len(sys.argv) < 2:
-#        sys.exit("usage : {0} config".format(sys.argv[0]))
-#    conf = sys.argv[1]
-#    test_config(conf)
+    for logger in temp_loggers:
+        logger.removeHandler(ch)

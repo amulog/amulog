@@ -269,12 +269,12 @@ class LTManager(object):
         self._db.update_lt(ltid, l_w, l_s, cnt)
 
     def replace_and_count_lt(self, ltid, l_w, l_s=None):
-        cnt = self._lttable[ltid].count()
+        cnt = self._lttable[ltid].increment()
         self._lttable[ltid].replace(l_w, l_s, None)
         self._db.update_lt(ltid, l_w, l_s, cnt)
 
     def count_lt(self, ltid):
-        cnt = self._lttable[ltid].count()
+        cnt = self._lttable[ltid].increment()
         self._db.update_lt(ltid, None, None, cnt)
 
     def remove_lt(self, ltid):

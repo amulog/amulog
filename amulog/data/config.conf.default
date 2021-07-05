@@ -251,12 +251,20 @@ func_name = vyos_tokenize
 
 [visual]
 
-# Log template label definition
-# If empty, use default configuration (lt_label.conf.sample)
-ltlabel =
+# How to generate tags for templates
+# [file, ] is available
+tag_method = file
 
-ltlabel_default_label = None
-ltlabel_default_group = None
+# tagging rule definition file in configparser format
+# If empty, use default configuration (lt_label.conf.sample)
+tag_file =
+
+# key to use as tags
+# one of [label, group, all, ]
+tag_file_key = group
+
+tag_file_default_label = None
+tag_file_default_group = None
 
 
 [eval]

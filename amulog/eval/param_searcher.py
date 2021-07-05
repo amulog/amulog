@@ -78,9 +78,10 @@ def measure_parameters(conf, targets, method):
         table = lt_common.TemplateTable()
         ltgen = _init_ltgen_with_params(conf, table, method, params)
 
-        input_lines = list(amulog.manager.iter_plines(conf, targets))
-        d_tid = ltgen.process_offline(input_lines)
-        iterobj = zip(input_lines,
+        l_pline = list(amulog.manager.iter_plines(conf, targets))
+        d_plines = {mid: pline for mid, pline in enumerate(l_pline)}
+        d_tid = ltgen.process_offline(d_plines)
+        iterobj = zip(l_pline,
                       ps.tid_list_answer(),
                       ps.iter_tpl_answer())
         for mid, (pline, tid_answer, tpl_answer) in enumerate(iterobj):
@@ -92,10 +93,7 @@ def measure_parameters(conf, targets, method):
                 if tid_trial is None:
                     tpl_trial = None
                 else:
-                    try:
-                        tpl_trial = ltgen.get_tpl(tid_trial)
-                    except:
-                        import pdb; pdb.set_trace()
+                    tpl_trial = ltgen.get_tpl(tid_trial)
             ps.add_trial(tid_trial, tpl_trial,
                          tid_answer, tpl_answer, pline["words"])
         ps.dump_trial()

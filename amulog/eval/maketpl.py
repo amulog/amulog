@@ -100,16 +100,9 @@ class MeasureLTGen:
 
     def _load_trial_info(self):
         trial_id = self._current_trial
-        try:
-            with open(self._trial_info_path(trial_id), 'r', encoding='utf-8') as f:
-                obj = json.load(f)
-            self._d_trial = obj
-        except IOError:
-            # for compatibility
-            path = "{0}/info_trial".format(self._output_dir_trial(self._conf))
-            with open(path, 'r', encoding='utf-8') as f:
-                obj = json.load(f)
-            self._d_trial = obj[trial_id]
+        with open(self._trial_info_path(trial_id), 'r', encoding='utf-8') as f:
+            obj = json.load(f)
+        self._d_trial = obj
 
     def _dump_answer_info(self):
         obj = self._d_answer

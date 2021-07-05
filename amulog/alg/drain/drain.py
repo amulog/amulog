@@ -113,7 +113,7 @@ def get_param_candidates():
     import numpy as np
     from itertools import product
     params = []
-    for th, depth in product(np.arange(0, 1.1, 0.1), (3, 4, 5)):
+    for th, depth in product(np.arange(0, 1.1, 0.1), (3, 4)):
         params.append({"threshold": th,
                        "depth": depth})
     return params

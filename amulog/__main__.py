@@ -5,16 +5,15 @@
 Interface to use some functions about Log DB from CLI.
 """
 
-import sys
 import datetime
 import logging
-import argparse
 
+from . import cli
 from . import common
 from . import config
 
 _logger = logging.getLogger(__package__)
-SUBLIB = ["eval"]
+SUBLIB = ["edit", "eval"]
 
 
 def get_targets_arg(ns):
@@ -132,7 +131,20 @@ def db_remake_group(ns):
 
     from . import manager
     timer = common.Timer("db-remake-group", output=_logger)
+    timer.start()
     manager.remake_ltgroup(conf)
+    timer.stop()
+
+
+def db_tag(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from . import lt_label
+    timer = common.Timer("db-tag", output=_logger)
+    timer.start()
+    lt_label.generate_all_tags(conf)
     timer.stop()
 
 
@@ -177,7 +189,7 @@ def show_lt(ns):
     from . import log_db
 
     simple = ns.simple
-    log_db.show_lt(conf, simple=simple)
+    print(log_db.show_all_lt(conf, simple=simple))
 
 
 def show_ltg(ns):
@@ -186,10 +198,25 @@ def show_ltg(ns):
     config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
 
-    kwargs = {}
-    if ns.group is not None:
-        kwargs["group"] = ns.group
-    log_db.show_lt(conf, **kwargs)
+    print(log_db.show_all_ltg(conf))
+
+
+def show_tag(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+    from . import log_db
+
+    print(log_db.show_tag(conf, tag=ns.tag))
+
+
+def show_tag_stats(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+    from . import log_db
+
+    print(log_db.show_tag_stats(conf))
 
 
 def show_lt_import(ns):
@@ -207,187 +234,6 @@ def show_lt_import(ns):
         else:
             # segmented, with escape
             print(" ".join(ltobj.ltw))
-
-
-def show_lt_words(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
-
-    d = log_db.agg_words(conf, target="all")
-    print(common.cli_table(sorted(d.items(), key=lambda x: x[1],
-                                  reverse=True)))
-
-
-def show_lt_descriptions(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
-
-    d = log_db.agg_words(conf, target="description")
-    print(common.cli_table(sorted(d.items(), key=lambda x: x[1],
-                                  reverse=True)))
-
-
-def show_lt_variables(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
-
-    d = log_db.agg_words(conf, target="variable")
-    if ns.repld:
-        import re
-        reobj = re.compile(r"[0-9]+")
-        keys = list(d.keys())
-        for k in keys:
-            new_k = reobj.sub(r"\d", k)
-            if k == new_k:
-                pass
-            else:
-                d[new_k] += d.pop(k)
-
-    print(common.cli_table(sorted(d.items(), key=lambda x: x[1],
-                                  reverse=True)))
-
-
-def show_lt_breakdown(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import lt_tool
-
-    ltid = ns.ltid
-    limit = ns.lines
-    ret = lt_tool.breakdown_ltid(conf, ltid, limit)
-    print(ret)
-
-
-def show_lt_vstable(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
-    from . import lt_tool
-
-    ld = log_db.LogData(conf)
-    lt_tool.search_stable_variable(ld, th=1)
-
-
-# def show_lt_vstable_rule(ns):
-#    conf = config.open_config(ns.conf_path)
-#    lv = logging.DEBUG if ns.debug else logging.INFO
-#    config.set_common_logging(conf, logger = _logger, lv = lv)
-#    from . import log_db
-#    from . import lt_tool
-#
-#    restr = ns.word
-#    update = ns.update
-#    ld = log_db.LogData(conf)
-#    lt_tool.search_stable_vrule(ld, restr, update)
-
-def lttool_merge(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import lt_tool
-
-    ltid1 = ns.ltid1
-    ltid2 = ns.ltid2
-    lt_tool.merge_ltid(conf, ltid1, ltid2)
-
-
-def lttool_separate(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import lt_tool
-
-    ltid = ns.ltid
-    vid = ns.vid
-    word = ns.word
-    lt_tool.separate_ltid(conf, ltid, vid, word)
-
-
-def lttool_split(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
-    from . import lt_tool
-
-    ltid = ns.ltid
-    vid = ns.vid
-    lt_tool.split_ltid(conf, ltid, vid)
-
-
-def lttool_fix(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import lt_tool
-
-    ltid = ns.ltid
-    l_vid = ns.vids
-    lt_tool.fix_ltid(conf, ltid, l_vid)
-
-
-def lttool_free(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
-    from . import lt_tool
-
-    ltid = ns.ltid
-    l_wid = ns.wids
-    lt_tool.free_ltid(conf, ltid, l_wid)
-
-
-def lttool_fix_search(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
-    from . import lt_tool
-
-    restr = ns.rule
-    dry = ns.dry
-    ld = log_db.LogData(conf)
-    lt_tool.search_stable_vrule(ld, restr, dry)
-
-
-def lttool_free_search(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
-    from . import lt_tool
-
-    restr = ns.rule
-    dry = ns.dry
-    ld = log_db.LogData(conf)
-    lt_tool.search_desc_free(ld, restr, dry)
-
-
-def show_ltg_label(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import lt_label
-
-    lt_label.list_ltlabel(conf)
-
-
-def show_log_label(ns):
-    conf = config.open_config(ns.conf_path)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import lt_label
-
-    lt_label.count_ltlabel(conf)
 
 
 def show_host(ns):
@@ -427,22 +273,20 @@ def parse_condition(conditions):
         key = arg.partition("=")[0]
         if key == "ltid":
             d["ltid"] = int(arg.partition("=")[-1])
-        elif key == "gid":
+        elif key in ("gid", "ltgid"):
             d["ltgid"] = int(arg.partition("=")[-1])
-        elif key == "top_date":
+        elif key in ("date_from", "top_date"):
             date_string = arg.partition("=")[-1]
-            d["top_dt"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
-        elif key == "end_date":
+            d["dts"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
+        elif key in ("date_to", "end_date"):
             date_string = arg.partition("=")[-1]
-            d["end_dt"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
+            d["dte"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
         elif key == "date":
             date_string = arg.partition("=")[-1]
-            d["top_dt"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
-            d["end_dt"] = d["top_dt"] + datetime.timedelta(days=1)
+            d["dts"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
+            d["dte"] = d["dts"] + datetime.timedelta(days=1)
         elif key == "host":
             d["host"] = arg.partition("=")[-1]
-        elif key == "area":
-            d["area"] = arg.partition("=")[-1]
     return d
 
 
@@ -458,7 +302,7 @@ def conf_diff(ns):
 
 
 def conf_minimum(ns):
-    conf = config.open_config(ns.conf_path, nodefault=True, ignore_import=True)
+    conf = config.open_config(ns.conf_path, base_default=False, ignore_import=True)
     conf = config.minimize(conf)
     config.write(ns.conf_path, conf)
     print("rewrite {0}".format(ns.conf_path))
@@ -546,11 +390,11 @@ OPT_RECUR = [["-r", "--recur"],
 OPT_DRY = [["-d", "--dry"],
            {"dest": "dry", "action": "store_true",
             "help": "do not store data into db"}]
-#OPT_TERM = [["-t", "--term"],
-#            {"dest": "dt_range",
-#             "metavar": "DATE1 DATE2", "nargs": 2,
-#             "help": ("datetime range, start and end in YY-MM-dd style. "
-#                      "(optional; defaultly use all data)")}]
+# OPT_TERM = [["-t", "--term"],
+#             {"dest": "dt_range",
+#              "metavar": "DATE1 DATE2", "nargs": 2,
+#              "help": ("datetime range, start and end in YY-MM-dd style. "
+#                       "(optional; defaultly use all data)")}]
 ARG_FILE = [["file"],
             {"metavar": "PATH", "action": "store",
              "help": "filepath to output"}]
@@ -565,8 +409,7 @@ ARG_DBSEARCH = [["conditions"],
                 {"metavar": "CONDITION", "nargs": "+",
                  "help": ("Conditions to search log messages. "
                           "Example: MODE gid=24 date=2012-10-10 ..., "
-                          "Keys: ltid, gid, date, top_date, end_date, "
-                          "host, area")}]
+                          "Keys: ltid, gid, date, date_from, date_to, host")}]
 
 # argument settings for each modes
 # description, List[args, kwargs], func
@@ -609,9 +452,12 @@ DICT_ARGSET = {
     "db-add": ["Add log data to existing database.",
                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_PARALLEL, ARG_FILES],
                db_add],
-    "db-remake-group": ["Remake log template groups (offline)",
+    "db-remake-group": ["Remake log template groups",
                         [OPT_CONFIG, OPT_DEBUG],
                         db_remake_group],
+    "db-tag": ["Make log template tags.",
+               [OPT_CONFIG, OPT_DEBUG],
+               db_tag],
     "db-anonymize": ["Anonymize templates and hostnames.",
                      [OPT_CONFIG, OPT_DEBUG,
                       [["-o", "--output"],
@@ -623,11 +469,11 @@ DICT_ARGSET = {
                         "help": "generate another DB with given config"}],
                       ],
                      db_anonymize],
-    "db-anonymize-mapping": ["Generate anonymization mapping json",
+    "db-anonymize-mapping": ["Generate anonymization mapping json.",
                              [OPT_CONFIG, OPT_DEBUG,
                               [["output"],
                                {"metavar": "OUTPUT", "action": "store",
-                                "help": "output json file of replaced-value mapping"}],],
+                                "help": "output json file of replaced-value mapping"}]],
                              db_anonymize_mapping],
     "show-db-info": ["Show abstruction of database status.",
                      [OPT_CONFIG, OPT_DEBUG],
@@ -638,182 +484,38 @@ DICT_ARGSET = {
                   {"dest": "simple", "action": "store_true",
                    "help": "only show log templates"}]],
                 show_lt],
-    "show-ltg": ["Show all log template groups and their members in database.",
+    "show-ltg": ["Show all log template groups and their members.",
                  [OPT_CONFIG, OPT_DEBUG,
                   [["-g", "--group"],
                    {"dest": "group", "action": "store", "default": None,
                     "help": "show members of given labeling group"}]],
                  show_ltg],
-    "show-lt-import": ["Output log template definitions in lt_import format.",
+    "show-tag": ["Show all tags and their templates.",
+                 [OPT_CONFIG, OPT_DEBUG,
+                  [["tag"],
+                   {"metavar": "TAG", "action": "store",
+                    "nargs": "?", "default": None,
+                    "help": "tag to search (if not given, show all tags)"}]],
+                 show_tag],
+    "show-tag-stats": ["Show all tags and their templates.",
+                       [OPT_CONFIG, OPT_DEBUG],
+                       show_tag_stats],
+    "show-lt-import": ["Output log template definitions in importable format.",
                        [OPT_CONFIG, OPT_DEBUG,
                         [["-e", "--external"],
                          {"dest": "external", "action": "store_true",
-                          "help": "output in external format (for RE)"}]],
+                          "help": "output in non-amulog RE parser format"}]],
                        show_lt_import],
     "show-host": ["Show all hostnames in database.",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_host],
-    "show-ltg-label": ["Show labels for log template groups",
-                       [OPT_CONFIG, OPT_DEBUG],
-                       show_ltg_label],
-    "show-log-label": ["Show label distributions",
-                       [OPT_CONFIG, OPT_DEBUG],
-                       show_log_label],
-    "show-log": ["Show log messages that satisfy given conditions in args.",
+    "show-log": ["Search and show log messages.",
                  [OPT_CONFIG, OPT_DEBUG,
                   [["--lid"],
                    {"dest": "lid", "action": "store_true",
                     "help": "show lid"}],
                   ARG_DBSEARCH],
                  show_log],
-    "lttool-countall": ["Show words and their counts in all messages",
-                        [OPT_CONFIG, OPT_DEBUG],
-                        show_lt_words],
-    "lttool-countd": ["Show description words and their counts",
-                      [OPT_CONFIG, OPT_DEBUG],
-                      show_lt_descriptions],
-    "lttool-countv": ["Show variable words and their counts",
-                      [OPT_CONFIG, OPT_DEBUG,
-                       [["-d", "--digit"],
-                        {"dest": "repld", "action": "store_true",
-                         "help": "replace digit to \\d"}]],
-                      show_lt_variables],
-    "lttool-breakdown": ["Show variable candidates in a log template.",
-                         [OPT_CONFIG, OPT_DEBUG,
-                          [["-l", "--ltid"],
-                           {"dest": "ltid", "metavar": "LTID",
-                            "action": "store", "type": int,
-                            "help": "log template identifier to investigate"}
-                           ],
-                          [["-n", "--number"],
-                           {"dest": "lines", "metavar": "LINES",
-                            "action": "store", "type": int, "default": 5,
-                            "help": "number of variable candidates to show"}
-                           ]],
-                         show_lt_breakdown],
-    "lttool-vstable": ["Show stable variables in the template.",
-                       [OPT_CONFIG, OPT_DEBUG,
-                        [["-n", "--number"],
-                         {"dest": "number", "metavar": "NUMBER",
-                          "action": "store", "type": int, "default": 1,
-                          "help": "thureshold number to be stable"}]],
-                       show_lt_vstable],
-    "lttool-merge": ["Merge 2 templates and generate a new template.",
-                     [OPT_CONFIG, OPT_DEBUG,
-                      [["ltid1"],
-                       {"metavar": "LTID1", "action": "store", "type": int,
-                        "help": "first log template to merge"}],
-                      [["ltid2"],
-                       {"metavar": "LTID2", "action": "store", "type": int,
-                        "help": "second log template to merge"}], ],
-                     lttool_merge],
-    "lttool-separate": ["Separate messages satisfying the given condition "
-                        "and make it a new log template.",
-                        [OPT_CONFIG, OPT_DEBUG,
-                         [["ltid"],
-                          {"metavar": "LTID", "action": "store", "type": int,
-                           "help": "log template indentifier"}],
-                         [["vid"],
-                          {"metavar": "VARIABLE-ID", "action": "store",
-                           "type": int,
-                           "help": "variable identifier to fix"}],
-                         [["word"],
-                          {"metavar": "WORD", "action": "store",
-                           "help": "a word to fix in the location of vid"}]],
-                        lttool_separate],
-    "lttool-split": ["Fix variables to split a template into tempaltes. "
-                     "Use carefully because this function may cause "
-                     "to generate enormous failure templates.",
-                     [OPT_CONFIG, OPT_DEBUG,
-                      [["ltid"],
-                       {"metavar": "LTID", "action": "store", "type": int,
-                        "help": "log template indentifier"}],
-                      [["vid"],
-                       {"metavar": "VARIABLE-ID", "action": "store",
-                        "help": "variable identifier to fix"}]],
-                     lttool_split],
-    "lttool-fix": ["Fix specified stable variable and modify template. "
-                   "If not stable, use lttool-split or lttool-separate.",
-                   [OPT_CONFIG, OPT_DEBUG,
-                    [["ltid"],
-                     {"metavar": "LTID", "action": "store", "type": int,
-                      "help": "log template to fix"}],
-                    [["vids"],
-                     {"metavar": "VARIABLE-IDs", "nargs": "+", "type": int,
-                      "help": "variable identifiers to fix"}]],
-                   lttool_fix],
-    "lttool-free": ["Make a description word as a variable"
-                    "and modify the template.",
-                    [OPT_CONFIG, OPT_DEBUG,
-                     [["ltid"],
-                      {"metavar": "LTID", "action": "store", "type": int,
-                       "help": "log template indentifier"}],
-                     [["wids"],
-                      {"metavar": "WORD-IDs", "nargs": "+", "type": int,
-                       "help": "word locations to fix"}]],
-                    lttool_free],
-    "lttool-fix-search": ["Search templates with variables of given rule "
-                          "and modify templates by fixing them.",
-                          [OPT_CONFIG, OPT_DEBUG,
-                           [["-d", "--dry-run"],
-                            {"dest": "dry",
-                             "action": "store_true", "default": False,
-                             "help": "do not update templates"}],
-                           [["rule"],
-                            {"metavar": "RULE", "action": "store",
-                             "help": "word / regular expression"}]],
-                          lttool_fix_search],
-    "lttool-free-search": ["Search templates with words of given rule ",
-                           "and modify templates by making them variable.",
-                           [OPT_CONFIG, OPT_DEBUG,
-                            [["-u", "--update"],
-                             {"dest": "update",
-                              "action": "store_true", "default": False,
-                              "help": "update templates automatically"}],
-                            [["rule"],
-                             {"metavar": "RULE", "action": "store",
-                              "help": "word / regular expression"}]],
-                           lttool_free_search],
-    #    "make-lt-mp": [("Generate log templates with CRF "
-    #                    "in multiprocessing."),
-    #                   [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT,
-    #                    [["-p", "--pal"],
-    #                     {"dest": "pal", "action": "store",
-    #                      "type": int, "default": 1,
-    #                      "help": "number of processes"}],
-    #                    [["-i", "--import"],
-    #                     {"dest": "check_import", "action": "store_true",
-    #                      "help": ("ignore messages corresponding to "
-    #                               "imported log template definition "
-    #                               "(i.e., process only unknown messages)")}],],
-    #                   make_lt_mp],
-    #    "measure-crf": ["Measure accuracy of CRF-based log template estimation.",
-    #                    [OPT_DEBUG,
-    #                     [["-f", "--failure"],
-    #                      {"dest": "failure", "action": "store",
-    #                       "help": "output failure report"}],
-    #                     [["-c", "--config"],
-    #                      {"dest": "conf_path", "metavar": "CONFIG",
-    #                       "action": "store", "default": None,
-    #                       "help": "extended config file for measure-lt"}],],
-    #                    measure_crf],
-    #    "measure-crf-multi": ["Multiprocessing of measure-crf.",
-    #                          [OPT_DEBUG, OPT_CONFIG_SET,
-    #                           [["-p", "--pal"],
-    #                            {"dest": "pal", "action": "store",
-    #                             "type": int, "default": 1,
-    #                             "help": "number of processes"}],
-    #                           [["-d", "--diff"],
-    #                            {"dest": "diff", "action": "append",
-    #                             "default": [],
-    #                             "help": ("check configs that given option values "
-    #                                      "are all different. This option can "
-    #                                      "be specified multiple times. "
-    #                                      "Example: -d general.import -d ...")}],
-    #                           [["confs"],
-    #                            {"metavar": "CONFIG", "nargs": "*",
-    #                             "help": "configuration files"}]],
-    #                          measure_crf_multi],
     "conf-defaults": ["Show default configurations.",
                       [],
                       conf_defaults],
@@ -879,33 +581,17 @@ DICT_ARGSET = {
                     conf_shadow],
 }
 
-USAGE_COMMANDS = "\n".join(["  {0}: {1}".format(key, val[0])
-                            for key, val in sorted(DICT_ARGSET.items())])
-USAGE = ("usage: {0} MODE [options and arguments] ...\n\n"
-         "mode:\n".format(sys.argv[0])) + USAGE_COMMANDS + \
-        "\n\nsee \"{0} MODE -h\" to refer detailed usage".format(sys.argv[0]) + \
-        "\nalso see sub-liblary {0}".format(" ".join(["amulog.{0}".format(n)
-                                                      for n in SUBLIB]))
+ALIASES = {
+    "dump-lt": "show-lt-import",
+}
 
 
-def _main():
-    if len(sys.argv) < 2:
-        sys.exit(USAGE)
-    mode = sys.argv[1]
-    if mode in ("-h", "--help"):
-        sys.exit(USAGE)
-    commandline = sys.argv[2:]
-
-    desc, l_argset, func = DICT_ARGSET[mode]
-    ap = argparse.ArgumentParser(prog=" ".join(sys.argv[0:2]),
-                                 description=desc)
-    for args, kwargs in l_argset:
-        ap.add_argument(*args, **kwargs)
-    ns = ap.parse_args(commandline)
-    func(ns)
+def main():
+    cli.main(DICT_ARGSET, ALIASES, SUBLIB)
 
 
 if __name__ == "__main__":
-    #import cProfile
-    #cProfile.run('_main()', filename='main.prof')
-    _main()
+    main()
+
+    # import cProfile
+    # cProfile.run('_main()', filename='main.prof')

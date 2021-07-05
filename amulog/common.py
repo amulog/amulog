@@ -407,7 +407,6 @@ def cli_table(table, spl=" ", fill=" ", align="left"):
         fill (str): string of 1 byte, used to fill the space
         align (str): left and right is available
     """
-    len_row = len(table)
     len_column = len(table[0])
     col_max = [0] * len_column
 

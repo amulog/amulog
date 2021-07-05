@@ -70,7 +70,7 @@ class LogTemplate:
         self.ltgid = ltgid
         self.ltw = ltw
         self.lts = lts
-        self.cnt = count
+        self.count = count
 
     def __iter__(self):
         return self.ltw
@@ -109,16 +109,16 @@ class LogTemplate:
         else:
             return "".join([s + w for w, s in zip(l_w + [""], self.lts)])
 
-    def count(self):
-        self.cnt += 1
-        return self.cnt
+    def increment(self):
+        self.count += 1
+        return self.count
 
     def replace(self, l_w, l_s=None, count=None):
         self.ltw = l_w
         if l_s is not None:
             self.lts = l_s
         if count is not None:
-            self.cnt = count
+            self.count = count
 
 
 class TemplateTable:
