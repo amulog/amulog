@@ -898,6 +898,15 @@ class LogDB:
             raise ValueError("No identifier given")
         return [row[0] for row in cursor]
 
+    def iter_tag_def(self):
+        table_name = self.tablename_tag
+        l_key = ["ltid", "tag"]
+        sql = self._db.select_sql(table_name, l_key)
+        cursor = self._db.execute(sql)
+        for row in cursor:
+            ltid, tag = row
+            yield int(ltid), tag
+
     def reset_ltg(self):
         sql = self._db.delete_sql("ltg")
         self._db.execute(sql)

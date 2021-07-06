@@ -125,6 +125,14 @@ class AnonymizeMapper:
             ld_dst.db.add_lt(new_ltobj)  # only update lt (w/o ltg)
             ld_dst.commit_db()
 
+        for ltid, ltgid in ld_src.db.iter_ltg_def():
+            ld_dst.db.add_ltg(ltid, ltgid)
+            ld_dst.commit_db()
+
+        for ltid, tag in ld_src.db.iter_tag_def():
+            ld_dst.db.add_tags(ltid, [tag])
+            ld_dst.commit_db()
+
         online_counter = 0
         for lm in ld_src.iter_all():
             ld_dst.add_line(lid=lm.lid,
@@ -141,7 +149,7 @@ class AnonymizeMapper:
         from . import log_db
         if conf_dst:
             ld = log_db.LogData(self._conf, edit=False)
-            ld_dst = log_db.LogData(conf_dst, edit=True)
+            ld_dst = log_db.LogData(conf_dst, edit=True, reset_db=True)
             self._generate_mapping(ld)
             self._anonymize_migration(ld, ld_dst)
         else:
