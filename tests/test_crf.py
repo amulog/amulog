@@ -45,7 +45,8 @@ class TestCRF(unittest.TestCase):
 
     def test_tagging(self):
         from amulog.alg.crf import init_ltgen
-        conf = config.open_config()
+        conf = config.open_config(verbose=False)
+        conf['log_template']['lt_methods'] = "shiso"
         conf["log_template_crf"]["model_filename"] = self._path_model
 
         table = lt_common.TemplateTable()

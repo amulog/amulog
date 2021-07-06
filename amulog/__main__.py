@@ -152,7 +152,6 @@ def db_anonymize(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
 
     timer = common.Timer("db-anonymize", output=_logger)
     timer.start()
@@ -160,8 +159,13 @@ def db_anonymize(ns):
         conf2 = config.open_config(ns.conf_export)
     else:
         conf2 = None
-    log_db.anonymize(conf, conf2=conf2, output=ns.output)
+    from . import anonymize
+    am = anonymize.AnonymizeMapper(conf)
+    am.anonymize(conf2)
+    fp = am.dump()
     timer.stop()
+
+    print("> " + fp)
 
 
 def db_anonymize_mapping(ns):
@@ -169,8 +173,12 @@ def db_anonymize_mapping(ns):
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
 
-    from . import log_db
-    log_db.anonymize_mapping(conf, ns.output)
+    from . import anonymize
+    am = anonymize.AnonymizeMapper(conf)
+    am.mapping()
+    fp = am.dump()
+
+    print("> " + fp)
 
 
 def show_db_info(ns):
@@ -460,9 +468,6 @@ DICT_ARGSET = {
                db_tag],
     "db-anonymize": ["Anonymize templates and hostnames.",
                      [OPT_CONFIG, OPT_DEBUG,
-                      [["-o", "--output"],
-                       {"dest": "output", "action": "store", "default": None,
-                        "help": "output json file of replaced-value mapping"}],
                       [["--config-export"],
                        {"dest": "conf_export", "metavar": "CONFIG_EXPORT",
                         "action": "store", "default": None,
@@ -470,10 +475,7 @@ DICT_ARGSET = {
                       ],
                      db_anonymize],
     "db-anonymize-mapping": ["Generate anonymization mapping json.",
-                             [OPT_CONFIG, OPT_DEBUG,
-                              [["output"],
-                               {"metavar": "OUTPUT", "action": "store",
-                                "help": "output json file of replaced-value mapping"}]],
+                             [OPT_CONFIG, OPT_DEBUG],
                              db_anonymize_mapping],
     "show-db-info": ["Show abstruction of database status.",
                      [OPT_CONFIG, OPT_DEBUG],

@@ -169,6 +169,13 @@ class Database(ABC):
         return sql
 
     @classmethod
+    def alter_table_sql(cls, old_table_name, new_table_name):
+        sql = "alter table {0} rename to {1}".format(
+            old_table_name, new_table_name
+        )
+        return sql
+
+    @classmethod
     def select_sql(cls, table_name, l_key,
                    l_cond=None, l_order=None, opt=None):
         # now only "distinct" is allowed for opt
@@ -208,5 +215,9 @@ class Database(ABC):
         return sql
 
     @staticmethod
-    def drop_sql(table_name):
+    def drop_table_sql(table_name):
         return "drop table {0}".format(table_name)
+
+    @staticmethod
+    def drop_index_sql(index_name):
+        return "drop index {0}".format(index_name)

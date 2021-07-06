@@ -266,6 +266,10 @@ tag_file_key = group
 tag_file_default_label = None
 tag_file_default_group = None
 
+anonymize_mapping_file = anonymize_mapping.json
+
+
+
 
 [eval]
 # Input data of online accuracy measurement

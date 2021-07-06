@@ -138,6 +138,7 @@ class LogData:
         """Directly add LogTemplate to DB.
         Used in Anonymize functions."""
         self.db.add_lt(ltobj)
+        self.db.add_ltg(ltobj.ltid, ltobj.ltgid)
 
     def get_line(self, lid):
         return self._row_to_lm(self.db.get_line(lid))
@@ -322,9 +323,20 @@ class LogDB:
         Instead, use LogData.
     """
 
+    tablename_log = "log"
+    tablename_lt = "lt"
+    tablename_ltg = "ltg"
+    tablename_tag = "tag"
+    table_names = (tablename_log, tablename_lt, tablename_ltg, tablename_tag)
+    indexname_log = "log_index"
+    indexname_ltg = "ltg_index"
+    indexname_tag = "tag_index"
+    _tablename_tmp_footer = "_tmp"
+
     def __init__(self, conf, edit, reset_db):
         self._line_cnt = 0
         self._splitter = conf.get("database", "split_symbol")
+        self._table_switch = {}
 
         db_type = conf.get("database", "database")
         if db_type == "sqlite3":
@@ -362,7 +374,16 @@ class LogDB:
                 raise IOError("database not found")
 
     def _init_tables(self):
-        table_name = "log"
+        self._init_table_log()
+        self._init_table_lt()
+        self._init_table_ltg()
+        self._init_table_tag()
+        self._init_index()
+
+    def _init_table_log(self, table_name=None):
+        if table_name is None:
+            table_name = self.tablename_log
+
         l_key = [db_common.TableKey("lid", "integer",
                                     # ("primary_key", "auto_increment", "not_null")),
                                     ("primary_key", "not_null")),
@@ -373,7 +394,9 @@ class LogDB:
         sql = self._db.create_table_sql(table_name, l_key)
         self._db.execute(sql)
 
-        table_name = "lt"
+    def _init_table_lt(self, table_name=None):
+        if table_name is None:
+            table_name = self.tablename_lt
         l_key = [db_common.TableKey("ltid", "integer", ("primary_key",)),
                  db_common.TableKey("ltw", "text", tuple()),
                  db_common.TableKey("lts", "text", tuple()),
@@ -381,50 +404,112 @@ class LogDB:
         sql = self._db.create_table_sql(table_name, l_key)
         self._db.execute(sql)
 
-        self._init_table_ltg()
-        self._init_table_tag()
-        self._init_index()
-
-    def _init_table_ltg(self):
-        table_name = "ltg"
+    def _init_table_ltg(self, table_name=None):
+        if table_name is None:
+            table_name = self.tablename_ltg
         l_key = [db_common.TableKey("ltid", "integer", ("primary_key",)),
                  db_common.TableKey("ltgid", "integer", tuple())]
         sql = self._db.create_table_sql(table_name, l_key)
         self._db.execute(sql)
 
-    def _init_table_tag(self):
-        table_name = "tag"
+    def _init_table_tag(self, table_name=None):
+        if table_name is None:
+            table_name = self.tablename_tag
         l_key = [db_common.TableKey("ltid", "integer", tuple()),
                  db_common.TableKey("tag", "text", tuple())]
         sql = self._db.create_table_sql(table_name, l_key)
         self._db.execute(sql)
 
     def _init_index(self):
-        l_table_name = self._db.get_table_names()
+        self._init_index_log()
+        self._init_index_ltg()
+        self._init_index_tag()
 
-        index_name = "log_index"
-        if index_name not in l_table_name:
-            table_name = "log"
-            l_key = [db_common.TableKey("lid", "integer", tuple()),
-                     db_common.TableKey("ltid", "integer", tuple()),
-                     db_common.TableKey("dt", "datetime", tuple()),
-                     db_common.TableKey("host", "text", (100,))]
-            sql = self._db.create_index_sql(table_name, index_name, l_key)
+    def _init_index_log(self):
+        index_name = self.indexname_log
+        table_name = self.tablename_log
+        l_key = [db_common.TableKey("lid", "integer", tuple()),
+                 db_common.TableKey("ltid", "integer", tuple()),
+                 db_common.TableKey("dt", "datetime", tuple()),
+                 db_common.TableKey("host", "text", (100,))]
+        sql = self._db.create_index_sql(table_name, index_name, l_key)
+        self._db.execute(sql)
+
+    def _init_index_ltg(self):
+        index_name = self.indexname_ltg
+        table_name = self.tablename_ltg
+        l_key = [db_common.TableKey("ltgid", "integer", tuple()), ]
+        sql = self._db.create_index_sql(table_name, index_name, l_key)
+        self._db.execute(sql)
+
+    def _init_index_tag(self):
+        index_name = self.indexname_tag
+        table_name = self.tablename_tag
+        l_key = [db_common.TableKey("tag", "text", (100,)), ]
+        sql = self._db.create_index_sql(table_name, index_name, l_key)
+        self._db.execute(sql)
+
+    def switch_temporal_table(self, table_name):
+        """Switch valid table to temporal one.
+        Used for large data update."""
+        tmp_table_name = table_name + self._tablename_tmp_footer
+        assert tmp_table_name not in self._db.get_table_names()
+
+        if table_name == self.tablename_log:
+            self._init_table_log(tmp_table_name)
+        elif table_name == self.tablename_lt:
+            self._init_table_lt(tmp_table_name)
+        elif table_name == self.tablename_ltg:
+            self._init_table_ltg(tmp_table_name)
+        elif table_name == self.tablename_tag:
+            self._init_table_tag(tmp_table_name)
+        else:
+            raise ValueError("invalid table name {0}".format(table_name))
+
+        self._table_switch[table_name] = tmp_table_name
+
+    def apply_temporal_table(self, table_name):
+        """Use temporal table as the main table.
+        This function will remove the old main table,
+        and rename temporal one as the main table.
+        Used for large data update."""
+        tmp_table_name = table_name + self._tablename_tmp_footer
+        assert tmp_table_name in self._db.get_table_names()
+
+        if table_name == self.tablename_log:
+            index_name = self.indexname_log
+            index_func = self._init_index_log
+        elif table_name == self.tablename_ltg:
+            index_name = self.indexname_ltg
+            index_func = self._init_index_ltg
+        elif table_name == self.tablename_tag:
+            index_name = self.indexname_tag
+            index_func = self._init_index_tag
+        else:
+            index_name = None
+            index_func = None
+
+        if index_name:
+            sql = self._db.drop_index_sql(index_name)
             self._db.execute(sql)
 
-        index_name = "ltg_index"
-        if index_name not in l_table_name:
-            table_name = "ltg"
-            l_key = [db_common.TableKey("ltgid", "integer", tuple()), ]
-            sql = self._db.create_index_sql(table_name, index_name, l_key)
-            self._db.execute(sql)
+        sql = self._db.drop_table_sql(table_name)
+        self._db.execute(sql)
 
-        index_name = "tag_index"
-        if index_name not in l_table_name:
-            table_name = "tag"
-            l_key = [db_common.TableKey("tag", "text", (100,)), ]
-            sql = self._db.create_index_sql(table_name, index_name, l_key)
-            self._db.execute(sql)
+        sql = self._db.alter_table_sql(tmp_table_name, table_name)
+        self._db.execute(sql)
+
+        if index_name:
+            index_func()
+
+        self._table_switch.pop(table_name)
+
+    def _valid_table_name(self, table_name):
+        # for write functions only
+        if table_name in self._table_switch:
+            return self._table_switch[table_name]
+        else:
+            return table_name
 
     def commit(self):
         self._db.commit()
@@ -465,7 +550,7 @@ class LogDB:
         if "lid" not in kwargs:
             d_val["lid"] = self._line_cnt
 
-        table_name = "log"
+        table_name = self._valid_table_name(self.tablename_log)
         l_ss = [db_common.StateSet(k, k) for k in d_val.keys()]
         sql = self._db.insert_sql(table_name, l_ss)
         self._db.execute(sql, d_val)
@@ -519,11 +604,11 @@ class LogDB:
                 yield strutil.split_igesc(row[4], self._splitter)
 
     def _select_log(self, d_cond, l_order=None):
-        if len(d_cond) == 0:
-            raise ValueError("called select with empty condition")
+        # if len(d_cond) == 0:
+        #     raise ValueError("called select with empty condition")
         args = d_cond.copy()
 
-        table_name = "log"
+        table_name = self.tablename_log
         l_key = ["lid", "ltid", "dt", "host", "words"]
         l_cond = []
         for c in d_cond.keys():
@@ -543,7 +628,7 @@ class LogDB:
         return self._db.execute(sql, args)
 
     def get_line(self, lid):
-        table_name = "log"
+        table_name = self.tablename_log
         l_key = ["lid", "ltid", "dt", "host", "words"]
         l_cond = [db_common.Condition("lid", "=", "lid", True)]
         sql = self._db.select_sql(table_name, l_key, l_cond)
@@ -556,12 +641,12 @@ class LogDB:
 
     def update_log(self, d_cond, **kwargs):
         if len(d_cond) == 0:
-            _logger.warning("called update with empty condition")
-            # raise ValueError("called update with empty condition")
+            # _logger.warning("called update with empty condition")
+            raise ValueError("called update with empty condition")
 
         d_update = self._parse_input(**kwargs)
 
-        table_name = "log"
+        table_name = self._valid_table_name(self.tablename_log)
         args = d_cond.copy()
         l_ss = []
         for k, v in d_update.items():
@@ -574,10 +659,10 @@ class LogDB:
                 sql = self._db.select_sql("ltg", ["ltid"],
                                           [db_common.Condition(c, "=", c, True)])
                 l_cond.append(db_common.Condition("ltid", "in", sql, False))
-            elif c == "top_dt":
+            elif c == "dts":
                 l_cond.append(db_common.Condition("dt", ">=", c, True))
                 args[c] = self._db.strftime(d_cond[c])
-            elif c == "end_dt":
+            elif c == "dte":
                 l_cond.append(db_common.Condition("dt", "<", c, True))
                 args[c] = self._db.strftime(d_cond[c])
             else:
@@ -586,7 +671,7 @@ class LogDB:
         self._db.execute(sql, args)
 
     def count_lines(self):
-        table_name = "log"
+        table_name = self.tablename_log
         l_key = ["max(lid)"]
         sql = self._db.select_sql(table_name, l_key)
         cursor = self._db.execute(sql)
@@ -597,7 +682,7 @@ class LogDB:
             return int(tmp)
 
     def dt_term(self):
-        table_name = "log"
+        table_name = self.tablename_log
         l_key = ["min(dt)", "max(dt)"]
         sql = self._db.select_sql(table_name, l_key)
         cursor = self._db.execute(sql)
@@ -638,7 +723,7 @@ class LogDB:
         return [row[0] for row in cursor]
 
     def add_lt(self, ltline):
-        table_name = "lt"
+        table_name = self._valid_table_name(self.tablename_lt)
         l_ss = [
             db_common.StateSet("ltid", "ltid"),
             db_common.StateSet("ltw", "ltw"),
@@ -658,10 +743,8 @@ class LogDB:
         sql = self._db.insert_sql(table_name, l_ss)
         self._db.execute(sql, args)
 
-        self.add_ltg(ltline.ltid, ltline.ltgid)
-
     def add_ltg(self, ltid, ltgid):
-        table_name = "ltg"
+        table_name = self._valid_table_name(self.tablename_ltg)
         l_ss = [
             db_common.StateSet("ltid", "ltid"),
             db_common.StateSet("ltgid", "ltgid")
@@ -671,7 +754,7 @@ class LogDB:
         self._db.execute(sql, args)
 
     def update_lt(self, ltid, ltw, lts, count=None):
-        table_name = "lt"
+        table_name = self._valid_table_name(self.tablename_lt)
         l_ss = []
         args = {}
         if ltw is not None:
@@ -693,13 +776,13 @@ class LogDB:
         args = {"ltid": ltid}
 
         # remove from lt
-        table_name = "lt"
+        table_name = self._valid_table_name(self.tablename_lt)
         l_cond = [db_common.Condition("ltid", "=", "ltid", True)]
         sql = self._db.delete_sql(table_name, l_cond)
         self._db.execute(sql, args)
 
         # remove from ltg
-        table_name = "ltg"
+        table_name = self._valid_table_name(self.tablename_ltg)
         l_cond = [db_common.Condition("ltid", "=", "ltid", True)]
         sql = self._db.delete_sql(table_name, l_cond)
         self._db.execute(sql, args)
@@ -708,8 +791,14 @@ class LogDB:
         lttable = lt_common.LTTable()
 
         table_name = self._db.join_sql("left outer",
-                                       "lt", "ltg", "ltid", "ltid")
-        l_key = ("lt.ltid", "ltg.ltgid", "lt.ltw", "lt.lts", "lt.count")
+                                       self.tablename_lt,
+                                       self.tablename_ltg,
+                                       "ltid", "ltid")
+        l_key = (self.tablename_lt + ".ltid",
+                 self.tablename_ltg + ".ltgid",
+                 self.tablename_lt + ".ltw",
+                 self.tablename_lt + ".lts",
+                 self.tablename_lt + ".count")
         sql = self._db.select_sql(table_name, l_key)
         cursor = self._db.execute(sql)
         for row in cursor:
@@ -730,21 +819,21 @@ class LogDB:
         return lttable
 
     def count_lt(self):
-        table_name = "lt"
+        table_name = self.tablename_lt
         l_key = ["count(*)"]
         sql = self._db.select_sql(table_name, l_key)
         cursor = self._db.execute(sql)
         return int(cursor.fetchone()[0])
 
     def count_ltg(self):
-        table_name = "ltg"
+        table_name = self.tablename_ltg
         l_key = ["max(ltgid)"]
         sql = self._db.select_sql(table_name, l_key)
         cursor = self._db.execute(sql)
         return int(cursor.fetchone()[0]) + 1
 
     def iter_ltg_def(self):
-        table_name = "ltg"
+        table_name = self.tablename_ltg
         l_key = ["ltid", "ltgid"]
         sql = self._db.select_sql(table_name, l_key)
         cursor = self._db.execute(sql)
@@ -753,7 +842,7 @@ class LogDB:
             yield int(ltid), int(ltgid)
 
     def iter_ltgid(self):
-        table_name = "ltg"
+        table_name = self.tablename_ltg
         l_key = ["ltgid"]
         sql = self._db.select_sql(table_name, l_key, opt=["distinct"])
         cursor = self._db.execute(sql)
@@ -771,7 +860,7 @@ class LogDB:
         return [int(row[0]) for row in cursor]
 
     def add_tags(self, ltid, tags):
-        table_name = "tag"
+        table_name = self._valid_table_name(self.tablename_tag)
         for tag in tags:
             l_ss = [
                 db_common.StateSet("ltid", "ltid"),
@@ -784,19 +873,22 @@ class LogDB:
     def get_tags(self, **kwargs):
         # compatibility
         l_table_name = self._db.get_table_names()
-        if "tag" not in l_table_name:
+        if self.tablename_tag not in l_table_name:
             return []
 
         if "ltgid" in kwargs:
             table_name = self._db.join_sql("left outer",
-                                           "ltg", "tag", "ltid", "ltid")
-            l_key = ["tag.tag"]
-            l_cond = [db_common.Condition("ltg.ltgid", "=", "ltgid", True)]
+                                           self.tablename_ltg,
+                                           self.tablename_tag,
+                                           "ltid", "ltid")
+            l_key = [self.tablename_tag + ".tag"]
+            l_cond = [db_common.Condition(self.tablename_ltg + ".ltgid",
+                                          "=", "ltgid", True)]
             args = {"ltgid": kwargs["ltgid"]}
             sql = self._db.select_sql(table_name, l_key, l_cond, opt=["distinct"])
             cursor = self._db.execute(sql, args)
         elif "ltid" in kwargs:
-            table_name = "tag"
+            table_name = self.tablename_tag
             l_key = ["tag"]
             l_cond = [db_common.Condition("ltid", "=", "ltid", True)]
             args = {"ltid": kwargs["ltid"]}
@@ -813,11 +905,12 @@ class LogDB:
     def reset_tag(self):
         # compatibility
         l_table_name = self._db.get_table_names()
-        if "tag" in l_table_name:
-            sql = self._db.delete_sql("tag")
+        if self.tablename_tag in l_table_name:
+            sql = self._db.delete_sql(self.tablename_tag)
             self._db.execute(sql)
         else:
             self._init_table_tag()
+            self._init_index_tag()
 
     def drop_all(self):
         self._db.reset()
@@ -979,136 +1072,6 @@ def show_all_host(conf, dts=None, dte=None):
     ld = LogData(conf)
     for host in ld.whole_host(dts=dts, dte=dte):
         print(host)
-
-
-def _anonymize_overwrite(ld):
-    # overwrite hosts
-    host_mapping = {}
-    hosts = set(ld.whole_host())
-    for num, host in enumerate(hosts):
-        replaced_host = "host" + str(num).zfill(len(str(len(hosts))))
-        ld.db.update_log({"host": host}, host=replaced_host)
-        host_mapping[replaced_host] = host
-        ld.commit_db()
-
-    # overwrite lt and log words
-    lt_mapping = {}
-    for ltobj in ld.iter_lt():
-        new_ltw = [lt_common.REPLACER if w == lt_common.REPLACER
-                   else lt_common.ANONYMIZED_DESC
-                   for w in ltobj.ltw]
-        new_lts = [" "] * len(ltobj.lts)
-        new_lts[0] = ""
-        new_lts[-1] = ""
-        new_ltobj = lt_common.LogTemplate(ltobj.ltid, ltobj.ltgid,
-                                          new_ltw, new_lts, ltobj.count)
-        ld.lttable.update_lt(new_ltobj)
-        ld.db.update_lt(ltid=ltobj.ltid, ltw=new_ltw, lts=new_lts,
-                        count=ltobj.count)
-
-        ld.db.update_log({"ltid": ltobj.ltid}, l_w=new_ltw)
-        lt_mapping[ltobj.ltid] = (ltobj.ltw, ltobj.lts)
-        ld.commit_db()
-
-    return host_mapping, lt_mapping
-
-
-def _anonymize_migration(ld_src, conf_dst, host_mapping, lt_mapping):
-    from . import lt_common
-    ld = LogData(conf_dst, edit=True)
-    online_batchsize = conf_dst.getint("manager", "online_batchsize")
-
-    for ltobj in ld_src.iter_lt():
-        new_ltobj = lt_common.LogTemplate(
-            ltid=ltobj.ltid,
-            ltgid=ltobj.ltgid,
-            ltw=lt_mapping[ltobj.ltid]["ltw"],
-            lts=lt_mapping[ltobj.ltid]["lts"],
-            count=ltobj.count
-        )
-        ld.add_lt(new_ltobj)
-        ld.commit_db()
-
-    online_counter = 0
-    for lm in ld_src.iter_all():
-        ld.add_line(lid=lm.lid,
-                    ltid=lm.lt.ltid,
-                    dt=lm.dt,
-                    host=host_mapping[lm.host],
-                    l_w=lt_mapping[lm.lt.ltid]["ltw"])
-        online_counter += 1
-        if online_counter >= online_batchsize:
-            ld.commit_db()
-            online_counter = 0
-
-
-def _anonymize_mapping(ld):
-    host_mapping = {}
-    host_mapping_dump = {}
-    hosts = set(ld.whole_host())
-    for num, host in enumerate(hosts):
-        replaced_host = "host" + str(num).zfill(len(str(len(hosts))))
-        host_mapping[host] = replaced_host
-        host_mapping_dump[replaced_host] = host
-
-    lt_mapping = {}
-    lt_mapping_dump = {}
-    for ltobj in ld.iter_lt():
-        new_ltw = [lt_common.REPLACER if w == lt_common.REPLACER
-                   else lt_common.ANONYMIZED_DESC
-                   for w in ltobj.ltw]
-        new_lts = [" "] * len(ltobj.lts)
-        new_lts[0] = ""
-        new_lts[-1] = ""
-        lt_mapping[ltobj.ltid] = {"ltw": new_ltw,
-                                  "lts": new_lts}
-        lt_mapping_dump[ltobj.ltid] = (ltobj.ltw, ltobj.lts)
-
-    return host_mapping, host_mapping_dump, lt_mapping, lt_mapping_dump
-
-
-def _dump_anonymize_mapping(host_mapping, lt_mapping, output):
-    import json
-    with open(output, mode='wt', encoding='utf-8') as f:
-        obj = {"host_mapping": host_mapping,
-               "lt_mapping": lt_mapping}
-        json.dump(obj, f)
-    return output
-
-
-def anonymize(conf, conf2=None, output=None):
-    """Anonymize existing database.
-
-    This function replaced following contents in the existing db.
-    - Log template format
-    - Log message details
-    - Hostname
-
-    If conf2 given, this function generate another DB
-    using conf2 configurations.
-    If not, the DB (defined in conf) is overwritten in anonimization.
-
-    If output given, this function finally
-    output mapping json file of replaced hostnames."""
-
-    if conf2 is not None:
-        ld = LogData(conf, edit=False)
-        hmap, hmapd, ltmap, ltmapd = _anonymize_mapping(ld)
-        _anonymize_migration(ld, conf2, hmap, ltmap)
-    else:
-        ld = LogData(conf, edit=True)
-        hmapd, ltmapd = _anonymize_overwrite(ld)
-
-    if output:
-        ret = _dump_anonymize_mapping(hmapd, ltmapd, output)
-        print("> {0}".format(ret))
-
-
-def anonymize_mapping(conf, output):
-    ld = LogData(conf, edit=False)
-    _, hmapd, _, ltmapd = _anonymize_mapping(ld)
-    ret = _dump_anonymize_mapping(hmapd, ltmapd, output)
-    print("> {0}".format(ret))
 
 
 def data_from_db(conf, dirname, method, reset):

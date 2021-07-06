@@ -233,7 +233,8 @@ def _load_imports(conf):
 
 def open_config(fn=None, env=CONFIG_ENV,
                 ex_defaults=None,
-                base_default=True, ignore_import=False):
+                base_default=True, ignore_import=False,
+                verbose=True):
     """
     Args:
         fn (str, optional): Configuration file path.
@@ -263,7 +264,8 @@ def open_config(fn=None, env=CONFIG_ENV,
         fn = os.environ.get(env)
 
     if fn is None:
-        print("Processing with default configuration ...")
+        if verbose:
+            print("Processing with default configuration ...")
     else:
         if not os.path.exists(fn):
             raise IOError("{0} not found".format(fn))

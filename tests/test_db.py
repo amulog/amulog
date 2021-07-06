@@ -28,7 +28,7 @@ class TestDB(unittest.TestCase):
         fd_ltgendump, cls._path_ltgendump = tempfile.mkstemp()
         os.close(fd_ltgendump)
 
-        cls._conf = config.open_config()
+        cls._conf = config.open_config(verbose=False)
         cls._conf['general']['src_path'] = cls._path_testlog
         cls._conf['database']['sqlite3_filename'] = cls._path_testdb
         cls._conf['manager']['indata_filename'] = cls._path_ltgendump
@@ -98,7 +98,9 @@ class TestDB(unittest.TestCase):
         targets = amulog_main.get_targets_conf(self._conf)
         manager.process_files_online(self._conf, targets, reset_db=True)
 
-        log_db.anonymize(self._conf)
+        from amulog import anonymize
+        am = anonymize.AnonymizeMapper(self._conf)
+        am.anonymize()
 
         import re
         reobj_message = re.compile(r"^[ *#]*$")

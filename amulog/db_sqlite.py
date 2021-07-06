@@ -34,8 +34,9 @@ class Sqlite3(db_common.Database):
             self._connect.commit()
 
     def execute(self, sql, args=None):
-        # print sql
-        # if len(args) > 0: print args
+        # print(sql)
+        # if args is not None:
+        #     print(args)
         if self._connect is None:
             self._open()
         cursor = self._connect.cursor()

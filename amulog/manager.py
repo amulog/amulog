@@ -262,6 +262,7 @@ class LTManager(object):
         ltline.ltgid = ltgid
         self._lttable.add_lt(ltline)
         self._db.add_lt(ltline)
+        self._db.add_ltg(ltline.ltid, ltline.ltgid)
         return ltline
 
     def replace_lt(self, ltid, l_w, l_s=None, cnt=None):

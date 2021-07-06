@@ -42,7 +42,7 @@ class TestLTGen(unittest.TestCase):
         return table
 
     def test_import(self):
-        conf = config.open_config()
+        conf = config.open_config(verbose=False)
         conf['log_template']['lt_methods'] = "import"
         tpl_path = common.filepath_local(__file__, "testlog_tpl.txt")
         conf['log_template_import']['def_path'] = tpl_path
@@ -52,7 +52,7 @@ class TestLTGen(unittest.TestCase):
         self.assertTrue(n_tpl == 6)
 
     def test_drain(self):
-        conf = config.open_config()
+        conf = config.open_config(verbose=False)
         conf['log_template']['lt_methods'] = "drain"
         table = self._try_method(conf)
 
@@ -60,7 +60,7 @@ class TestLTGen(unittest.TestCase):
         self.assertTrue(3 < n_tpl < 20)
 
     def test_lenma(self):
-        conf = config.open_config()
+        conf = config.open_config(verbose=False)
         conf['log_template']['lt_methods'] = "lenma"
         table = self._try_method(conf)
 
@@ -68,7 +68,7 @@ class TestLTGen(unittest.TestCase):
         self.assertTrue(3 < n_tpl < 20)
 
     def test_dlog(self):
-        conf = config.open_config()
+        conf = config.open_config(verbose=False)
         conf['log_template']['lt_methods'] = "dlog"
         table = self._try_method(conf, online=False)
 
@@ -76,7 +76,7 @@ class TestLTGen(unittest.TestCase):
         self.assertTrue(3 < n_tpl < 300)
 
     def test_fttree(self):
-        conf = config.open_config()
+        conf = config.open_config(verbose=False)
         conf['log_template']['lt_methods'] = "fttree"
         table = self._try_method(conf)
 
@@ -84,7 +84,7 @@ class TestLTGen(unittest.TestCase):
         self.assertTrue(3 < n_tpl < 50)
 
     def test_va(self):
-        conf = config.open_config()
+        conf = config.open_config(verbose=False)
         conf['log_template']['lt_methods'] = "va"
         table = self._try_method(conf)
 
@@ -92,7 +92,7 @@ class TestLTGen(unittest.TestCase):
         self.assertTrue(3 < n_tpl < 20)
 
     def test_shiso_first(self):
-        conf = config.open_config()
+        conf = config.open_config(verbose=False)
         conf['log_template']['lt_methods'] = "shiso"
         table = self._try_method(conf)
 
