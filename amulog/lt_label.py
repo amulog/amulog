@@ -14,9 +14,14 @@ class LTTagger(ABC):
     def __init__(self):
         pass
 
-    @abstractmethod
     def get_tags(self, ltobj):
         raise NotImplementedError
+
+
+class LTLabelDummy(LTTagger):
+
+    def get_tags(self, _):
+        return []
 
 
 class LTLabelINI(LTTagger):
@@ -122,6 +127,10 @@ class LTLabelINI(LTTagger):
                 return self.default_group
 
 
+def init_ltlabeldummy(_):
+    return LTLabelDummy()
+
+
 def init_ltlabelini(conf):
     tag_file = conf.get("visual", "tag_file")
     tag_key = conf.get("visual", "tag_file_key")
@@ -134,7 +143,9 @@ def init_ltlabelini(conf):
 
 def generate_all_tags(conf, reset=True):
     tag_method = conf.get("visual", "tag_method")
-    if tag_method in ("file", "ini"):
+    if tag_method == "dummy":
+        tagger = init_ltlabeldummy(conf)
+    elif tag_method in ("file", "ini"):
         tagger = init_ltlabelini(conf)
     else:
         raise ValueError("Invalid visual.tag_method")
