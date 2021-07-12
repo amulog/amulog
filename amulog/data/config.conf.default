@@ -252,8 +252,8 @@ func_name = vyos_tokenize
 [visual]
 
 # How to generate tags for templates
-# [file, ] is available
-tag_method = file
+# [file, dummy] is available
+tag_method = dummy
 
 # tagging rule definition file in configparser format
 # If empty, use default configuration (lt_label.conf.sample)
@@ -267,6 +267,9 @@ tag_file_default_label = None
 tag_file_default_group = None
 
 anonymize_mapping_file = anonymize_mapping.json
+
+# one of [standard, legacy]
+anonymize_overwrite_method = standard
 
 
 

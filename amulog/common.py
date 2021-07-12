@@ -320,7 +320,7 @@ class Timer:
         self._lap_dt = []
         self.header = header
         self.output = output
-        self._timestr_func = None
+        self._timestr_func = timestr_func
 
     def _output(self, string):
         if isinstance(self.output, logging.Logger):

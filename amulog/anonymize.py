@@ -9,6 +9,8 @@ class AnonymizeMapper:
         self._d_host = None
         self._d_lt = None
 
+        self._overwrite_method = conf["visual"]["anonymize_overwrite_method"]
+
     def _filepath(self):
         return self._conf["visual"]["anonymize_mapping_file"]
 
@@ -155,8 +157,12 @@ class AnonymizeMapper:
         else:
             ld = log_db.LogData(self._conf, edit=True)
             self._generate_mapping(ld)
-            self._anonymize_overwrite(ld)
-            # self._anonymize_overwrite_legacy(ld)
+            if self._overwrite_method == "standard":
+                self._anonymize_overwrite(ld)
+            elif self._overwrite_method == "legacy":
+                self._anonymize_overwrite_legacy(ld)
+            else:
+                raise ValueError
 
     def mapping(self):
         from . import log_db
