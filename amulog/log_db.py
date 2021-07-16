@@ -331,6 +331,7 @@ class LogDB:
     indexname_log = "log_index"
     indexname_ltg = "ltg_index"
     indexname_tag = "tag_index"
+    index_names = (indexname_log, indexname_ltg, indexname_tag)
     _tablename_tmp_footer = "_tmp"
 
     def __init__(self, conf, edit, reset_db):
@@ -448,6 +449,46 @@ class LogDB:
         l_key = [db_common.TableKey("tag", "text", (100,)), ]
         sql = self._db.create_index_sql(table_name, index_name, l_key)
         self._db.execute(sql)
+
+    def repair_tables(self):
+        current_table_names = self._db.get_table_names()
+
+        for name in self.table_names:
+            if name not in current_table_names:
+                if name == self.tablename_log:
+                    raise ValueError("Empty database, cannot be repaired")
+                elif name == self.tablename_lt:
+                    raise ValueError("No log templates, cannot be repaired")
+                elif name == self.tablename_ltg:
+                    print("no ltg table, init table")
+                    self._init_table_ltg()
+                    print("NOTE: try \"\" db-remake-group if you need afterward")
+                elif name == self.tablename_tag:
+                    print("no tag table, init table")
+                    self._init_table_tag()
+                    print("NOTE: try \"\" db-tag if you need afterward")
+
+        for name in self.index_names:
+            if name not in current_table_names:
+                if name == self.indexname_log:
+                    print("no log index, init")
+                    self._init_index_log()
+                elif name == self.indexname_ltg:
+                    print("no ltg index, init")
+                    self._init_index_ltg()
+                elif name == self.indexname_tag:
+                    print("no tag index, init")
+                    self._init_index_tag()
+
+        for name in current_table_names:
+            if self._tablename_tmp_footer in name:
+                print("remove temporal table")
+                sql = self._db.drop_table_sql(name)
+                self._db.execute(sql)
+
+        self._db.commit()
+        current_table_names = self._db.get_table_names()
+        print("now the db has {0}".format(current_table_names))
 
     def switch_temporal_table(self, table_name):
         """Switch valid table to temporal one.

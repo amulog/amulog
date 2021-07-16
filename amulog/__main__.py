@@ -148,6 +148,16 @@ def db_tag(ns):
     timer.stop()
 
 
+def db_repair(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from . import log_db
+    db = log_db.LogDB(conf, edit=True, reset_db=False)
+    db.repair_tables()
+
+
 def db_anonymize(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -466,6 +476,9 @@ DICT_ARGSET = {
     "db-tag": ["Make log template tags.",
                [OPT_CONFIG, OPT_DEBUG],
                db_tag],
+    "db-repair": ["Repair db schema after version updates.",
+                  [OPT_CONFIG, OPT_DEBUG],
+                  db_repair],
     "db-anonymize": ["Anonymize templates and hostnames.",
                      [OPT_CONFIG, OPT_DEBUG,
                       [["--config-export"],

@@ -244,6 +244,7 @@ def open_config(fn=None, env=CONFIG_ENV,
                                  use this to add its configurations.
         base_default (bool, optional): Use amulog default values for missing options.
         ignore_import (bool, optional): Ignore general.import.
+        verbose (bool, optional): Notify if no available config except default one.
         
     """
 

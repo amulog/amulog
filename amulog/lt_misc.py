@@ -33,7 +33,7 @@ class LTGroupFuzzyHash(lt_common.LTGroup):
                 gid = self._d_rgroup[ltid]
             else:
                 gid = self._next_groupid()
-        self.add_ltid(gid, lt_new)
+        self.add_lt(gid, lt_new)
         return gid
 
     def _calc_score(self, lt_new):

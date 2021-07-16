@@ -247,6 +247,8 @@ normalizer_rule = DEFAULT
 [log_template_group_semantics]
 conf_path = dummy.conf
 func_name = vyos_tokenize
+lda_model = gensim
+stop_words =
 
 
 [visual]

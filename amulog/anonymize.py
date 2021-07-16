@@ -69,8 +69,8 @@ class AnonymizeMapper:
         # overwrite lt and log words
         from . import lt_common
         for ltobj in ld.iter_lt():
-            new_ltw = self._lt_mapping[ltobj.ltid]["ltw"],
-            new_lts = self._lt_mapping[ltobj.ltid]["lts"],
+            new_ltw = self._lt_mapping[ltobj.ltid]["ltw"]
+            new_lts = self._lt_mapping[ltobj.ltid]["lts"]
             new_ltobj = lt_common.LogTemplate(ltobj.ltid, ltobj.ltgid,
                                               new_ltw, new_lts, ltobj.count)
             ld.lttable.update_lt(new_ltobj)

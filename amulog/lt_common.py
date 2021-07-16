@@ -479,7 +479,7 @@ class LTGroup(ABC):
     def make(self):
         raise NotImplementedError
 
-    def add_ltid(self, gid, ltline):
+    def add_lt(self, gid, ltline):
         self._d_group.setdefault(gid, []).append(ltline)
         self._d_rgroup[ltline.ltid] = gid
 
@@ -487,6 +487,11 @@ class LTGroup(ABC):
         for ltid, ltgid in db.iter_ltg_def():
             self._d_group.setdefault(ltgid, []).append(table[ltid])
             self._d_rgroup[ltid] = ltgid
+
+    def update_lttable(self, lttable):
+        for ltid, ltgid in self._d_rgroup.items():
+            lttable[ltid].ltgid = ltgid
+        return lttable
 
     def load(self, loadobj):
         pass
@@ -522,7 +527,7 @@ class LTGroupDummy(LTGroupOnline):
 
     def add(self, ltline):
         gid = ltline.ltid
-        self.add_ltid(gid, ltline)
+        self.add_lt(gid, ltline)
         return gid
 
 

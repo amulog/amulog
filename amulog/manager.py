@@ -284,7 +284,8 @@ class LTManager(object):
 
     def remake_ltg(self):
         self._db.reset_ltg()
-        self._lttable = self._ltgroup.make()
+        self._ltgroup.make()
+        self._ltgroup.update_lttable(self._lttable)
         for ltline in self._lttable:
             self._db.add_ltg(ltline.ltid, ltline.ltgid)
 

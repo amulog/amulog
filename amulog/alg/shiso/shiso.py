@@ -198,17 +198,17 @@ class LTGroupSHISO(lt_common.LTGroupOnline):
         assert lt_new.ltid not in self._d_rgroup
         if lt_old.ltid in self._d_rgroup:
             groupid = self._d_rgroup[lt_old.ltid]
-            self.add_ltid(groupid, lt_new)
+            self.add_lt(groupid, lt_new)
         else:
             groupid = self._next_groupid()
-            self.add_ltid(groupid, lt_old)
-            self.add_ltid(groupid, lt_new)
+            self.add_lt(groupid, lt_old)
+            self.add_lt(groupid, lt_new)
         return groupid
 
     def _mk_group_single(self, lt_new):
         assert lt_new.ltid not in self._d_rgroup
         groupid = self._next_groupid()
-        self.add_ltid(groupid, lt_new)
+        self.add_lt(groupid, lt_new)
         return groupid
 
     def _get_ngram(self, ltline):
