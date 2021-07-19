@@ -177,7 +177,7 @@ class Database(ABC):
 
     @classmethod
     def select_sql(cls, table_name, l_key,
-                   l_cond=None, l_order=None, opt=None):
+                   l_cond=None, l_order=None, opt=None, limit=None):
         # now only "distinct" is allowed for opt
         sql_header = "select"
         if opt is not None and "distinct" in opt:
@@ -190,6 +190,8 @@ class Database(ABC):
             sql_order = ", ".join(["{0} {1}".format(col, order)
                                    for col, order in l_order])
             sql += " order by " + sql_order
+        if limit is not None:
+            sql += " limit " + str(limit)
         return sql
 
     @classmethod

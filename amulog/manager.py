@@ -65,7 +65,7 @@ class LTManager(object):
             self._ltgen = init_ltgen_methods(self._conf, self._table)
 
         self._ltgroup = init_ltgroup(self._conf, self._lttable)
-        if not self._reset_db:
+        if (not self._reset_db) and (self._ltgroup is not None):
             self._ltgroup.restore_ltg(self._db, self._lttable)
 
     @property
@@ -250,10 +250,10 @@ class LTManager(object):
         return log_db.LogMessage(new_lid, ltline,
                                  dt, host, l_w)
 
-    def add_lt(self, l_w, l_s, cnt=1, add_group=False):
+    def add_lt(self, l_w, l_s, count=1, add_group=False):
         # add new lt to db and table
         ltid = self._lttable.next_ltid()
-        ltline = lt_common.LogTemplate(ltid, None, l_w, l_s, cnt)
+        ltline = lt_common.LogTemplate(ltid, None, l_w, l_s, count)
         # if self._ltgroup is not None:
         if add_group and isinstance(self._ltgroup, lt_common.LTGroupOnline):
             ltgid = self._ltgroup.add(ltline)
@@ -265,9 +265,9 @@ class LTManager(object):
         self._db.add_ltg(ltline.ltid, ltline.ltgid)
         return ltline
 
-    def replace_lt(self, ltid, l_w, l_s=None, cnt=None):
-        self._lttable[ltid].replace(l_w, l_s, cnt)
-        self._db.update_lt(ltid, l_w, l_s, cnt)
+    def replace_lt(self, ltid, l_w, l_s=None, count=None):
+        self._lttable[ltid].replace(l_w, l_s, count)
+        self._db.update_lt(ltid, l_w, l_s, count)
 
     def replace_and_count_lt(self, ltid, l_w, l_s=None):
         cnt = self._lttable[ltid].increment()
@@ -323,6 +323,10 @@ class LTManager(object):
     def fail_dump(self, msg):
         with open(self._fail_output, 'a') as f:
             f.write(msg)
+
+
+def init_manager(ld):
+    return LTManager(ld.conf, ld.db, ld.lttable)
 
 
 def init_ltgen_methods(conf, table, lt_methods=None, shuffle=None):

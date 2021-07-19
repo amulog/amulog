@@ -248,7 +248,8 @@ normalizer_rule = DEFAULT
 conf_path = dummy.conf
 func_name = vyos_tokenize
 lda_model = gensim
-stop_words =
+lda_stop_words =
+lda_seed =
 
 
 [visual]

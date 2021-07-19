@@ -165,8 +165,11 @@ class LogData:
             ["{0}:{1}".format(k, v) for k, v in kwargs.items()
              if v is not None])
         ))
+        limit = None
+        if "limit" in kwargs:
+            limit = kwargs.pop("limit")
         assert len(kwargs) >= 1, "empty arguments"
-        for d_line in self.db.iter_lines(kwargs):
+        for d_line in self.db.iter_lines(kwargs, limit=limit):
             yield self._row_to_lm(d_line)
 
     def iter_all(self):
@@ -297,9 +300,9 @@ class LogData:
         count = sum(ltobj.count for ltobj in l_ltobj)
 
         header = "[ltgroup {0} ({1} tpls, {2} lines)]".format(
-            ltgid, length, count, ", ".join(tags)
+            ltgid, length, count,
         )
-        if tags:
+        if len(tags) > 0:
             header += " # tags: {0}".format(",".join(tags))
         buf = [header]
         for ltobj in l_ltobj:
@@ -611,7 +614,7 @@ class LogDB:
                 d_line["l_w"] = strutil.split_igesc(row[4], self._splitter)
             yield d_line
 
-    def iter_lines(self, conditions):
+    def iter_lines(self, conditions, limit=None):
         d_cond = {k: v for k, v in conditions.items()
                   if v is not None}
         if len(d_cond) == 0:
@@ -623,7 +626,7 @@ class LogDB:
         if "end_dt" in d_cond and "dte" not in d_cond:
             d_cond["dte"] = d_cond.pop("end_dt")
 
-        for row in self._select_log(d_cond):
+        for row in self._select_log(d_cond, limit=limit):
             yield self._parse_row(row)
 
     def iter_words(self, conditions):
@@ -644,7 +647,7 @@ class LogDB:
             else:
                 yield strutil.split_igesc(row[4], self._splitter)
 
-    def _select_log(self, d_cond, l_order=None):
+    def _select_log(self, d_cond, l_order=None, limit=None):
         # if len(d_cond) == 0:
         #     raise ValueError("called select with empty condition")
         args = d_cond.copy()
@@ -665,7 +668,7 @@ class LogDB:
                 args[c] = self._db.strftime(d_cond[c])
             else:
                 l_cond.append(db_common.Condition(c, "=", c, True))
-        sql = self._db.select_sql(table_name, l_key, l_cond, l_order)
+        sql = self._db.select_sql(table_name, l_key, l_cond, l_order, limit)
         return self._db.execute(sql, args)
 
     def get_line(self, lid):

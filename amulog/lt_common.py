@@ -624,3 +624,23 @@ def merged_template(m1, m2):
         else:
             ret.append(REPLACER)
     return ret
+
+
+def template_from_messages(l_lm):
+    """Generate a log template as the common part of given instances.
+
+    Args:
+        l_lm (List[log_db.LogMessage]): Log instances
+
+    Returns:
+        tpl (List[str])
+    """
+    tpl = []
+    for words in zip(*[lm.l_w for lm in l_lm]):
+        s_words = set(words)
+        s_words.discard(REPLACER)
+        if len(s_words) == 1:
+            tpl.append(words[0])
+        else:
+            tpl.append(REPLACER)
+    return tpl
