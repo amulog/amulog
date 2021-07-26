@@ -101,10 +101,12 @@ def init_ltgen(conf, table, **_):
     depth = conf.getint("log_template_drain", "depth")
 
     from amulog.lt_regex import VariableRegex
+    from amulog import host_alias
     preprocess_fn = conf.get("log_template_drain", "preprocess_rule")
     if preprocess_fn.strip() == "":
         preprocess_fn = DEFAULT_REGEX_CONFIG
-    vreobj = VariableRegex(conf, preprocess_fn)
+    ha = host_alias.init_hostalias(conf)
+    vreobj = VariableRegex(preprocess_fn, ha)
 
     return LTGenDrain(table, threshold, depth, vreobj)
 
@@ -124,9 +126,11 @@ def init_ltgen_with_params(conf, table, params, **_):
     depth = params["depth"]
 
     from amulog.lt_regex import VariableRegex
+    from amulog import host_alias
     preprocess_fn = conf.get("log_template_drain", "preprocess_rule")
     if preprocess_fn.strip() == "":
         preprocess_fn = DEFAULT_REGEX_CONFIG
-    vreobj = VariableRegex(conf, preprocess_fn)
+    ha = host_alias.init_hostalias(conf)
+    vreobj = VariableRegex(preprocess_fn, ha)
 
     return LTGenDrain(table, threshold, depth, vreobj)

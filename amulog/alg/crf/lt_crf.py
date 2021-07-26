@@ -582,12 +582,14 @@ def init_ltgen_crf(conf, table, **_):
         normalizer_conf = None
     normalizer_rule = conf.get("log_template_crf", "normalizer_rule")
 
-    from amulog import lt_regex
     middle_fn = conf.get("log_template_crf", "middle_label_rule")
     if middle_fn.strip() == "":
         vreobj = None
     else:
-        vreobj = lt_regex.VariableRegex(conf, middle_fn, LTGenCRF.POS_UNKNOWN)
+        from amulog import host_alias
+        from amulog import lt_regex
+        ha = host_alias.init_hostalias(conf)
+        vreobj = lt_regex.VariableRegex(middle_fn, ha, LTGenCRF.POS_UNKNOWN)
 
     return LTGenCRF(table, model, verbose, feature_template, unknown_weight,
                     vreobj, normalizer_conf, normalizer_rule)

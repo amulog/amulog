@@ -1082,7 +1082,7 @@ def show_all_ltg(conf):
     ld = LogData(conf)
     for gid in ld.iter_ltgid():
         buf.append(ld.show_ltg_info(gid))
-    return "\n".join(buf)
+    return "\n\n".join(buf)
 
 
 def show_tag(conf, tag=None):

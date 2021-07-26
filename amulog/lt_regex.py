@@ -14,12 +14,12 @@ _logger = logging.getLogger(__package__)
 
 class VariableRegex:
 
-    def __init__(self, conf, fn=None, label_unknown="unknown"):
+    def __init__(self, fn, hostalias, label_unknown="unknown"):
         self._ext = {}
         self._re = {}
+        self._ha = hostalias
         self.label_unknown = label_unknown
 
-        self._ha = host_alias.init_hostalias(conf)
         if fn is not None and fn.strip() != "":
             self._load_rule(fn)
 
@@ -127,5 +127,6 @@ class LTGenRegularExpression(lt_common.LTGenStateless):
 
 def init_ltgen_regex(conf, table, **_):
     fn = conf.get("log_template_re", "variable_rule")
-    vreobj = VariableRegex(conf, fn)
+    ha = host_alias.init_hostalias(conf)
+    vreobj = VariableRegex(fn, ha)
     return LTGenRegularExpression(table, vreobj)

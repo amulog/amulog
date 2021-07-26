@@ -245,11 +245,22 @@ normalizer_rule = DEFAULT
 
 
 [log_template_group_semantics]
-conf_path = dummy.conf
-func_name = vyos_tokenize
 lda_model = gensim
 lda_stop_words =
 lda_seed =
+lda_n_topics =
+cluster_eps =
+tuning_union_rules =
+tuning_separation_rules =
+tuning_term_class = topic
+tuning_topwords = 10
+
+
+[nlp_preprocess]
+filters = replace_variable, strip_symbols, manual_replace, remove_symbols, lower, lemmatize_verbs, lemmatize_nns, manual_replace
+replacer_sources = nlp_before_rule, nlp_after_rule
+variable_rule = drain_regex.conf
+lemma_exception = junos, libjunos, caps, cubs, gres, ns, pics, sms, tos
 
 
 [visual]

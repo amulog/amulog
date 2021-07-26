@@ -86,6 +86,9 @@ class LogTemplate:
         else:
             raise KeyError
 
+    def desc(self):
+        return [w for w in self.ltw if w != REPLACER]
+
     def var(self, l_w):
         if len(l_w) == 0:
             return [REPLACER for w in self.ltw if w == REPLACER]

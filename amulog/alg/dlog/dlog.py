@@ -138,8 +138,10 @@ class LTGenDlog(lt_common.LTGenOffline):
 
 
 def init_ltgen(conf, table, **_):
+    from amulog import host_alias
     from amulog.lt_regex import VariableRegex
     preprocess_fn = conf.get("log_template_dlog", "preprocess_rule")
-    vreobj = VariableRegex(conf, preprocess_fn)
+    ha = host_alias.init_hostalias(conf)
+    vreobj = VariableRegex(preprocess_fn, ha)
 
     return LTGenDlog(table, vreobj)
