@@ -1,7 +1,7 @@
 """Currently, required libraries are not ready in OSS."""
 
+from . import strutil
 from . import lt_common
-import log_normalizer as lognorm
 from amsemantics import TopicClustering
 
 
@@ -12,8 +12,6 @@ class LTGroupSemantics(lt_common.LTGroupOffline):
                  lda_n_topics=None, cluster_eps=None):
         super().__init__(lttable)
         self._lognorm = normalizer
-        # self._lognorm = lognorm.LogNormalizer(preprocess_conf_path)
-        # self._lognorm_method = preprocess_func_name
         self._lda_modelname = lda_modelname
         self._stop_words = stop_words
         self._random_seed = random_seed
@@ -24,9 +22,9 @@ class LTGroupSemantics(lt_common.LTGroupOffline):
         self._tuning_rules = None
 
     def _tokenize(self, ltobj):
-        return self._lognorm.process_line(ltobj.desc())
-        # text = " ".join(input_text)
-        # return getattr(self._lognorm, self._lognorm_method)(text=text)
+        return self._lognorm.process_line(
+            [strutil.restore_esc(w) for w in ltobj.desc()]
+        )
 
     def set_tuning_rules(self, *args, **kwargs):
         self._tuning_rules = (args, kwargs)
@@ -97,9 +95,7 @@ def init_ltgroup_semantics(conf, lttable):
     else:
         cluster_eps = float(cluster_eps_str)
 
-    ltgroup = LTGroupSemantics(lttable, normalizer,
-                               # preprocess_conf_path, preprocess_func_name,
-                               lda_model,
+    ltgroup = LTGroupSemantics(lttable, normalizer, lda_model,
                                stop_words=stop_words,
                                random_seed=random_seed,
                                lda_n_topics=lda_n_topics,

@@ -184,8 +184,8 @@ class LogData:
             ltid (Optional[int]): Search tags for given log template identifier.
             ltgid (Optional[int]): Search tags for given group identifier.
 
-        Returns:
-            List[str]
+        Yields:
+            str
         """
         assert len(kwargs) >= 1, "empty arguments"
         return self.db.get_tags(**kwargs)
@@ -284,7 +284,7 @@ class LogData:
 
     def show_lt_info(self, ltid):
         ltobj = self.lt(ltid)
-        tags = self.get_tags(ltid=ltobj.ltid)
+        tags = [tag for tag in self.get_tags(ltid=ltobj.ltid)]
         if tags:
             tag_str = "|".join(tags)
             return " ".join((str(ltobj.ltid), "({0})".format(tag_str),
@@ -294,7 +294,7 @@ class LogData:
                              str(ltobj), "({0})".format(ltobj.count)))
 
     def show_ltg_info(self, ltgid):
-        tags = self.get_tags(ltgid=ltgid)
+        tags = [tag for tag in self.get_tags(ltgid=ltgid)]
         l_ltobj = self.ltg_members(ltgid)
         length = len(l_ltobj)
         count = sum(ltobj.count for ltobj in l_ltobj)
@@ -918,7 +918,7 @@ class LogDB:
         # compatibility
         l_table_name = self._db.get_table_names()
         if self.tablename_tag not in l_table_name:
-            return []
+            return
 
         if "ltgid" in kwargs:
             table_name = self._db.join_sql("left outer",
@@ -940,7 +940,10 @@ class LogDB:
             cursor = self._db.execute(sql, args)
         else:
             raise ValueError("No identifier given")
-        return [row[0] for row in cursor]
+
+        for row in cursor:
+            if row[0] is not None:
+                yield row[0]
 
     def iter_tag_def(self):
         table_name = self.tablename_tag
