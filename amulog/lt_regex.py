@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
 import re
 import logging
 import ipaddress
@@ -14,7 +15,7 @@ _logger = logging.getLogger(__package__)
 
 class VariableRegex:
 
-    def __init__(self, fn, hostalias, label_unknown="unknown"):
+    def __init__(self, fn, hostalias=None, label_unknown="unknown"):
         self._ext = {}
         self._re = {}
         self._ha = hostalias
@@ -33,6 +34,8 @@ class VariableRegex:
                 return tuple([w.strip() for w in s.split(", ")])
 
         vre_conf = configparser.ConfigParser()
+        if not os.path.exists(fn):
+            raise IOError("{0} not found".format(fn))
         loaded = vre_conf.read(fn)
         if len(loaded) == 0:
             mes = "VariableRegex config {0} is empty".format(fn)
@@ -102,7 +105,9 @@ class VariableRegex:
             return None
 
     def label_host(self, word):
-        if self._ha.isknown(word):
+        if self._ha is None:
+            return None
+        elif self._ha.isknown(word):
             return "HOST"
         else:
             return None

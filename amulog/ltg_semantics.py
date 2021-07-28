@@ -58,24 +58,26 @@ class LTGroupSemantics(lt_common.LTGroupOffline):
 
 def init_nlp_normalizer(conf):
     from . import config
-    from . import host_alias
     from amsemantics import Normalizer
     filters = config.getlist(conf, "nlp_preprocess", "filters")
     mreplacer_sources = config.getlist(conf, "nlp_preprocess",
                                        "replacer_sources")
     vreplacer_source = conf["nlp_preprocess"]["variable_rule"]
-    ha = host_alias.init_hostalias(conf)
+    ha_source = conf["manager"]["host_alias_filename"]
+    if ha_source == "":
+        ha_source = None
     lemma_exception = config.getlist(conf, "nlp_preprocess",
                                      "lemma_exception")
+    th_word_length = conf.getint("nlp_preprocess",
+                                 "remove_short_word_length")
     return Normalizer(filters, mreplacer_sources,
-                      vreplacer_source, ha, lemma_exception)
+                      vreplacer_source, ha_source,
+                      lemma_exception, th_word_length)
 
 
 def init_ltgroup_semantics(conf, lttable):
     from . import config
     normalizer = init_nlp_normalizer(conf)
-    # preprocess_conf_path = conf["log_template_group_semantics"]["conf_path"]
-    # preprocess_func_name = conf["log_template_group_semantics"]["func_name"]
     lda_model = conf["log_template_group_semantics"]["lda_model"]
     stop_words = config.getlist(conf, "log_template_group_semantics",
                                 "lda_stop_words")

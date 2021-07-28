@@ -14,9 +14,9 @@ AMULOG (A Manager for Unstructured LOGs)
    :alt: BSD 3-Clause License
    :target: https://opensource.org/licenses/BSD-3-Clause
 
-.. image:: https://travis-ci.org/cpflat/amulog.svg?branch=master
+.. image:: https://api.travis-ci.com/amulog/amulog.svg?branch=master
    :alt: Travis CI
-   :target: https://travis-ci.com/github/cpflat/amulog
+   :target: https://travis-ci.com/github/amulog/amulog
 
 
 Amulog is a tool to support system log management.
@@ -24,8 +24,8 @@ The main function is to classify log messages with automatically generated log t
 and to store the data in a database.
 This system works on python3.
 
-* Source: https://github.com/cpflat/amulog
-* Bug Reports: https://github.com/cpflat/amulog/issues
+* Source: https://github.com/amulog/amulog
+* Bug Reports: https://github.com/amulog/amulog/issues
 * Author: `Satoru Kobayashi <https://github.com/cpflat/>`_
 * License: `BSD-3-Clause <https://opensource.org/licenses/BSD-3-Clause>`_
 
@@ -34,7 +34,7 @@ Main features
 =============
 
 - Support multiple databases: sqlite and mysql
-- Smart log segmentation with `log2seq <https://github.com/cpflat/log2seq>`_
+- Smart log segmentation with `log2seq <https://github.com/amulog/log2seq>`_
 - Multiple template generation algorithms such as: Drain, SHISO, LenMa, FT-tree, Dlog, etc.
 - Support Online (incremental) and Offline (hindsight) use
 - Suspend and resume the template generation process

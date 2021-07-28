@@ -261,6 +261,7 @@ filters = replace_variable, strip_symbols, manual_replace, remove_symbols, lower
 replacer_sources = nlp_before_rule, nlp_after_rule
 variable_rule = drain_regex.conf
 lemma_exception = junos, libjunos, caps, cubs, gres, ns, pics, sms, tos
+remove_short_word_length = 1
 
 
 [visual]
