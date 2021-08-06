@@ -1,7 +1,6 @@
 log2seq>=0.1.4
 numpy
-scipy<=1.5.4
-# scipy>1.5.4 does not support python 3.6
+scipy
 scikit-learn
 python-dateutil
 python-crfsuite

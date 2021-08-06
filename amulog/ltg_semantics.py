@@ -9,7 +9,8 @@ class LTGroupSemantics(lt_common.LTGroupOffline):
 
     def __init__(self, lttable, normalizer,
                  lda_modelname, stop_words=None, random_seed=None,
-                 lda_n_topics=None, cluster_eps=None):
+                 lda_n_topics=None, cluster_eps=None,
+                 tuning_metrics="cluster"):
         super().__init__(lttable)
         self._lognorm = normalizer
         self._lda_modelname = lda_modelname
@@ -17,6 +18,7 @@ class LTGroupSemantics(lt_common.LTGroupOffline):
         self._random_seed = random_seed
         self._lda_n_topics = lda_n_topics
         self._cluster_eps = cluster_eps
+        self._tuning_metrics = tuning_metrics
 
         self._sc = None
         self._tuning_rules = None
@@ -96,12 +98,14 @@ def init_ltgroup_semantics(conf, lttable):
         cluster_eps = None
     else:
         cluster_eps = float(cluster_eps_str)
+    tuning_metrics = conf["log_template_group_semantics"]["tuning_metrics"]
 
     ltgroup = LTGroupSemantics(lttable, normalizer, lda_model,
                                stop_words=stop_words,
                                random_seed=random_seed,
                                lda_n_topics=lda_n_topics,
-                               cluster_eps=cluster_eps)
+                               cluster_eps=cluster_eps,
+                               tuning_metrics=tuning_metrics)
     if lda_n_topics is None or cluster_eps_str is None:
         union_rules_str = config.getlist(conf,
                                          "log_template_group_semantics",
