@@ -250,6 +250,7 @@ lda_stop_words =
 lda_seed =
 lda_n_topics =
 cluster_eps =
+cluster_size_min = 5
 tuning_metrics = cluster
 tuning_union_rules =
 tuning_separation_rules =

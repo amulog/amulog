@@ -10,6 +10,7 @@ class LTGroupSemantics(lt_common.LTGroupOffline):
     def __init__(self, lttable, normalizer,
                  lda_modelname, stop_words=None, random_seed=None,
                  lda_n_topics=None, cluster_eps=None,
+                 cluster_size_min=5,
                  tuning_metrics="cluster"):
         super().__init__(lttable)
         self._lognorm = normalizer
@@ -18,6 +19,7 @@ class LTGroupSemantics(lt_common.LTGroupOffline):
         self._random_seed = random_seed
         self._lda_n_topics = lda_n_topics
         self._cluster_eps = cluster_eps
+        self._cluster_size_min = cluster_size_min
         self._tuning_metrics = tuning_metrics
 
         self._sc = None
@@ -42,6 +44,8 @@ class LTGroupSemantics(lt_common.LTGroupOffline):
                                    random_seed=self._random_seed,
                                    lda_n_topics=self._lda_n_topics,
                                    cluster_eps=self._cluster_eps,
+                                   cluster_size_min=self._cluster_size_min,
+                                   tuning_metrics=self._tuning_metrics,
                                    verbose=verbose)
         if self._tuning_rules is not None:
             args, kwargs = self._tuning_rules
@@ -98,6 +102,8 @@ def init_ltgroup_semantics(conf, lttable):
         cluster_eps = None
     else:
         cluster_eps = float(cluster_eps_str)
+    cluster_size_min = conf.getint("log_template_group_semantics",
+                                   "cluster_size_min")
     tuning_metrics = conf["log_template_group_semantics"]["tuning_metrics"]
 
     ltgroup = LTGroupSemantics(lttable, normalizer, lda_model,
@@ -105,6 +111,7 @@ def init_ltgroup_semantics(conf, lttable):
                                random_seed=random_seed,
                                lda_n_topics=lda_n_topics,
                                cluster_eps=cluster_eps,
+                               cluster_size_min=cluster_size_min,
                                tuning_metrics=tuning_metrics)
     if lda_n_topics is None or cluster_eps_str is None:
         union_rules_str = config.getlist(conf,
