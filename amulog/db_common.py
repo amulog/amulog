@@ -71,6 +71,10 @@ class Database(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def is_internal_table(self, name):
+        raise NotImplementedError
+
+    @abstractmethod
     def get_table_names(self):
         raise NotImplementedError
 

@@ -331,10 +331,10 @@ class LogDB:
     tablename_ltg = "ltg"
     tablename_tag = "tag"
     table_names = (tablename_log, tablename_lt, tablename_ltg, tablename_tag)
-    indexname_log = "log_index"
-    indexname_ltg = "ltg_index"
-    indexname_tag = "tag_index"
-    index_names = (indexname_log, indexname_ltg, indexname_tag)
+    indexnames_log = ["log_index_lid", "log_index_ltid", "log_index_dt", "log_index_host"]
+    indexnames_ltg = ["ltg_index"]
+    indexnames_tag = ["tag_index"]
+    index_names = indexnames_log + indexnames_ltg + indexnames_tag
     _tablename_tmp_footer = "_tmp"
 
     def __init__(self, conf, edit, reset_db):
@@ -430,31 +430,71 @@ class LogDB:
         self._init_index_tag()
 
     def _init_index_log(self):
-        index_name = self.indexname_log
+        # index_name = self.indexname_log
+        # table_name = self.tablename_log
+        # l_key = [db_common.TableKey("lid", "integer", tuple()),
+        #          db_common.TableKey("ltid", "integer", tuple()),
+        #          db_common.TableKey("dt", "datetime", tuple()),
+        #          db_common.TableKey("host", "text", (100,))]
+        # sql = self._db.create_index_sql(table_name, index_name, l_key)
+        # self._db.execute(sql)
+
         table_name = self.tablename_log
-        l_key = [db_common.TableKey("lid", "integer", tuple()),
-                 db_common.TableKey("ltid", "integer", tuple()),
-                 db_common.TableKey("dt", "datetime", tuple()),
-                 db_common.TableKey("host", "text", (100,))]
+        index_name = self.indexnames_log[0]  # log_index_lid
+        l_key = [db_common.TableKey("lid", "integer", tuple())]
+        sql = self._db.create_index_sql(table_name, index_name, l_key)
+        self._db.execute(sql)
+
+        index_name = self.indexnames_log[1]  # log_index_ltid
+        l_key = [db_common.TableKey("ltid", "integer", tuple())]
+        sql = self._db.create_index_sql(table_name, index_name, l_key)
+        self._db.execute(sql)
+
+        index_name = self.indexnames_log[2]  # log_index_dt
+        l_key = [db_common.TableKey("dt", "datetime", tuple())]
+        sql = self._db.create_index_sql(table_name, index_name, l_key)
+        self._db.execute(sql)
+
+        index_name = self.indexnames_log[3]  # log_index_host
+        l_key = [db_common.TableKey("host", "text", (100, ))]
         sql = self._db.create_index_sql(table_name, index_name, l_key)
         self._db.execute(sql)
 
     def _init_index_ltg(self):
-        index_name = self.indexname_ltg
+        index_name = self.indexnames_ltg[0]  # ltg_index
         table_name = self.tablename_ltg
-        l_key = [db_common.TableKey("ltgid", "integer", tuple()), ]
+        l_key = [db_common.TableKey("ltgid", "integer", tuple())]
         sql = self._db.create_index_sql(table_name, index_name, l_key)
         self._db.execute(sql)
 
     def _init_index_tag(self):
-        index_name = self.indexname_tag
+        index_name = self.indexnames_tag[0]  # tag_index
         table_name = self.tablename_tag
-        l_key = [db_common.TableKey("tag", "text", (100,)), ]
+        l_key = [db_common.TableKey("tag", "text", (100,))]
         sql = self._db.create_index_sql(table_name, index_name, l_key)
         self._db.execute(sql)
 
     def repair_tables(self):
         current_table_names = self._db.get_table_names()
+
+        for name in current_table_names:
+            if self._db.is_internal_table(name):
+                pass
+            elif self._tablename_tmp_footer in name:
+                print("remove temporal table")
+                sql = self._db.drop_table_sql(name)
+                self._db.execute(sql)
+            elif name not in self.table_names and name not in self.index_names:
+                if "index" in name:
+                    # may be already removed with table
+                    if name in self._db.get_table_names():
+                        print("remove unused index {0}".format(name))
+                        sql = self._db.drop_index_sql(name)
+                        self._db.execute(sql)
+                else:
+                    print("remove unused table {0}".format(name))
+                    sql = self._db.drop_table_sql(name)
+                    self._db.execute(sql)
 
         for name in self.table_names:
             if name not in current_table_names:
@@ -465,29 +505,32 @@ class LogDB:
                 elif name == self.tablename_ltg:
                     print("no ltg table, init table")
                     self._init_table_ltg()
-                    print("NOTE: try \"\" db-remake-group if you need afterward")
+                    print("NOTE: try \"db-remake-group\" if you need afterward")
                 elif name == self.tablename_tag:
                     print("no tag table, init table")
                     self._init_table_tag()
-                    print("NOTE: try \"\" db-tag if you need afterward")
+                    print("NOTE: try \"db-tag\" if you need afterward")
 
+        current_table_names = self._db.get_table_names()
+
+        log_index_filled = True
         for name in self.index_names:
             if name not in current_table_names:
-                if name == self.indexname_log:
-                    print("no log index, init")
-                    self._init_index_log()
-                elif name == self.indexname_ltg:
+                if name in self.indexnames_log:
+                    log_index_filled = False
+                elif name in self.indexnames_ltg:
                     print("no ltg index, init")
                     self._init_index_ltg()
-                elif name == self.indexname_tag:
+                elif name in self.indexnames_tag:
                     print("no tag index, init")
                     self._init_index_tag()
-
-        for name in current_table_names:
-            if self._tablename_tmp_footer in name:
-                print("remove temporal table")
-                sql = self._db.drop_table_sql(name)
-                self._db.execute(sql)
+        if not log_index_filled:
+            print("not enough log index, remake")
+            for name in self.indexnames_log:
+                if name in current_table_names:
+                    sql = self._db.drop_index_sql(name)
+                    self._db.execute(sql)
+            self._init_index_log()
 
         self._db.commit()
         current_table_names = self._db.get_table_names()
@@ -521,21 +564,22 @@ class LogDB:
         assert tmp_table_name in self._db.get_table_names()
 
         if table_name == self.tablename_log:
-            index_name = self.indexname_log
+            index_names = self.indexnames_log
             index_func = self._init_index_log
         elif table_name == self.tablename_ltg:
-            index_name = self.indexname_ltg
+            index_names = self.indexnames_ltg
             index_func = self._init_index_ltg
         elif table_name == self.tablename_tag:
-            index_name = self.indexname_tag
+            index_names = self.indexnames_tag
             index_func = self._init_index_tag
         else:
-            index_name = None
+            index_names = None
             index_func = None
 
-        if index_name:
-            sql = self._db.drop_index_sql(index_name)
-            self._db.execute(sql)
+        if index_names:
+            for index_name in index_names:
+                sql = self._db.drop_index_sql(index_name)
+                self._db.execute(sql)
 
         sql = self._db.drop_table_sql(table_name)
         self._db.execute(sql)
@@ -543,7 +587,7 @@ class LogDB:
         sql = self._db.alter_table_sql(tmp_table_name, table_name)
         self._db.execute(sql)
 
-        if index_name:
+        if index_names:
             index_func()
 
         self._table_switch.pop(table_name)

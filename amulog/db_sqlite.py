@@ -53,6 +53,9 @@ class Sqlite3(db_common.Database):
         cursor.executemany(sql, iter_args)
         return cursor
 
+    def is_internal_table(self, name):
+        return "sqlite" in name
+
     def get_table_names(self):
         sql = "select name from sqlite_master"
         cursor = self.execute(sql)

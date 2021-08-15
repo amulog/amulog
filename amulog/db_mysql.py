@@ -51,6 +51,9 @@ class Mysql(db_common.Database):
         if self._connect is not None:
             self._connect.commit()
 
+    def is_internal_table(self, name):
+        return False
+
     @classmethod
     def datetime(cls, ret):
         return ret
