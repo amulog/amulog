@@ -192,27 +192,30 @@ def dur2str(td):
 
 
 def merge_config(conf1, conf2):
-    """Overwrite conf1 with conf2."""
+    """Merge conf1 with conf2.
+    If both config has same options, conf2 has priority."""
     for sec in conf2.sections():
         for opt in conf2.options(sec):
-            if conf1.has_option(sec, opt):
-                pass
-            else:
-                if not conf1.has_section(sec):
-                    conf1[sec] = {}
-                conf1.set(sec, opt, conf2[sec][opt])
+            if not conf1.has_section(sec):
+                conf1.add_section(sec)
+            conf1.set(sec, opt, conf2[sec][opt])
     return conf1
 
 
 def load_defaults(iterable_conf_path=None):
     l_fn = iterable_conf_path
-    temp_conf = configparser.ConfigParser()
+    base_conf = None
     for fn in l_fn:
-        ret = temp_conf.read(fn)
-        if len(ret) == 0:
+        tmp_conf = configparser.ConfigParser()
+        tmp_conf.read(fn)
+        if len(tmp_conf) == 0:
             raise IOError("config load error ({0})".format(fn))
+        if base_conf is None:
+            base_conf = tmp_conf
+        else:
+            base_conf = merge_config(base_conf, tmp_conf)
 
-    return temp_conf
+    return base_conf
 
 
 def _load_imports(conf):
@@ -226,7 +229,7 @@ def _load_imports(conf):
             import_conf.read(import_fn)
         else:
             raise IOError("config load error ({0})".format(import_fn))
-        conf = merge_config(conf, import_conf)
+        conf = merge_config(import_conf, conf)
 
     return conf
 
@@ -248,17 +251,6 @@ def open_config(fn=None, env=CONFIG_ENV,
         
     """
 
-#    def _import_config(_conf, _import_conf):
-#        for sec in _import_conf.sections():
-#            for opt in _import_conf.options(sec):
-#                if _conf.has_option(sec, opt):
-#                    pass
-#                else:
-#                    if not _conf.has_section(sec):
-#                        _conf[sec] = {}
-#                    _conf.set(sec, opt, _import_conf[sec][opt])
-#        return _conf
-
     conf = configparser.ConfigParser()
 
     if fn is None and env is not None:
@@ -277,16 +269,6 @@ def open_config(fn=None, env=CONFIG_ENV,
 
     if not ignore_import:
         conf = _load_imports(conf)
-#        while conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
-#            if conf[IMPORT_SECTION][IMPORT_OPTION] == "":
-#                break
-#            import_fn = conf.get(IMPORT_SECTION, IMPORT_OPTION)
-#            conf.remove_option(IMPORT_SECTION, IMPORT_OPTION)
-#            import_conf = configparser.ConfigParser()
-#            ret = import_conf.read(import_fn)
-#            if len(ret) == 0:
-#                raise IOError("config load error ({0})".format(import_fn))
-#            _import_config(conf, import_conf)
 
     l_defaults = []
     if base_default:
@@ -295,7 +277,7 @@ def open_config(fn=None, env=CONFIG_ENV,
         l_defaults += ex_defaults
     if l_defaults:
         default_conf = load_defaults(l_defaults)
-        merge_config(conf, default_conf)
+        conf = merge_config(default_conf, conf)
 
     return conf
 
