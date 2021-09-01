@@ -300,13 +300,17 @@ def open_config(fn=None, env=CONFIG_ENV,
     return conf
 
 
-def show_default_config(ex_defaults=None):
-    conf = load_defaults(ex_defaults)
+def show_config(conf):
     for section in conf.sections():
         print("[{0}]".format(section))
         for option in conf.options(section):
             print("{0} = {1}".format(option, conf[section][option]))
         print()
+
+
+def show_default_config(ex_defaults=None):
+    conf = load_defaults(ex_defaults)
+    show_config(conf)
 
 
 def show_config_diff(l_conf_name, l_conf=None, ex_defaults=None):
