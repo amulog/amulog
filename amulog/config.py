@@ -206,10 +206,10 @@ def load_defaults(iterable_conf_path=None):
     l_fn = iterable_conf_path
     base_conf = None
     for fn in l_fn:
+        if not os.path.exists(fn):
+            raise IOError("{0} not found".format(fn))
         tmp_conf = configparser.ConfigParser()
         tmp_conf.read(fn)
-        if len(tmp_conf) == 0:
-            raise IOError("config load error ({0})".format(fn))
         if base_conf is None:
             base_conf = tmp_conf
         else:
@@ -224,11 +224,10 @@ def _load_imports(conf):
             break
         import_fn = conf[IMPORT_SECTION][IMPORT_OPTION]
         conf.remove_option(IMPORT_SECTION, IMPORT_OPTION)
-        import_conf = configparser.ConfigParser()
-        if os.path.exists(import_fn):
-            import_conf.read(import_fn)
-        else:
+        if not os.path.exists(import_fn):
             raise IOError("config load error ({0})".format(import_fn))
+        import_conf = configparser.ConfigParser()
+        import_conf.read(import_fn)
         conf = merge_config(import_conf, conf)
 
     return conf

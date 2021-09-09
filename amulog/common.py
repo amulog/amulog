@@ -382,6 +382,13 @@ class Timer:
 
 # visualization
 
+def add_indent(buffer, indent):
+    ret = []
+    for line in buffer.splitlines():
+        ret.append(" " * indent + line)
+    return "\n".join(ret)
+
+
 def show_repr(iterable, head, foot, indent=0, strfunc=str):
     data = list(iterable)
     if (head <= 0 and foot <= 0) or \
