@@ -14,6 +14,9 @@ src_path = test.temp
 # If false, only search right under the given directory
 src_recur = false
 
+# Cache directory path
+cache_dir = /tmp
+
 # Processing log output path (not dataset but log of this system)
 # If empty, output log on stderr
 logging = auto.log
@@ -245,8 +248,16 @@ normalizer_rule = DEFAULT
 
 
 [log_template_group_semantics]
+# ['self', 'rfc'] or their combination
+# 'rfc' requires rfcyaml library
+lda_knowledge_sources = self
+rfc_use_cache = True
+rfc_document_unit = rfc
+
 lda_model = gensim
 lda_stop_words =
+lda_use_nltk_stopwords = false
+lda_use_sklearn_stopwords = false
 lda_seed =
 lda_n_topics =
 cluster_eps =

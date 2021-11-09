@@ -479,7 +479,7 @@ class LTGroup(ABC):
             return cnt
 
     @abstractmethod
-    def make(self):
+    def make(self) -> LTTable:
         raise NotImplementedError
 
     def add_lt(self, gid, ltline):
@@ -516,6 +516,7 @@ class LTGroupOnline(LTGroup, ABC):
 
     def make(self):
         self.remake_all()
+        return self.lttable
 
     def remake_all(self):
         self._init_dict()
@@ -539,10 +540,15 @@ class LTGroupOffline(LTGroup, ABC):
     def __init__(self, lttable):
         super().__init__()
         self.lttable = lttable
+        self._n_groups = 0
 
     @abstractmethod
-    def make(self):
+    def make(self) -> LTTable:
         raise NotImplementedError
+
+    @property
+    def n_groups(self):
+        return self._n_groups
 
 
 class LTPostProcess(object):

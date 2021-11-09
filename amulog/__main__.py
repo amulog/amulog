@@ -88,7 +88,12 @@ def data_parse(ns):
     lp = manager.load_log2seq(conf)
     for line in manager.iter_lines(targets):
         pline = manager.parse_line(strutil.add_esc(line), lp)
-        print(pline)
+        if pline is None:
+            pass
+        elif ns.words:
+            print(" ".join(pline["words"]))
+        else:
+            print(pline)
 
 
 def db_make(ns):
@@ -462,7 +467,11 @@ DICT_ARGSET = {
                         ],
                        data_from_data],
     "data-parse": ["Check log data parsing with log2seq.",
-                   [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, ARG_FILES_OPT],
+                   [OPT_CONFIG, OPT_DEBUG, OPT_RECUR,
+                    [["-w", "--words"],
+                     {"dest": "words", "action": "store_true",
+                      "help": "only show parsed words"}],
+                    ARG_FILES_OPT],
                    data_parse],
     "db-make": ["Initialize database and add log data. ",
                 [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_PARALLEL, ARG_FILES_OPT],
