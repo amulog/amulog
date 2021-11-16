@@ -1,4 +1,5 @@
 import datetime
+from dateutil.tz import tzlocal
 from typing import NamedTuple, Iterable
 from abc import ABC, abstractmethod
 
@@ -93,7 +94,9 @@ class Database(ABC):
 
     @staticmethod
     def strptime(string):
-        return datetime.datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
+        dt = datetime.datetime.strptime(string, '%Y-%m-%d %H:%M:%S')
+        dt = dt.replace(tzinfo=tzlocal())
+        return dt
 
     @classmethod
     @abstractmethod
