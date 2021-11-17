@@ -9,6 +9,7 @@ and grouping definitions.
 import datetime
 import logging
 from collections import defaultdict
+from dateutil.tz import tzlocal
 
 from . import common
 from . import strutil
@@ -618,13 +619,18 @@ class LogDB:
     def _parse_row(self, row):
         d_line = {"lid": int(row[0]),
                   "ltid": int(row[1]),
-                  "dt": self._db.datetime(row[2]),
+                  "dt": self._str2datetime(row[2]),
                   "host": row[3]}
         if row[4] == "":
             d_line["l_w"] = []
         else:
             d_line["l_w"] = strutil.split_igesc(row[4], self._splitter)
         return d_line
+
+    def _str2datetime(self, dtstr):
+        dt = self._db.datetime(dtstr)
+        dt = dt.replace(tzinfo=tzlocal())
+        return dt
 
     # def add_line(self, ltid, dt, host, l_w, lid=None):
     def add_line(self, **kwargs):
@@ -650,7 +656,7 @@ class LogDB:
         for row in self._select_log({}, l_order=l_order):
             d_line = {"lid": int(row[0]),
                       "ltid": int(row[1]),
-                      "dt": self._db.datetime(row[2]),
+                      "dt": self._str2datetime(row[2]),
                       "host": row[3]}
             if row[4] == "":
                 d_line["l_w"] = []
@@ -777,7 +783,7 @@ class LogDB:
         top_dtstr, end_dtstr = cursor.fetchone()
         if None in (top_dtstr, end_dtstr):
             raise ValueError("No data found in DB")
-        return self._db.datetime(top_dtstr), self._db.datetime(end_dtstr)
+        return self._str2datetime(top_dtstr), self._str2datetime(end_dtstr)
 
     def whole_host_lt(self, dts=None, dte=None):
         table_name = "log"
