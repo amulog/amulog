@@ -289,6 +289,8 @@ def parse_condition(conditions):
     Args:
         conditions (list)
     """
+    from dateutil import parser
+
     d = {}
     for arg in conditions:
         if "=" not in arg:
@@ -298,18 +300,32 @@ def parse_condition(conditions):
             d["ltid"] = int(arg.partition("=")[-1])
         elif key in ("gid", "ltgid"):
             d["ltgid"] = int(arg.partition("=")[-1])
-        elif key in ("date_from", "top_date"):
-            date_string = arg.partition("=")[-1]
-            d["dts"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
-        elif key in ("date_to", "end_date"):
-            date_string = arg.partition("=")[-1]
-            d["dte"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
+        elif key in ("time_from", "dts"):
+            time_string = arg.partition("=")[-1]
+            time_string = time_string.strip('"' + "'")
+            d["dts"] = parser.parse(time_string)
+        elif key in ("time_to", "dte"):
+            time_string = arg.partition("=")[-1]
+            time_string = time_string.strip('"' + "'")
+            d["dte"] = parser.parse(time_string)
+        # elif key in ("date_from", "top_date"):
+        #     date_string = arg.partition("=")[-1]
+        #     d["dts"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
+        # elif key in ("date_to", "end_date"):
+        #     date_string = arg.partition("=")[-1]
+        #     d["dte"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
         elif key == "date":
             date_string = arg.partition("=")[-1]
             d["dts"] = datetime.datetime.strptime(date_string, "%Y-%m-%d")
             d["dte"] = d["dts"] + datetime.timedelta(days=1)
         elif key == "host":
             d["host"] = arg.partition("=")[-1]
+        elif key == "host_like":
+            d["host_like"] = arg.partition("=")[-1]
+        elif key == "host_regexp":
+            d["host_regexp"] = arg.partition("=")[-1]
+        else:
+            raise ValueError
     return d
 
 
@@ -432,7 +448,8 @@ ARG_DBSEARCH = [["conditions"],
                 {"metavar": "CONDITION", "nargs": "+",
                  "help": ("Conditions to search log messages. "
                           "Example: MODE gid=24 date=2012-10-10 ..., "
-                          "Keys: ltid, gid, date, date_from, date_to, host")}]
+                          "Keys: ltid, gid, date, time_from, time_to, host, "
+                          "host_like, host_regexp")}]
 
 # argument settings for each modes
 # description, List[args, kwargs], func

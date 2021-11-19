@@ -157,6 +157,10 @@ class LogData:
             dte (datetime.datetime): Condition for timestamp.
                 Messages before 'dte' will be yield.
             host (str): A source hostname of the message.
+            host_like (str): A patttern to find host.
+                The pattern follows that of SQL LIKE operator.
+            host_regexp (str): A pattern to find host.
+                The pattern follows that of SQL REGEXP operator.
 
         Yields:
             LogMessage: An annotated log message instance
@@ -716,6 +720,10 @@ class LogDB:
             elif c == "dte":
                 l_cond.append(db_common.Condition("dt", "<", c, True))
                 args[c] = self._db.strftime(d_cond[c])
+            elif c == "host_like":
+                l_cond.append(db_common.Condition("host", "like", c, True))
+            elif c == "host_regexp":
+                l_cond.append(db_common.Condition("host", "regexp", c, True))
             else:
                 l_cond.append(db_common.Condition(c, "=", c, True))
         sql = self._db.select_sql(table_name, l_key, l_cond, l_order, limit)
