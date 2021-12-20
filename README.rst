@@ -172,7 +172,8 @@ see help with following command:
 Reference
 =========
 
-This tool is demonstrated at `CNSM2020 <http://dl.ifip.org/db/conf/cnsm/cnsm2020/>`_.
+This tool is demonstrated at `CNSM2020 <http://dl.ifip.org/db/conf/cnsm/cnsm2020/>`_ and `International Journal of Network Management <http://doi.org/10.1002/nem.2195 >`_ (now on early access).
+
 If you use this code, please consider citing:
 
 ::

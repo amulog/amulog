@@ -737,8 +737,8 @@ class LogDB:
         args = {"lid": lid}
 
         ret = [self._parse_row(row) for row in self._db.execute(sql, args)]
-        assert len(ret) > 0, "lid not found"
-        assert len(ret) == 1, "lid duplicated"
+        assert len(ret) > 0, "lid {0} not found".format(lid)
+        assert len(ret) == 1, "lid {0} duplicated".format(lid)
         return ret[0]
 
     def update_log(self, d_cond, **kwargs):
