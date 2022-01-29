@@ -248,21 +248,39 @@ normalizer_rule = DEFAULT
 
 
 [log_template_group_semantics]
+use_cache = True
+
+# training sources
 # ['self', 'rfc'] or their combination
 # 'rfc' requires rfcyaml library
 lda_knowledge_sources = self
-rfc_use_cache = True
 rfc_document_unit = rfc
 
+# LDA parameters
 lda_model = gensim
 lda_stop_words =
 lda_use_nltk_stopwords = false
 lda_use_sklearn_stopwords = false
 lda_seed =
 lda_n_topics =
-cluster_eps =
-cluster_size_min = 5
-tuning_metrics = cluster
+lda_cachename = ldamodel
+
+# clustering method
+# one of [DBSCAN, RecursiveDBSCAN]
+cluster_method = DBSCAN
+
+# used if cluster_method in [DBSCAN, RecursiveDBSCAN]
+# Empty in default for automated parameter tuning
+dbscan_eps =
+
+# used if cluster_method is DBSCAN
+dbscan_cluster_size_min = 5
+dbscan_tuning_metrics = cluster
+
+# used if cluster_method is RecursiveDBSCAN
+rdbscan_cluster_size_max = 20
+
+# rule-based parameter tuning
 tuning_union_rules =
 tuning_separation_rules =
 tuning_term_class = topic

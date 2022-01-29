@@ -3,7 +3,6 @@ import pandas as pd
 
 from . import strutil
 from . import lt_common
-from amsemantics import TopicClustering
 
 _logger = logging.getLogger(__package__)
 
@@ -14,29 +13,38 @@ class LTGroupSemantics(lt_common.LTGroupOffline):
                  lda_modelname="gensim",
                  lda_knowledge_sources=None,
                  cache_dir="/tmp",
-                 rfc_use_cache=True, rfc_document_unit="rfc",
+                 use_cache=True,
+                 rfc_document_unit="rfc",
                  random_seed=None,
                  stop_words=None,
                  use_nltk_stopwords=False,
                  use_sklearn_stopwords=False,
-                 lda_n_topics=None, cluster_eps=None,
-                 cluster_size_min=5,
-                 tuning_metrics="cluster"):
+                 lda_n_topics=None,
+                 lda_cachename="ldamodel",
+                 cluster_method="DBSCAN",
+                 dbscan_eps=None,
+                 dbscan_cluster_size_min=5,
+                 dbscan_tuning_metrics="cluster",
+                 rdbscan_cluster_size_max=20,
+                 ):
         super().__init__(lttable)
         self._lognorm = normalizer
         self._lda_modelname = lda_modelname
         self._lda_knowledge_sources = lda_knowledge_sources
         self._cache_dir = cache_dir
-        self._rfc_use_cache = rfc_use_cache
+        self._use_cache = use_cache
         self._rfc_document_unit = rfc_document_unit
         self._stop_words = stop_words
         self._use_nltk_stopwords = use_nltk_stopwords,
         self._use_sklearn_stopwords = use_sklearn_stopwords,
         self._random_seed = random_seed
         self._lda_n_topics = lda_n_topics
-        self._cluster_eps = cluster_eps
-        self._cluster_size_min = cluster_size_min
-        self._tuning_metrics = tuning_metrics
+        self._lda_cachename = lda_cachename
+        self._cluster_method = cluster_method
+        self._dbscan_eps = dbscan_eps
+        self._dbscan_cluster_size_min = dbscan_cluster_size_min
+        self._dbscan_tuning_metrics = dbscan_tuning_metrics
+        self._rdbscan_cluster_size_max = rdbscan_cluster_size_max
 
         self._sc = None
         self._tuning_rules = None
@@ -60,23 +68,52 @@ class LTGroupSemantics(lt_common.LTGroupOffline):
             self._input_docs, verbose=verbose
         )
 
+    def need_autotuning(self):
+        if self._cluster_method == "DBSCAN":
+            return self._lda_n_topics is None or self._dbscan_eps is None
+        elif self._cluster_method == "RecursiveDBSCAN":
+            return self._lda_n_topics is None or self._dbscan_eps is None
+        else:
+            raise NotImplementedError
+
+    def _init_topic_clustering(self, verbose=False):
+        if self._cluster_method == "DBSCAN":
+            from amsemantics import TopicClusteringDBSCAN
+            return TopicClusteringDBSCAN(
+                model=self._lda_modelname,
+                random_seed=self._random_seed,
+                stop_words=self._stop_words,
+                use_nltk_stopwords=self._use_nltk_stopwords,
+                use_sklearn_stopwords=self._use_sklearn_stopwords,
+                lda_n_topics=self._lda_n_topics,
+                redistribute=True,
+                cluster_eps=self._dbscan_eps,
+                cluster_size_min=self._dbscan_cluster_size_min,
+                tuning_metrics=self._dbscan_tuning_metrics,
+                verbose=verbose
+            )
+        elif self._cluster_method == "RecursiveDBSCAN":
+            from amsemantics import TopicClusteringRecursiveDBSCAN
+            return TopicClusteringRecursiveDBSCAN(
+                model=self._lda_modelname,
+                random_seed=self._random_seed,
+                stop_words=self._stop_words,
+                use_nltk_stopwords=self._use_nltk_stopwords,
+                use_sklearn_stopwords=self._use_sklearn_stopwords,
+                lda_n_topics=self._lda_n_topics,
+                cluster_eps=self._dbscan_eps,
+                recursive_cluster_size=self._rdbscan_cluster_size_max,
+                verbose=verbose
+            )
+        else:
+            raise NotImplementedError
+
     def make(self, verbose=False):
         if self._input_docs is None:
             self.set_documents(verbose=verbose)
 
-        self._sc = TopicClustering(
-            model=self._lda_modelname,
-            redistribute=True,
-            random_seed=self._random_seed,
-            stop_words=self._stop_words,
-            use_nltk_stopwords=self._use_nltk_stopwords,
-            use_sklearn_stopwords=self._use_sklearn_stopwords,
-            lda_n_topics=self._lda_n_topics,
-            cluster_eps=self._cluster_eps,
-            cluster_size_min=self._cluster_size_min,
-            tuning_metrics=self._tuning_metrics,
-            verbose=verbose
-        )
+        self._sc = self._init_topic_clustering(verbose=verbose)
+
         if self._tuning_rules is not None:
             args, kwargs = self._tuning_rules
             self._sc.set_tuning_rules(*args, **kwargs)
@@ -113,7 +150,7 @@ class LTGroupSemantics(lt_common.LTGroupOffline):
             elif source_name == "rfc":
                 from amsemantics.source import rfcdoc
                 kwargs = {"cache_dir": self._cache_dir,
-                          "use_cache": self._rfc_use_cache,
+                          "use_cache": self._use_cache,
                           "normalizer": self._lognorm}
                 if self._rfc_document_unit == "rfc":
                     loader = rfcdoc.RFCLoader(**kwargs)
@@ -145,11 +182,11 @@ class LTGroupSemantics(lt_common.LTGroupOffline):
         return pd.DataFrame(results,
                             columns=["n_topics", "log_perplexity", "coherence"])
 
-    def get_visual_data(self, dim=2, with_mean=True, with_std=True):
+    def get_visual_data(self, dim=2, use_zscore=True):
         return self._sc.get_principal_components(
             input_docs=self._input_docs,
             n_components=dim,
-            with_mean=with_mean, with_std=with_std
+            use_zscore=use_zscore
         )
 
     def show_pyldavis(self, mds="pcoa"):
@@ -183,17 +220,8 @@ class LTGroupSemanticsMultiData(LTGroupSemantics):
         if self._input_docs is None:
             self.set_documents(verbose=verbose)
 
-        self._sc = TopicClustering(
-            model=self._lda_modelname,
-            redistribute=True,
-            stop_words=self._stop_words,
-            random_seed=self._random_seed,
-            lda_n_topics=self._lda_n_topics,
-            cluster_eps=self._cluster_eps,
-            cluster_size_min=self._cluster_size_min,
-            tuning_metrics=self._tuning_metrics,
-            verbose=verbose
-        )
+        self._sc = self._init_topic_clustering(verbose=verbose)
+
         if self._tuning_rules is not None:
             args, kwargs = self._tuning_rules
             self._sc.set_tuning_rules(*args, **kwargs)
@@ -241,7 +269,7 @@ def _get_ltgroup_semantic_params(conf):
     )
 
     cache_dir = conf["general"]["cache_dir"]
-    rfc_use_cache = conf["log_template_group_semantics"]["rfc_use_cache"]
+    use_cache = conf["log_template_group_semantics"]["use_cache"]
     rfc_document_unit = conf["log_template_group_semantics"]["rfc_document_unit"]
     stop_words = config.getlist(conf, "log_template_group_semantics",
                                 "lda_stop_words")
@@ -257,29 +285,36 @@ def _get_ltgroup_semantic_params(conf):
         lda_n_topics = None
     else:
         lda_n_topics = int(lda_n_topics_str)
-    cluster_eps_str = conf["log_template_group_semantics"]["cluster_eps"]
-    if cluster_eps_str == "":
-        cluster_eps = None
+    lda_cachename = conf["log_template_group_semantics"]["lda_cachename"]
+    cluster_method = conf["log_template_group_semantics"]["cluster_method"]
+    dbscan_eps_str = conf["log_template_group_semantics"]["dbscan_eps"]
+    if dbscan_eps_str == "":
+        dbscan_eps = None
     else:
-        cluster_eps = float(cluster_eps_str)
-    cluster_size_min = conf.getint("log_template_group_semantics",
-                                   "cluster_size_min")
-    tuning_metrics = conf["log_template_group_semantics"]["tuning_metrics"]
+        dbscan_eps = float(dbscan_eps_str)
+    dbscan_cluster_size_min = conf.getint("log_template_group_semantics",
+                                          "dbscan_cluster_size_min")
+    dbscan_tuning_metrics = conf["log_template_group_semantics"]["dbscan_tuning_metrics"]
+    rdbscan_cluster_size_max = conf.getint("log_template_group_semantics",
+                                           "rdbscan_cluster_size_max")
 
     return {
         "lda_modelname": lda_model,
         "lda_knowledge_sources": lda_knowledge_sources,
         "cache_dir": cache_dir,
-        "rfc_use_cache": rfc_use_cache,
+        "use_cache": use_cache,
         "rfc_document_unit": rfc_document_unit,
         "random_seed": random_seed,
         "stop_words": stop_words,
         "use_nltk_stopwords": use_nltk_stopwords,
         "use_sklearn_stopwords": use_sklearn_stopwords,
         "lda_n_topics": lda_n_topics,
-        "cluster_eps": cluster_eps,
-        "cluster_size_min": cluster_size_min,
-        "tuning_metrics": tuning_metrics,
+        "lda_cachename": lda_cachename,
+        "cluster_method": cluster_method,
+        "dbscan_eps": dbscan_eps,
+        "dbscan_cluster_size_min": dbscan_cluster_size_min,
+        "dbscan_tuning_metrics": dbscan_tuning_metrics,
+        "rdbscan_cluster_size_max": rdbscan_cluster_size_max
     }
 
 
@@ -289,15 +324,15 @@ def init_ltgroup_semantics(conf, lttable):
     kwargs = _get_ltgroup_semantic_params(conf)
     ltgroup = LTGroupSemantics(lttable, normalizer, **kwargs)
 
-    if kwargs["lda_n_topics"] is None or kwargs["cluster_eps"] is None:
-        union_rules_str = config.getlist(conf,
-                                         "log_template_group_semantics",
-                                         "tuning_union_rules")
+    if ltgroup.need_autotuning():
+        union_rules_str = config.getlist(
+            conf, "log_template_group_semantics", "tuning_union_rules"
+        )
         union_rules = [rulestr.split("|")
                        for rulestr in union_rules_str]
-        separation_rules_str = config.getlist(conf,
-                                              "log_template_group_semantics",
-                                              "tuning_separation_rules")
+        separation_rules_str = config.getlist(
+            conf, "log_template_group_semantics", "tuning_separation_rules"
+        )
         separation_rules = [rulestr.split("|")
                             for rulestr in separation_rules_str]
         if len(union_rules) > 0 or len(separation_rules) > 0:
@@ -316,7 +351,7 @@ def init_ltgroup_semantics_multi_domain(l_conf, l_lttable):
     kwargs = _get_ltgroup_semantic_params(conf)
     ltgroup = LTGroupSemanticsMultiData(l_lttable, normalizer, **kwargs,)
 
-    if kwargs["lda_n_topics"] is None or kwargs["cluster_eps"] is None:
+    if ltgroup.need_autotuning():
         union_rules_str = config.getlist(conf,
                                          "log_template_group_semantics",
                                          "tuning_union_rules")
