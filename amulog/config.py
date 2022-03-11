@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import sys
 import os
 import datetime
@@ -8,6 +5,7 @@ import logging
 import configparser
 from collections import defaultdict
 from dateutil.tz import tzlocal
+from typing import Tuple, Dict, List
 
 CONFIG_ENV = "AMULOG_CONFIG"
 DEFAULT_CONFIG = "/".join((os.path.dirname(os.path.abspath(__file__)),
@@ -85,8 +83,8 @@ class GroupDef:
                 yield group, val
 
 
-def gettuple(conf, section, name, sep=","):
-    ret = conf.get(section, name)
+def gettuple(conf, section, name, sep=",") -> Tuple[str]:
+    ret: str = conf.get(section, name)
     if ret.strip() == "":
         return tuple()
     else:
@@ -94,7 +92,7 @@ def gettuple(conf, section, name, sep=","):
                      if not len(e.strip()) == 0)
 
 
-def getlist(conf, section, name, sep=","):
+def getlist(conf, section, name, sep=",") -> List[str]:
     ret = conf.get(section, name)
     if ret.strip() == "":
         return []
@@ -103,7 +101,7 @@ def getlist(conf, section, name, sep=","):
                 if not len(e.strip()) == 0]
 
 
-def getdict(conf, section, name):
+def getdict(conf, section, name) -> Dict[str, str]:
     val = conf.get(section, name)
     ret = {}
     for e in val.split(","):

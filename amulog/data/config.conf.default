@@ -248,22 +248,28 @@ normalizer_rule = DEFAULT
 
 
 [log_template_group_semantics]
-use_cache = True
+use_cache = true
 
 # training sources
-# ['self', 'rfc'] or their combination
+# ['self', 'rfc', 'ltjunos'] or their combination
 # 'rfc' requires rfcyaml library
+# 'ltjunos' requires json file parsed by ltjunos library
 lda_knowledge_sources = self
 rfc_document_unit = rfc
+ltjunos_filepath =
+use_template_replacer = false
 
 # LDA parameters
-lda_model = gensim
+lda_library = gensim
 lda_stop_words =
 lda_use_nltk_stopwords = false
 lda_use_sklearn_stopwords = false
 lda_seed =
 lda_n_topics =
+lda_use_zscore = true
 lda_cachename = ldamodel
+guidedlda_seed_topic_list_file =
+guidedlda_seed_confidence = 0.15
 
 # clustering method
 # one of [DBSCAN, RecursiveDBSCAN]

@@ -327,7 +327,7 @@ class LogDB:
     """Interface of DB transaction for log data.
 
     Note:
-        It is not recommended to use this class directly.
+        It is not recommended using this class directly.
         Instead, use LogData.
     """
 

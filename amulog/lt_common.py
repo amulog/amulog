@@ -624,6 +624,10 @@ class VariableLabelHost(VariableLabelRule):
         return self.ha.get_group(w)
 
 
+def is_replacer(word):
+    return REPLACER_REGEX.match(word)
+
+
 def merged_template(m1, m2):
     """Return common area of log message (to be log template)"""
     ret = []

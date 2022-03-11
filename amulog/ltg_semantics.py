@@ -1,8 +1,8 @@
 import logging
-import pandas as pd
 
 from . import strutil
 from . import lt_common
+from amsemantics import SemanticClassifier
 
 _logger = logging.getLogger(__package__)
 
@@ -10,187 +10,58 @@ _logger = logging.getLogger(__package__)
 class LTGroupSemantics(lt_common.LTGroupOffline):
 
     def __init__(self, lttable, normalizer,
-                 lda_modelname="gensim",
                  lda_knowledge_sources=None,
-                 cache_dir="/tmp",
-                 use_cache=True,
-                 rfc_document_unit="rfc",
-                 random_seed=None,
-                 stop_words=None,
-                 use_nltk_stopwords=False,
-                 use_sklearn_stopwords=False,
-                 lda_n_topics=None,
-                 lda_cachename="ldamodel",
-                 cluster_method="DBSCAN",
-                 dbscan_eps=None,
-                 dbscan_cluster_size_min=5,
-                 dbscan_tuning_metrics="cluster",
-                 rdbscan_cluster_size_max=20,
-                 ):
+                 **kwargs):
         super().__init__(lttable)
         self._lognorm = normalizer
-        self._lda_modelname = lda_modelname
-        self._lda_knowledge_sources = lda_knowledge_sources
-        self._cache_dir = cache_dir
-        self._use_cache = use_cache
-        self._rfc_document_unit = rfc_document_unit
-        self._stop_words = stop_words
-        self._use_nltk_stopwords = use_nltk_stopwords,
-        self._use_sklearn_stopwords = use_sklearn_stopwords,
-        self._random_seed = random_seed
-        self._lda_n_topics = lda_n_topics
-        self._lda_cachename = lda_cachename
-        self._cluster_method = cluster_method
-        self._dbscan_eps = dbscan_eps
-        self._dbscan_cluster_size_min = dbscan_cluster_size_min
-        self._dbscan_tuning_metrics = dbscan_tuning_metrics
-        self._rdbscan_cluster_size_max = rdbscan_cluster_size_max
+        self._sc_kwargs = kwargs
 
-        self._sc = None
-        self._tuning_rules = None
-        self._l_ltid = None
-        self._training_docs = None
-        self._input_docs = None
+        kwargs["normalizer"] = normalizer
+        kwargs["training_sources"] = [
+            source_name for source_name in lda_knowledge_sources
+            if source_name != "self"
+        ]
+        kwargs["input_sources"] = None
+        self._use_input_as_training = "self" in lda_knowledge_sources
+
+        self._sc = SemanticClassifier(**kwargs)
+
+    @property
+    def classifier(self):
+        return self._sc
 
     def _tokenize(self, ltobj):
         return self._lognorm.process_line(
             [strutil.restore_esc(w) for w in ltobj.desc()]
         )
 
-    def set_tuning_rules(self, *args, **kwargs):
-        self._tuning_rules = (args, kwargs)
+    def get_input_documents(self):
+        documents = []
+        annotations = []
+        for ltobj in self.lttable:
+            documents.append(self._tokenize(ltobj))
+            annotations.append(ltobj.ltid)
+        return documents, annotations
 
-    def set_documents(self, verbose=False):
-        self._l_ltid = [ltobj.ltid for ltobj in self.lttable]
-        self._input_docs = [self._tokenize(ltobj)
-                            for ltobj in self.lttable]
-        self._training_docs = self.get_training_data(
-            self._input_docs, verbose=verbose
-        )
+    def set_input_documents(self):
+        documents, annotations = self.get_input_documents()
+        if self._use_input_as_training:
+            self._sc.add_training_documents(documents)
+        self._sc.add_input_documents(documents, annotations=annotations)
 
-    def need_autotuning(self):
-        if self._cluster_method == "DBSCAN":
-            return self._lda_n_topics is None or self._dbscan_eps is None
-        elif self._cluster_method == "RecursiveDBSCAN":
-            return self._lda_n_topics is None or self._dbscan_eps is None
-        else:
-            raise NotImplementedError
+    def _restore_clustering_results(self):
+        self._n_groups = len(self._sc.clusters())
 
-    def _init_topic_clustering(self, verbose=False):
-        if self._cluster_method == "DBSCAN":
-            from amsemantics import TopicClusteringDBSCAN
-            return TopicClusteringDBSCAN(
-                model=self._lda_modelname,
-                random_seed=self._random_seed,
-                stop_words=self._stop_words,
-                use_nltk_stopwords=self._use_nltk_stopwords,
-                use_sklearn_stopwords=self._use_sklearn_stopwords,
-                lda_n_topics=self._lda_n_topics,
-                redistribute=True,
-                cluster_eps=self._dbscan_eps,
-                cluster_size_min=self._dbscan_cluster_size_min,
-                tuning_metrics=self._dbscan_tuning_metrics,
-                verbose=verbose
-            )
-        elif self._cluster_method == "RecursiveDBSCAN":
-            from amsemantics import TopicClusteringRecursiveDBSCAN
-            return TopicClusteringRecursiveDBSCAN(
-                model=self._lda_modelname,
-                random_seed=self._random_seed,
-                stop_words=self._stop_words,
-                use_nltk_stopwords=self._use_nltk_stopwords,
-                use_sklearn_stopwords=self._use_sklearn_stopwords,
-                lda_n_topics=self._lda_n_topics,
-                cluster_eps=self._dbscan_eps,
-                recursive_cluster_size=self._rdbscan_cluster_size_max,
-                verbose=verbose
-            )
-        else:
-            raise NotImplementedError
+        labels = self._sc.cluster_labels()
+        l_ltid = self._sc.input_annotations()
+        for cls, ltid in zip(labels, l_ltid):
+            self.add_lt(int(cls), self.lttable[ltid])
 
     def make(self, verbose=False):
-        if self._input_docs is None:
-            self.set_documents(verbose=verbose)
-
-        self._sc = self._init_topic_clustering(verbose=verbose)
-
-        if self._tuning_rules is not None:
-            args, kwargs = self._tuning_rules
-            self._sc.set_tuning_rules(*args, **kwargs)
-        clusters = self._sc.fit(self._input_docs, training_docs=self._training_docs)
-
-        self._n_groups = len(clusters)
-        for cls, l_idx in clusters.items():
-            for idx in l_idx:
-                ltid = self._l_ltid[idx]
-                self.add_lt(int(cls), self.lttable[ltid])
+        self.set_input_documents()
+        self._sc.make(verbose=verbose)
+        self._restore_clustering_results()
         return self.update_lttable(self.lttable)
-
-    def get_inspection(self, topn=10):
-        assert self._sc is not None
-        return self._sc.inspection(topn=topn)
-
-    def get_training_data(self, docs, verbose=False):
-        """
-        Generate training data based on the knowledge_sources parameter.
-
-        Args:
-            docs (List[List[str]]): Input documents.
-            verbose (boolean)
-        """
-        if self._lda_knowledge_sources is None:
-            knowledge_sources = ["self"]
-        else:
-            knowledge_sources = self._lda_knowledge_sources
-
-        training_docs = []
-        for source_name in knowledge_sources:
-            if source_name == "self":
-                training_docs += docs
-            elif source_name == "rfc":
-                from amsemantics.source import rfcdoc
-                kwargs = {"cache_dir": self._cache_dir,
-                          "use_cache": self._use_cache,
-                          "normalizer": self._lognorm}
-                if self._rfc_document_unit == "rfc":
-                    loader = rfcdoc.RFCLoader(**kwargs)
-                elif self._rfc_document_unit == "section":
-                    loader = rfcdoc.RFCSectionLoader(**kwargs)
-                elif self._rfc_document_unit == "line":
-                    loader = rfcdoc.RFCLinesLoader(**kwargs)
-                else:
-                    raise ValueError("invalid rfc_document_unit")
-                for rfc in loader.iter_all():
-                    try:
-                        if verbose:
-                            print("loading RFC {0}".format(rfc.n))
-                        docs = loader.get_document(rfc)
-                        training_docs += docs
-                    except FileNotFoundError:
-                        mes = "skip RFC {0}: line file not found".format(rfc.n)
-                        if verbose:
-                            print(mes)
-                        _logger.warning(mes)
-
-        return training_docs
-
-    def lda_search_param(self, verbose=False):
-        if self._training_docs is None:
-            self.set_documents(verbose)
-        results = [(n, p, c) for n, p, c
-                   in self._sc.lda_search_param(self._training_docs)]
-        return pd.DataFrame(results,
-                            columns=["n_topics", "log_perplexity", "coherence"])
-
-    def get_visual_data(self, dim=2, use_zscore=True):
-        return self._sc.get_principal_components(
-            input_docs=self._input_docs,
-            n_components=dim,
-            use_zscore=use_zscore
-        )
-
-    def show_pyldavis(self, mds="pcoa"):
-        return self._sc.show_pyldavis(mds=mds)
 
 
 class LTGroupSemanticsMultiData(LTGroupSemantics):
@@ -199,46 +70,24 @@ class LTGroupSemanticsMultiData(LTGroupSemantics):
         super().__init__(lttables[0], normalizer, **kwargs)
         self._l_lttable = lttables
 
-        # used afeter make
-        self._l_ltid = None
         self._l_domain = None
 
-    def set_documents(self, verbose=False):
-        self._l_ltid = [ltobj.ltid for ltobj in self.lttable]
-        self._l_domain = []
-        self._input_docs = []
+    def get_input_documents(self):
+        documents = []
+        annotations = []
         for domain, lttable in enumerate(self._l_lttable):
             for ltobj in lttable:
-                self._l_ltid.append(ltobj.ltid)
-                self._l_domain.append(domain)
-                self._input_docs.append(self._tokenize(ltobj))
-        self._training_docs = self.get_training_data(
-            self._input_docs, verbose=verbose
-        )
+                documents.append(self._tokenize(ltobj))
+                annotations.append((domain, ltobj.ltid))
+        return documents, annotations
 
-    def make(self, verbose=False):
-        if self._input_docs is None:
-            self.set_documents(verbose=verbose)
+    def _restore_clustering_results(self):
+        self._n_groups = len(self._sc.clusters())
 
-        self._sc = self._init_topic_clustering(verbose=verbose)
-
-        if self._tuning_rules is not None:
-            args, kwargs = self._tuning_rules
-            self._sc.set_tuning_rules(*args, **kwargs)
-        clusters = self._sc.fit(self._input_docs, training_docs=self._training_docs)
-
-        self._n_groups = len(clusters)
-        for cls, l_idx in clusters.items():
-            for idx in l_idx:
-                ltid = self._l_ltid[idx]
-                domain = self._l_domain[idx]
-                self._l_lttable[domain][ltid].ltgid = cls
-
-        return self._l_lttable
-
-    def get_labels(self):
-        import numpy as np
-        return np.array(self._l_domain), np.array(self._l_ltid), self._sc.cluster_labels
+        labels = self._sc.cluster_labels()
+        annotations = self._sc.input_annotations()
+        for cls, (domain, ltid) in zip(labels, annotations):
+            self._l_lttable[domain][ltid].ltgid = cls
 
 
 def init_nlp_normalizer(conf):
@@ -260,32 +109,64 @@ def init_nlp_normalizer(conf):
                       lemma_exception, th_word_length)
 
 
+def _load_guidedlda_seed_topic_list(filepath):
+    if filepath is None or filepath == "":
+        return None
+
+    seed_topic_list = []
+    try:
+        with open(filepath, "r") as f:
+            for line in f:
+                linestr = line.rstrip()
+                if linestr != "":
+                    items = linestr.split()
+                    seed_topic_list.append(items)
+    except IOError:
+        raise
+    return seed_topic_list
+
+
 def _get_ltgroup_semantic_params(conf):
     from . import config
 
-    lda_model = conf["log_template_group_semantics"]["lda_model"]
+    lda_library = conf["log_template_group_semantics"]["lda_library"]
     lda_knowledge_sources = config.getlist(
         conf, "log_template_group_semantics", "lda_knowledge_sources"
     )
 
     cache_dir = conf["general"]["cache_dir"]
-    use_cache = conf["log_template_group_semantics"]["use_cache"]
+    use_cache = conf.getboolean("log_template_group_semantics", "use_cache")
     rfc_document_unit = conf["log_template_group_semantics"]["rfc_document_unit"]
+    ltjunos_filepath = conf["log_template_group_semantics"]["ltjunos_filepath"]
+    use_template_replacer = conf.getboolean(
+        "log_template_group_semantics", "use_template_replacer"
+    )
     stop_words = config.getlist(conf, "log_template_group_semantics",
                                 "lda_stop_words")
-    use_nltk_stopwords = conf["log_template_group_semantics"]["lda_use_nltk_stopwords"]
-    use_sklearn_stopwords = conf["log_template_group_semantics"]["lda_use_sklearn_stopwords"]
+    use_nltk_stopwords = conf.getboolean(
+        "log_template_group_semantics", "lda_use_nltk_stopwords"
+    )
+    use_sklearn_stopwords = conf.getboolean(
+        "log_template_group_semantics", "lda_use_sklearn_stopwords"
+    )
     random_seed_str = conf["log_template_group_semantics"]["lda_seed"]
     if random_seed_str.isdigit():
         random_seed = int(random_seed_str)
     else:
         random_seed = None
+    lda_use_zscore = conf.getboolean("log_template_group_semantics", "lda_use_zscore")
     lda_n_topics_str = conf["log_template_group_semantics"]["lda_n_topics"]
     if lda_n_topics_str == "":
         lda_n_topics = None
     else:
         lda_n_topics = int(lda_n_topics_str)
     lda_cachename = conf["log_template_group_semantics"]["lda_cachename"]
+    guidedlda_seed_topic_list = _load_guidedlda_seed_topic_list(
+        conf["log_template_group_semantics"]["guidedlda_seed_topic_list_file"]
+    )
+    guidedlda_seed_confidence = conf.getfloat(
+        "log_template_group_semantics", "guidedlda_seed_confidence"
+    )
     cluster_method = conf["log_template_group_semantics"]["cluster_method"]
     dbscan_eps_str = conf["log_template_group_semantics"]["dbscan_eps"]
     if dbscan_eps_str == "":
@@ -299,17 +180,22 @@ def _get_ltgroup_semantic_params(conf):
                                            "rdbscan_cluster_size_max")
 
     return {
-        "lda_modelname": lda_model,
+        "lda_library": lda_library,
         "lda_knowledge_sources": lda_knowledge_sources,
-        "cache_dir": cache_dir,
         "use_cache": use_cache,
+        "cache_dir": cache_dir,
         "rfc_document_unit": rfc_document_unit,
+        "ltjunos_filepath": ltjunos_filepath,
+        "use_template_replacer": use_template_replacer,
         "random_seed": random_seed,
         "stop_words": stop_words,
         "use_nltk_stopwords": use_nltk_stopwords,
         "use_sklearn_stopwords": use_sklearn_stopwords,
         "lda_n_topics": lda_n_topics,
+        "lda_use_zscore": lda_use_zscore,
         "lda_cachename": lda_cachename,
+        "guidedlda_seed_topic_list": guidedlda_seed_topic_list,
+        "guidedlda_seed_confidence": guidedlda_seed_confidence,
         "cluster_method": cluster_method,
         "dbscan_eps": dbscan_eps,
         "dbscan_cluster_size_min": dbscan_cluster_size_min,
@@ -318,54 +204,38 @@ def _get_ltgroup_semantic_params(conf):
     }
 
 
-def init_ltgroup_semantics(conf, lttable):
+def _ltgroup_set_tuning_rules(conf, ltgroup):
     from . import config
+    union_rules_str = config.getlist(
+        conf, "log_template_group_semantics", "tuning_union_rules"
+    )
+    union_rules = [rulestr.split("|")
+                   for rulestr in union_rules_str]
+    separation_rules_str = config.getlist(
+        conf, "log_template_group_semantics", "tuning_separation_rules"
+    )
+    separation_rules = [rulestr.split("|")
+                        for rulestr in separation_rules_str]
+    if len(union_rules) > 0 or len(separation_rules) > 0:
+        term_class = conf["log_template_group_semantics"]["tuning_term_class"]
+        tuning_topn = conf.getint("log_template_group_semantics", "tuning_topwords")
+        ltgroup.set_tuning_rules(union_rules, separation_rules,
+                                 term_class=term_class, topn=tuning_topn)
+    return ltgroup
+
+
+def init_ltgroup_semantics(conf, lttable):
     normalizer = init_nlp_normalizer(conf)
     kwargs = _get_ltgroup_semantic_params(conf)
     ltgroup = LTGroupSemantics(lttable, normalizer, **kwargs)
-
-    if ltgroup.need_autotuning():
-        union_rules_str = config.getlist(
-            conf, "log_template_group_semantics", "tuning_union_rules"
-        )
-        union_rules = [rulestr.split("|")
-                       for rulestr in union_rules_str]
-        separation_rules_str = config.getlist(
-            conf, "log_template_group_semantics", "tuning_separation_rules"
-        )
-        separation_rules = [rulestr.split("|")
-                            for rulestr in separation_rules_str]
-        if len(union_rules) > 0 or len(separation_rules) > 0:
-            term_class = conf["log_template_group_semantics"]["tuning_term_class"]
-            tuning_topn = conf.getint("log_template_group_semantics", "tuning_topwords")
-            ltgroup.set_tuning_rules(union_rules, separation_rules,
-                                     term_class=term_class, topn=tuning_topn)
-
+    ltgroup = _ltgroup_set_tuning_rules(conf, ltgroup)
     return ltgroup
 
 
 def init_ltgroup_semantics_multi_domain(l_conf, l_lttable):
-    from . import config
     conf = l_conf[0]
     normalizer = init_nlp_normalizer(conf)
     kwargs = _get_ltgroup_semantic_params(conf)
     ltgroup = LTGroupSemanticsMultiData(l_lttable, normalizer, **kwargs,)
-
-    if ltgroup.need_autotuning():
-        union_rules_str = config.getlist(conf,
-                                         "log_template_group_semantics",
-                                         "tuning_union_rules")
-        union_rules = [rulestr.split("|")
-                       for rulestr in union_rules_str]
-        separation_rules_str = config.getlist(conf,
-                                              "log_template_group_semantics",
-                                              "tuning_separation_rules")
-        separation_rules = [rulestr.split("|")
-                            for rulestr in separation_rules_str]
-        if len(union_rules) > 0 or len(separation_rules) > 0:
-            term_class = conf["log_template_group_semantics"]["tuning_term_class"]
-            tuning_topn = conf.getint("log_template_group_semantics", "tuning_topwords")
-            ltgroup.set_tuning_rules(union_rules, separation_rules,
-                                     term_class=term_class, topn=tuning_topn)
-
+    ltgroup = _ltgroup_set_tuning_rules(conf, ltgroup)
     return ltgroup
