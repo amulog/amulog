@@ -234,7 +234,6 @@ feature_template =
 sample_method = random
 n_sample = 1000
 sample_lt_methods = va
-sample_lt_multiprocess = false
 
 # use middle label estimated with regular expressions
 # middle_label_rule: same as log_template_re.variable_regex

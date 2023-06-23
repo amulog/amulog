@@ -172,11 +172,22 @@ see help with following command:
 Reference
 =========
 
-This tool is demonstrated at `CNSM2020 <http://dl.ifip.org/db/conf/cnsm/cnsm2020/>`_ and `International Journal of Network Management <http://doi.org/10.1002/nem.2195>`_ (now on early access).
+This tool is demonstrated at `International Journal of Network Management <http://doi.org/10.1002/nem.2195>`_ and `CNSM2020 <http://dl.ifip.org/db/conf/cnsm/cnsm2020/>`_.
 
 If you use this code, please consider citing:
 
 ::
+
+    @article{Kobayashi_IJNM2022,
+      author = {Kobayashi, Satoru and Yamashiro, Yuya and Otomo, Kazuki and Fukuda, Kensuke},
+      title = {amulog: A general log analysis framework for comparison and combination of diverse template generation methods*},
+      journal = {International Journal of Network Management},
+      volume = {32},
+      number = {4},
+      pages = {e2195},
+      doi = {https://doi.org/10.1002/nem.2195},
+      year = {2022}
+    }
 
     @inproceedings{Kobayashi_CNSM2020,
       author = {Kobayashi, Satoru and Yamashiro, Yuya and Otomo, Kazuki and Fukuda, Kensuke},

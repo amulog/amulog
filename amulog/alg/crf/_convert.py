@@ -18,12 +18,19 @@ import pycrfsuite
 class FeatureExtracter:
     DEFAULT_TEMPLATE = "/".join((os.path.dirname(os.path.abspath(__file__)),
                                  "../../data/crf_template"))
-    TPL_PARSER = re.compile(r"^([a-z0-9]+)(\[[-0-9]+\])?$")
-    TPL_FIELD = {"0": 0, "w": 0, "word": 0,
-                 "1": 1, "pos": 1, "mid": 1,
-                 "2": 2, "y": 2, "label": 2,
-                 "bos": None, "eos": None,
-                 "F": None}
+    # TPL_PARSER = re.compile(r"^([a-z0-9]+)(\[[-0-9]+\])?$")
+    value_parser = re.compile(
+        (r"^"
+         r"(?P<field>[a-z0-9]+)"
+         r"(\[(?P<offset>[-0-9]+)])?"
+         # r"(\.(?P<function>[a-z0-9_]))?"
+         r"$")
+    )
+    field_name_mapping = {"0": 0, "w": 0, "word": 0,
+                          "1": 1, "pos": 1, "mid": 1,
+                          "2": 2, "y": 2, "label": 2,
+                          "bos": None, "eos": None,
+                          "F": None}
 
     def __init__(self, template_fp=None, ig_key=[], ig_weight=0.1):
         if template_fp is None or template_fp == "":
@@ -48,20 +55,17 @@ class FeatureExtracter:
         else:
             weight = 1.0
         l_cond = [s.strip() for s in line.split(",")]
-        name = "|".join(l_cond)
+        feature_name = "|".join(l_cond)
         for cond in l_cond:
-            m = self.TPL_PARSER.match(cond)
+            m = self.value_parser.match(cond)
             if m is None:
                 raise SyntaxError(
                     "Invalid syntax of feature template ({0})".format(
                         line))
-            field, offset_str = m.groups()
-            if offset_str is None:
-                offset = None
-            else:
-                offset = int(offset_str.strip("[").rstrip("]"))
+            field = m.group("field")
+            offset = int(m.group("offset"))
             l_rule.append(tuple([field, offset]))
-        return name, tuple(l_rule), weight
+        return feature_name, tuple(l_rule), weight
 
     def _load_template(self, fp):
         template = []  # name, tuples(field (int), offset (int))), weight
@@ -73,8 +77,8 @@ class FeatureExtracter:
         return tuple(template)
 
     def _get_item(self, item, field):
-        if field in self.TPL_FIELD:
-            return item[self.TPL_FIELD[field]]
+        if field in self.field_name_mapping:
+            return item[self.field_name_mapping[field]]
         else:
             raise NotImplementedError
 

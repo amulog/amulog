@@ -350,6 +350,35 @@ class LTGenStateless(LTGen, ABC):
         return None
 
 
+class LTGenSupervised(LTGen, ABC):
+
+    """
+    Base class for supervised log template generation.
+    The template generation step is classified into stateless
+    (i.e., Each input lines are independently estimated based on the preliminary trained model).
+    """
+
+    @abstractmethod
+    def generate_tpl(self, pline):
+        raise NotImplementedError
+
+    def is_stateful(self):
+        return False
+
+    def train(self, plines):
+        raise NotImplementedError
+
+    def process_line(self, pline):
+        tpl = self.generate_tpl(pline)
+        return self.update_table(tpl)
+
+    def load(self, loadobj):
+        raise NotImplementedError
+
+    def dumpobj(self):
+        raise NotImplementedError
+
+
 class LTGenJoint(LTGen):
 
     def __init__(self, table: TemplateTable, l_ltgen, ltgen_import_index=None):

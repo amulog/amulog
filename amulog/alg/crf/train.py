@@ -4,7 +4,6 @@ import random
 import logging
 from collections import defaultdict
 
-import amulog.manager
 from amulog import config
 from amulog import lt_common
 from . import _items
@@ -67,12 +66,11 @@ def make_crf_train(conf, iterobj, return_ltidlist=False):
     elif method == "random":
         l_train = train_sample_random(iterobj, size)
     elif method == "ltgen":
+        from amulog import manager
         lt_methods = config.getlist(conf, "log_template_crf",
                                     "sample_lt_methods")
-        use_mp = conf.getboolean("log_template_crf", "sample_lt_multiprocess")
         table = lt_common.TemplateTable()
-        ltgen = amulog.manager.init_ltgen_methods(conf, table, lt_methods,
-                                                  multiprocess=use_mp)
+        ltgen = manager.init_ltgen_methods(conf, table, lt_methods)
         l_train = train_sample_ltgen(iterobj, size, ltgen)
     elif method == "leak":
         l_train = train_sample_leak(iterobj, size)
