@@ -186,7 +186,8 @@ class LTManager(object):
 
     def get_parsed_line(self, line):
         pline = parse_line(strutil.add_esc(line), self._lp)
-        pline = normalize_pline(pline, self._ha, self._drop_undefhost)
+        if pline is not None:
+            pline = normalize_pline(pline, self._ha, self._drop_undefhost)
         return pline
 
     def process_line(self, line):
@@ -442,7 +443,11 @@ def parse_line(line, lp):
     except log2seq.LogParseFailure:
         return None
     else:
-        if len(parsed_line[log2seq.KEY_WORDS]) == 0:
+        if parsed_line is None:
+            return None
+        elif log2seq.KEY_WORDS not in parsed_line:
+            return None
+        elif len(parsed_line[log2seq.KEY_WORDS]) == 0:
             msg = "pass empty message {0}".format(line.strip("\n"))
             _logger.debug(msg)
             return None
@@ -454,17 +459,20 @@ def normalize_pline(pline, ha, drop_undefhost=False):
     if pline is None:
         return None
 
-    if "lid" in pline:
-        pline["lid"] = int(pline["lid"])
+    try:
+        if "lid" in pline:
+            pline["lid"] = int(pline["lid"])
 
-    org_host = pline["host"]
-    host = ha.resolve_host(org_host)
-    if host is None:
-        if drop_undefhost:
-            return None
-        else:
-            host = org_host
-    pline["host"] = host
+        org_host = pline["host"]
+        host = ha.resolve_host(org_host)
+        if host is None:
+            if drop_undefhost:
+                return None
+            else:
+                host = org_host
+        pline["host"] = host
+    except KeyError:
+        return None
 
     return pline
 
