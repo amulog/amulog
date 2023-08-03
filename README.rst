@@ -159,8 +159,31 @@ Then, try generating database again:
     python -m amulog db-make -c test2.conf
 
 
+Using your data
+===============
+
+Parsing your data
+-----------------
+
+Amulog uses  `log2seq <https://github.com/amulog/log2seq>`_ to parse input log messages in DB generation.
+If your data is not a default syslog output format, you need to specify an appropriate log2seq parser script.
+The log2seq parser script is specified in :code:`manager.parser_script` in amulog config file.
+
+::
+
+    [manager]
+    parser_script = test_parser.py
+    fail_output = fail.log
+
+If the parser fails to parse some of the input log messages,
+they are stored in :code:`manager.fail_output` file.
+You can check this file to test whether the parser is working appropriately or not.
+
+There are example parser scripts in log2seq repository.
+
+
 Further usage
--------------
+=============
 
 see help with following command:
 
