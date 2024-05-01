@@ -144,7 +144,7 @@ class LTGenCRF(lt_common.LTGenStateless):
             self._trainer.append(xseq, yseq)
         self._trainer.train(model)
 
-    def train(self, iterable_lm, output=None):
+    def train(self, iterable_lm, output=None, **_):
         def _iter_items():
             for lm in iterable_lm:
                 yield self.trainitems(lm)

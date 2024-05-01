@@ -4,7 +4,7 @@
 
 ONLINE_ALG = ["shiso", "drain", "lenma", "fttree"]
 OFFLINE_ALG = ["va", "dlog"]
-ANY_ALG = ["import", "import-ext", "re", "crf"]
+ANY_ALG = ["import", "import-ext", "re", "crf", "logdtl"]
 
 
 def is_online(mode, alg_names, multiproc):

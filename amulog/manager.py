@@ -69,6 +69,10 @@ class LTManager(object):
             self._ltgroup.restore_ltg(self._db, self._lttable)
 
     @property
+    def ltgen(self):
+        return self._ltgen
+
+    @property
     def template_table(self):
         return self._table
 
@@ -303,9 +307,15 @@ class LTManager(object):
         with open(self._filename, 'rb') as f:
             obj = pickle.load(f)
         table_data, ltgen_data, ltgroup_data = obj
-        self._table.load(table_data)
         self._ltgen.load(ltgen_data)
-        self._ltgroup.load(ltgroup_data)
+        if not self._reset_db:
+            self._table.load(table_data)
+            if self._ltgroup is not None:
+                self._ltgroup.load(ltgroup_data)
+        
+        if self._ltgen.has_external_dump:
+            # external loading must be later than standard loading (used in amulog-logdtl)
+            self._ltgen.load_external()
 
     def dump(self):
         table_data = self._table.dumpobj()
@@ -320,6 +330,19 @@ class LTManager(object):
         obj = (table_data, ltgen_data, ltgroup_data)
         with open(self._filename, 'wb') as f:
             pickle.dump(obj, f)
+
+        if self._ltgen.has_external_dump:
+            self._ltgen.dump_external()
+
+    def clean(self):
+        import os
+        if os.path.exists(self._filename):
+            os.remove(self._filename)
+
+        self._db.drop_all()
+
+        if self._ltgen.has_external_dump:
+            self._ltgen.clean()
 
     def fail_dump(self, msg):
         with open(self._fail_output, 'a') as f:
@@ -605,3 +628,9 @@ def remake_ltgroup(conf):
     ltm = LTManager(conf, ld.db, ld.lttable, reset_db=False)
     ltm.remake_ltg()
     ltm.commit_db()
+
+
+def clean(conf):
+    ld = log_db.LogData(conf, edit=True)
+    ltm = LTManager(conf, ld.db, ld.lttable)
+    ltm.clean()

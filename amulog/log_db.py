@@ -49,6 +49,10 @@ class LogMessage:
         self.dt = dt
         self.host = host
         self.l_w = l_w
+        
+    @property
+    def words(self):
+        return self.l_w
 
     def __str__(self):
         """str: Show attributes in 1 string."""

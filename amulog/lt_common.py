@@ -228,6 +228,12 @@ class LTGen(ABC):
             self._table = TemplateTable()
         else:
             self._table = table
+        
+        self._external_dump = False
+    
+    @property
+    def has_external_dump(self):
+        return self._external_dump
 
     def is_stateful(self):
         return True
@@ -305,6 +311,12 @@ class LTGen(ABC):
     def dumpobj(self):
         raise NotImplementedError
 
+    def load_external(self):
+        pass
+    
+    def dump_external(self):
+        pass
+
 
 class LTGenOffline(LTGen, ABC):
 
@@ -362,15 +374,26 @@ class LTGenSupervised(LTGen, ABC):
     def generate_tpl(self, pline):
         raise NotImplementedError
 
+    def generate_tpls(self, plines):
+        """Overwrite this method if it supports efficient batch processing.
+        TODO: not implemented in manager processing."""
+        return [self.generate_tpl(pline) for pline in plines]
+
     def is_stateful(self):
         return False
 
-    def train(self, plines):
+    def train(self, iterable_lm, **kwargs):
         raise NotImplementedError
 
     def process_line(self, pline):
         tpl = self.generate_tpl(pline)
         return self.update_table(tpl)
+
+    def process_offline(self, d_pline):
+        keys, plines = zip(*d_pline.items())
+        self.preprocess(plines)
+        tpls = self.generate_tpls(plines)
+        return {mid: tpl for mid, tpl in enumerate(tpls)}
 
     def load(self, loadobj):
         raise NotImplementedError

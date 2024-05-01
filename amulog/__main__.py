@@ -106,9 +106,9 @@ def db_make(ns):
     timer = common.Timer("db-make", output=_logger)
     timer.start()
     if is_online(conf, ns.parallel):
-        manager.process_files_online(conf, targets, True)
+        manager.process_files_online(conf, targets, True, ns.reset)
     else:
-        manager.process_files_offline(conf, targets, True, ns.parallel)
+        manager.process_files_offline(conf, targets, True, ns.reset, ns.parallel)
     timer.stop()
 
 
@@ -123,9 +123,9 @@ def db_add(ns):
     timer = common.Timer("db-add", output=_logger)
     timer.start()
     if is_online(conf, ns.parallel):
-        manager.process_files_online(conf, targets, False)
+        manager.process_files_online(conf, targets, False, False)
     else:
-        manager.process_files_offline(conf, targets, False, ns.parallel)
+        manager.process_files_offline(conf, targets, False, False, ns.parallel)
     timer.stop()
 
 
@@ -196,12 +196,42 @@ def db_anonymize_mapping(ns):
     print("> " + fp)
 
 
+def train(ns):
+    conf_src = config.open_config(ns.config_src)
+    conf_dst = config.open_config(ns.config_dst)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf_dst, logger=_logger, lv=lv)
+
+    from . import supervise
+    supervise.train_model(conf_src, conf_dst)
+
+
+def train_and_test(ns):
+    conf_src = config.open_config(ns.config_src)
+    conf_dst = config.open_config(ns.config_dst)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf_dst, logger=_logger, lv=lv)
+    targets = get_targets(ns, conf_dst)
+
+    from . import supervise
+    supervise.train_and_test_model(conf_src, conf_dst, targets)
+
+
+def clean(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+
+    from . import manager
+    manager.clean(conf)
+
+
 def show_db_info(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
-    from . import log_db
 
+    from . import log_db
     log_db.info(conf)
 
 
@@ -211,8 +241,7 @@ def show_lt(ns):
     config.set_common_logging(conf, logger=_logger, lv=lv)
     from . import log_db
 
-    simple = ns.simple
-    print(log_db.show_all_lt(conf, simple=simple))
+    print(log_db.show_all_lt(conf, simple=ns.simple))
 
 
 def show_ltg(ns):
@@ -329,6 +358,18 @@ def parse_condition(conditions):
     return d
 
 
+def show_line(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+    from . import log_db
+    lid = ns.lid
+
+    ld = log_db.LogData(conf)
+    lm = ld.get_line(lid)
+    print(lm.restore_line())
+
+
 def conf_defaults(_):
     config.show_default_config()
 
@@ -426,6 +467,9 @@ OPT_PARALLEL = [["-p", "--parallel"],
 OPT_RECUR = [["-r", "--recur"],
              {"dest": "recur", "action": "store_true",
               "help": "recursively search files to process"}]
+OPT_RESET = [["--reset"],
+             {"dest": "reset", "action": "store_true",
+              "help": "reset log template generation model"}]
 OPT_DRY = [["-d", "--dry"],
            {"dest": "dry", "action": "store_true",
             "help": "do not store data into db"}]
@@ -450,6 +494,15 @@ ARG_DBSEARCH = [["conditions"],
                           "Example: MODE gid=24 date=2012-10-10 ..., "
                           "Keys: ltid, gid, date, time_from, time_to, host, "
                           "host_like, host_regexp")}]
+ARG_LID = [["lid"],
+           {"metavar": "LID", "action": "store",
+            "help": "log message identifier"}]
+ARG_CONFIG_SRC = [["config_src"],
+                   {"metavar": "CONFIG_SRC",
+                    "help": "Config for source db (for annotated data)"}]
+ARG_CONFIG_DST = [["config_dst"],
+                   {"metavar": "CONFIG_DST",
+                    "help": "Config for training model (for estimated data) "}]
 
 # argument settings for each modes
 # description, List[args, kwargs], func
@@ -491,7 +544,8 @@ DICT_ARGSET = {
                     ARG_FILES_OPT],
                    data_parse],
     "db-make": ["Initialize database and add log data. ",
-                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_PARALLEL, ARG_FILES_OPT],
+                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR,
+                 OPT_RESET, OPT_PARALLEL, ARG_FILES_OPT],
                 db_make],
     "db-add": ["Add log data to existing database.",
                [OPT_CONFIG, OPT_DEBUG, OPT_RECUR, OPT_PARALLEL, ARG_FILES],
@@ -516,6 +570,20 @@ DICT_ARGSET = {
     "db-anonymize-mapping": ["Generate anonymization mapping json.",
                              [OPT_CONFIG, OPT_DEBUG],
                              db_anonymize_mapping],
+    "train": ["Generate training model for supervised log template generation methods.",
+              [OPT_DEBUG, ARG_CONFIG_DST, ARG_CONFIG_SRC,
+               [["-l", "--limit"],
+                {"dest": "limit", "action": "store",
+                 "type": int, "default": -1,
+                 "help": "number of log lines for training (use top lines without shuffle option)"}],
+               [["-s", "--shuffle"],
+                {"dest": "shuffle", "action": "store_true",
+                 "help": "shuffle training data (random selection order)"}],
+               ],
+              train],
+    "clean": ["Remove database and related files to initialize.",
+              [OPT_CONFIG, OPT_DEBUG],
+              clean],
     "show-db-info": ["Show abstruction of database status.",
                      [OPT_CONFIG, OPT_DEBUG],
                      show_db_info],
@@ -557,6 +625,9 @@ DICT_ARGSET = {
                     "help": "show lid"}],
                   ARG_DBSEARCH],
                  show_log],
+    "show-line": ["Show log line with given log message identifier",
+                  [OPT_CONFIG, OPT_DEBUG, ARG_LID],
+                  show_line],
     "conf-defaults": ["Show default configurations.",
                       [],
                       conf_defaults],
