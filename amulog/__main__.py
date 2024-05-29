@@ -106,9 +106,9 @@ def db_make(ns):
     timer = common.Timer("db-make", output=_logger)
     timer.start()
     if is_online(conf, ns.parallel):
-        manager.process_files_online(conf, targets, True, ns.reset)
+        manager.process_files_online(conf, targets, True)
     else:
-        manager.process_files_offline(conf, targets, True, ns.reset, ns.parallel)
+        manager.process_files_offline(conf, targets, True, ns.parallel)
     timer.stop()
 
 
@@ -123,9 +123,9 @@ def db_add(ns):
     timer = common.Timer("db-add", output=_logger)
     timer.start()
     if is_online(conf, ns.parallel):
-        manager.process_files_online(conf, targets, False, False)
+        manager.process_files_online(conf, targets, False)
     else:
-        manager.process_files_offline(conf, targets, False, False, ns.parallel)
+        manager.process_files_offline(conf, targets, False, ns.parallel)
     timer.stop()
 
 
