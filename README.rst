@@ -127,7 +127,7 @@ Following command exports all log templates in the database:
 
 ::
 
-    $ python3 -m amulog show-db-import -c test.conf > exported_tpl.txt
+    $ python3 -m amulog show-lt-import -c test.conf > exported_tpl.txt
 
 You can modify the exported templates manually.
 Note that some special letters (:code:`\\`, :code:`@`, :code:`*`) are escaped in the exported templates.
