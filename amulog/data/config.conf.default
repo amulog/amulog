@@ -68,7 +68,7 @@ parser_script =
 
 # Hostname alias definition file
 # Description example:
-#   host 192.168.0.1 host.domain    <- host will be recorded in DB
+#   host 192.168.0.1 host.domain    <- "host" will be recorded in DB
 # If empty, no host will be replaced
 host_alias_filename =
 
@@ -83,6 +83,9 @@ offline_batchsize = 100000
 
 # Discard logs from undefined hosts in host_alias definition file
 undefined_host = false
+
+# Following dummy hostname will be embedded to the logs without host specifications in headers
+dummy_host = dummy
 
 # Output lines that are not stored into DB
 # Reasons: no_tpl, unknown_host

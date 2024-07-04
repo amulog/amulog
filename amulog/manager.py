@@ -478,7 +478,7 @@ def parse_line(line, lp):
             return parsed_line
 
 
-def normalize_pline(pline, ha, drop_undefhost=False):
+def normalize_pline(pline, ha, drop_undefhost=False, dummy_host="dummy"):
     if pline is None:
         return None
 
@@ -486,13 +486,17 @@ def normalize_pline(pline, ha, drop_undefhost=False):
         if "lid" in pline:
             pline["lid"] = int(pline["lid"])
 
-        org_host = pline["host"]
-        host = ha.resolve_host(org_host)
-        if host is None:
-            if drop_undefhost:
-                return None
-            else:
-                host = org_host
+        if "host" in pline:
+            org_host = pline["host"]
+
+            host = ha.resolve_host(org_host)
+            if host is None:
+                if drop_undefhost:
+                    return None
+                else:
+                    host = org_host
+        else:
+            host = dummy_host
         pline["host"] = host
     except KeyError:
         return None
@@ -535,10 +539,11 @@ def iter_plines(conf, targets, pass_none=True):
     lp = load_log2seq(conf)
     ha = host_alias.init_hostalias(conf)
     drop_undefhost = conf.getboolean("manager", "undefined_host")
+    dummy_host = conf.get("manager", "dummy_host")
 
     for line in iter_lines(targets):
         pline = parse_line(strutil.add_esc(line), lp)
-        pline = normalize_pline(pline, ha, drop_undefhost)
+        pline = normalize_pline(pline, ha, drop_undefhost, dummy_host)
         if pline is None and pass_none:
             pass
         else:

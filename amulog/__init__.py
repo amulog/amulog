@@ -6,5 +6,5 @@ on their log templates (formats and variable locations),
 and to store the data in a database.
 """
 
-__version__ = '0.3.12'
+__version__ = '0.3.13'
 
