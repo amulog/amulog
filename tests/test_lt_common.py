@@ -4,6 +4,7 @@
 """Unit tests for amulog.lt_common (LogTemplate and helpers)."""
 
 import unittest
+from types import SimpleNamespace
 
 from amulog import lt_common
 from amulog.lt_common import LogTemplate
@@ -32,6 +33,32 @@ class TestLogTemplateIter(unittest.TestCase):
         # an iterator yields itself from iter() and supports next()
         self.assertIs(iter(it), it)
         self.assertEqual(next(it), "a")
+
+
+class TestTemplateFromMessages(unittest.TestCase):
+
+    @staticmethod
+    def _lm(words):
+        return SimpleNamespace(l_w=words)
+
+    def test_common_words(self):
+        tpl = lt_common.template_from_messages(
+            [self._lm(["a", "b", "c"]), self._lm(["a", "x", "c"])])
+        self.assertEqual(tpl, ["a", lt_common.REPLACER, "c"])
+
+    def test_replacer_does_not_override_real_word(self):
+        # CR-30: a real word must win over REPLACER even when the first
+        # message carries REPLACER at that position.
+        r = lt_common.REPLACER
+        tpl = lt_common.template_from_messages(
+            [self._lm([r, "b"]), self._lm(["a", "b"])])
+        self.assertEqual(tpl, ["a", "b"])
+
+    def test_all_replacer_stays_replacer(self):
+        r = lt_common.REPLACER
+        tpl = lt_common.template_from_messages(
+            [self._lm([r, "x"]), self._lm([r, "x"])])
+        self.assertEqual(tpl, [r, "x"])
 
 
 if __name__ == "__main__":

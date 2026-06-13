@@ -33,5 +33,27 @@ class TestIsEmpty(unittest.TestCase):
         self.assertFalse(common.is_empty("/no/such/path/should/exist/xyz"))
 
 
+class TestTimerStat(unittest.TestCase):
+
+    def test_stat_outputs_values_not_header_twice(self):
+        # CR-97: the format string used "{0}" twice, so the value (lap_times /
+        # average / standard error) was replaced by the header and never shown.
+        timer = common.Timer("HDR")
+        captured = []
+        timer._output = captured.append  # collect output lines
+        timer.start()
+        timer.lap("a")
+        timer.lap("b")
+        timer.stat()
+
+        for label in ("lap times", "average", "standard error"):
+            lines = [s for s in captured if label in s]
+            self.assertEqual(len(lines), 1)
+            line = lines[0]
+            self.assertTrue(line.startswith("HDR {0}:".format(label)))
+            # the header must appear once (not twice in place of the value)
+            self.assertEqual(line.count("HDR"), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

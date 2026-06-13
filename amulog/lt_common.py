@@ -705,7 +705,8 @@ def template_from_messages(l_lm):
         s_words = set(words)
         s_words.discard(REPLACER)
         if len(s_words) == 1:
-            tpl.append(words[0])
+            # the single agreed word, NOT words[0] (which may be REPLACER)
+            tpl.append(next(iter(s_words)))
         else:
             tpl.append(REPLACER)
     return tpl

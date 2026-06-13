@@ -367,14 +367,16 @@ class Timer:
 
     def stat(self):
         if len(self._lap_dt) == 1:
-            raise ValueError
+            raise ValueError("call lap() before stat()")
         import numpy as np
-        lap_times = np.diff(self._lap_dt)
+        # lap durations in seconds (numpy stats do not work on timedelta)
+        lap_times = np.array([td.total_seconds()
+                              for td in np.diff(self._lap_dt)])
         avg = np.average(lap_times)
         se = np.std(lap_times) / np.sqrt(len(lap_times))
-        self._output("{0} lap times: {0}".format(self.header, lap_times))
-        self._output("{0} average: {0}".format(self.header, avg))
-        self._output("{0} standard error: {0}".format(self.header, se))
+        self._output("{0} lap times: {1}".format(self.header, lap_times))
+        self._output("{0} average: {1}".format(self.header, avg))
+        self._output("{0} standard error: {1}".format(self.header, se))
 
 
 # visualization
