@@ -178,11 +178,13 @@ class LTSearchTree(LTSearch):
         if point is None:
             _logger.warning(
                 "LTSearchTree: Failed to remove ltid {0}".format(ltid))
+            return
         point.remove_ltid(ltid)
         while point.unnecessary():
             w = point.word
             point = point.parent
-            if w is None:
+            if w == lt_common.REPLACER:
+                # wildcard child (its node.word is REPLACER, not None)
                 point.wild = None
             else:
                 point.windex.pop(w)
@@ -364,7 +366,7 @@ class LTSearchTreeNew(LTSearch):
                     return None
                 else:
                     node, tmp_ltwords, ret_path = stack_path.pop()
-                    current = current[self.KEY_WILDCARD]
+                    current = node[self.KEY_WILDCARD]
 
             ret_path.append(current)
 
@@ -377,7 +379,7 @@ class LTSearchTreeNew(LTSearch):
                 else:
                     # no template to match, go back with stack or end
                     node, tmp_ltwords, ret_path = stack_path.pop()
-                    current = current[self.KEY_WILDCARD]
+                    current = node[self.KEY_WILDCARD]
                     ret_path.append(current)
 
     def search(self, words):
@@ -391,15 +393,18 @@ class LTSearchTreeNew(LTSearch):
             return
 
         ltid = path[-1].pop(self.KEY_TEMPLATE_ID)
-        rev_tpl = list(reversed(tpl))
         rev_path = list(reversed(path))
         rev_path_parent = rev_path[1:] + [self.root]
-        for w, node, parent_node in zip(rev_tpl, rev_path, rev_path_parent):
-            if w == lt_common.REPLACER:
-                w = self.KEY_WILDCARD
+        for node, parent_node in zip(rev_path, rev_path_parent):
             if not node:
-                # node empty: remove link from parent node
-                parent_node.pop(w)
+                # node empty: remove its link from the parent. Derive the key
+                # by identity (not from tpl words) so it stays correct when the
+                # trace backtracked onto a wildcard branch, where the traversed
+                # edge differs from the corresponding tpl word.
+                for key, child in list(parent_node.items()):
+                    if child is node:
+                        parent_node.pop(key)
+                        break
         return ltid
 
     def shuffle(self):
