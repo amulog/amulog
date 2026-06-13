@@ -83,6 +83,25 @@ class TestLTGen(unittest.TestCase):
         n_tpl = len(table)
         self.assertTrue(3 < n_tpl < 50)
 
+    def test_fttree_process_offline_contract(self):
+        # process_offline must return {mid: tid} where tid indexes the table
+        # (regression: fttree stored (tid, state) tuples, breaking the
+        #  manager offline path that does table.get_template(tid))
+        conf = config.open_config(verbose=False)
+        conf['log_template']['lt_methods'] = "fttree"
+        table = lt_common.TemplateTable()
+        ltgen = manager.init_ltgen_methods(conf, table)
+
+        iterobj = manager.iter_plines(conf, [self._path_testlog])
+        d_pline = {mid: pline for mid, pline in enumerate(iterobj)}
+        d_tid = ltgen.process_offline(d_pline)
+
+        self.assertTrue(len(d_tid) > 0)
+        for tid in d_tid.values():
+            self.assertIsInstance(tid, int)
+            # must be retrievable from the table (fails for a tuple key)
+            table.get_template(tid)
+
     def test_va(self):
         conf = config.open_config(verbose=False)
         conf['log_template']['lt_methods'] = "va"

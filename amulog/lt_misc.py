@@ -8,23 +8,26 @@ from . import lt_common
 _logger = logging.getLogger(__package__)
 
 
-class LTGroupFuzzyHash(lt_common.LTGroup):
+class LTGroupFuzzyHash(lt_common.LTGroupOnline):
     """Classify templates based on ssdeep, an implementation of fuzzy hashing.
     Fuzzy hashing evaluate the similarity of string data. This class compares
     strings of templates including symbols and variable replacements, and
     make groups that have large scores of fuzzy hash comparizon each other.
-    
+
     """
 
     def __init__(self, lttable, th=1, mem_hash=True):
-        super(LTGroupFuzzyHash, self).__init__()
+        super(LTGroupFuzzyHash, self).__init__(lttable)
         self.th = th
-        self._lttable = lttable
         self._mem_hash = mem_hash
         self._d_hash = {}
 
     def add(self, lt_new):
         l_score = self._calc_score(lt_new)
+        # only templates already assigned to a group are merge candidates;
+        # in remake_all the lttable also contains not-yet-grouped templates
+        l_score = [(ltid, score) for ltid, score in l_score
+                   if ltid in self._d_rgroup]
         if len(l_score) == 0:
             gid = self._next_groupid()
         else:
@@ -47,19 +50,19 @@ class LTGroupFuzzyHash(lt_common.LTGroup):
         if self._mem_hash:
             if len(self._d_hash) == 0:
                 # initialize d_hash
-                for lt in self._lttable:
+                for lt in self.lttable:
                     h = ssdeep.hash(str(lt))
                     self._d_hash[lt.ltid] = h
-            for ltid, lt_temp in enumerate(self._lttable):
+            for lt_temp in self.lttable:
                 h2 = self._d_hash[lt_temp.ltid]
                 score = ssdeep.compare(h1, h2)
-                ret.append((ltid, score))
+                ret.append((lt_temp.ltid, score))
             self._d_hash[lt_new.ltid] = h1
         else:
-            for lt_temp in self._lttable:
-                ltid = lt_temp.ltid
-                score = ssdeep.hash_score(str(lt_new), str(lt_temp))
-                ret.append((ltid, score))
+            for lt_temp in self.lttable:
+                # ssdeep has no hash_score(); compare two fuzzy hashes
+                score = ssdeep.compare(h1, ssdeep.hash(str(lt_temp)))
+                ret.append((lt_temp.ltid, score))
         return ret
 
 

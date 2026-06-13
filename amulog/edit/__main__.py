@@ -68,10 +68,13 @@ def show_lt_breakdown(ns):
     lv = logging.DEBUG if ns.debug else logging.INFO
     config.set_common_logging(conf, logger=_logger, lv=lv)
 
+    from amulog import log_db
+    ld = log_db.LogData(conf)
+
     from . import search
     ltid = ns.ltid
     limit = ns.lines
-    print(search.breakdown_lt(conf, ltid, limit))
+    print(search.breakdown_lt(ld, ltid, limit))
 
 
 def show_lt_vstable(ns):

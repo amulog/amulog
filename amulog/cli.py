@@ -51,6 +51,9 @@ def main(d_argset, d_alias=None, sublibs=None):
         sys.exit(usage)
     commandline = sys.argv[2:]
 
+    if mode not in d_argset:
+        sys.exit("{0}: unknown subcommand: {1}\n\n{2}".format(
+            command_path, mode, usage))
     desc, l_argset, func = d_argset[mode]
     ap = argparse.ArgumentParser(prog=" ".join(sys.argv[0:2]),
                                  description=desc.replace("@", ""))

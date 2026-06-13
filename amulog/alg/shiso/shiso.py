@@ -5,6 +5,7 @@ SHISO: a log template generation algorithm proposed in [1].
 """
 
 import logging
+from collections import defaultdict
 import numpy as np
 
 from amulog import lt_common
@@ -38,6 +39,8 @@ class LTGenSHISO(lt_common.LTGen):
         self._max_child = max_child
         if cfunc is None:
             self._cfunc = self.c_alphabet
+        else:
+            self._cfunc = cfunc
 
     def load(self, loadobj):
         self._n_root = loadobj
@@ -147,8 +150,7 @@ class LTGroupSHISO(lt_common.LTGroupOnline):
 
     def __init__(self, lttable, ngram_length=3,
                  th_lookup=0.3, th_distance=0.85, mem_ngram=True):
-        super(LTGroupSHISO, self).__init__()
-        self._lttable = lttable
+        super(LTGroupSHISO, self).__init__(lttable)
         # self.d_group = {} # key : groupid, val : [ltline, ...]
         # self.d_rgroup = {} # key : ltid, val : groupid
         self.ngram_length = ngram_length
@@ -163,7 +165,8 @@ class LTGroupSHISO(lt_common.LTGroupOnline):
 
         r_max = 0.0
         lt_max = None
-        l_cnt = [0] * len(self._lttable)
+        # keyed by ltid (a list indexed by ltid breaks on ltid gaps, CR-18)
+        l_cnt = defaultdict(int)
         l_ng1 = self._get_ngram(lt_new)
         for ng in l_ng1:
             for lt_temp, l_ng2 in self._lookup_ngram(ng):
@@ -226,7 +229,7 @@ class LTGroupSHISO(lt_common.LTGroupOnline):
 
     def _lookup_ngram(self, ng):
         ret = []
-        for ltline in self._lttable:
+        for ltline in self.lttable:
             if ng in self._get_ngram(ltline):
                 ret.append((ltline, ng))
         return ret

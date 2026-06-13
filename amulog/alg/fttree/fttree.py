@@ -99,7 +99,9 @@ class LTGenFTTree(lt_common.LTGen):
         ret = {}
         for mid, pline in d_pline.items():
             tpl = self._add_line(pline)
-            ret[mid] = self.update_table(tpl)
+            # base contract: process_offline returns {mid: tid}, not (tid, state)
+            tid, _ = self.update_table(tpl)
+            ret[mid] = tid
         return ret
 
     def process_line(self, pline):
