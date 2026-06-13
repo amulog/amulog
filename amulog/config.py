@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 import datetime
 import logging
 import configparser
@@ -147,6 +148,16 @@ def getname(conf):
     return conf.get(LOAD_SECTION, LOAD_OPTION)
 
 
+_DURATION_RE = re.compile(r"^\s*(\d+)\s*([smhdw])\s*$")
+_DURATION_UNITS = {
+    "s": lambda n: datetime.timedelta(seconds=n),
+    "m": lambda n: datetime.timedelta(minutes=n),
+    "h": lambda n: datetime.timedelta(hours=n),
+    "d": lambda n: datetime.timedelta(days=n),
+    "w": lambda n: datetime.timedelta(days=n * 7),
+}
+
+
 def str2dur(string):
     """
     Note:
@@ -156,23 +167,14 @@ def str2dur(string):
         \\d+d: \\d days
         \\d+w: \\d * 7 days
     """
-    if "s" in string:
-        num = int(string.partition("s")[0])
-        return datetime.timedelta(seconds=num)
-    elif "m" in string:
-        num = int(string.partition("m")[0])
-        return datetime.timedelta(minutes=num)
-    elif "h" in string:
-        num = int(string.partition("h")[0])
-        return datetime.timedelta(hours=num)
-    elif "d" in string:
-        num = int(string.partition("d")[0])
-        return datetime.timedelta(days=num)
-    elif "w" in string:
-        num = int(string.partition("w")[0])
-        return datetime.timedelta(days=num * 7)
-    else:
-        raise ValueError("Duration string invalid")
+    m = _DURATION_RE.match(string)
+    if m is None:
+        raise ValueError(
+            "invalid duration string: {0!r} "
+            "(expected '<int><unit>' with unit s/m/h/d/w, "
+            "e.g. '10s', '5m', '2h', '3d', '1w')".format(string))
+    num = int(m.group(1))
+    return _DURATION_UNITS[m.group(2)](num)
 
 
 def dur2str(td):

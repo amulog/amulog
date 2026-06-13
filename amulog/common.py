@@ -70,12 +70,9 @@ class IDDict:
 
 # file managing
 
-def is_empty(dirname):
+def is_empty(dirname: str) -> bool:
     if os.path.isdir(dirname):
-        if len(os.listdir(dirname)) > 1:
-            return True
-        else:
-            return False
+        return len(os.listdir(dirname)) == 0
     else:
         return False
 

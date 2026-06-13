@@ -73,7 +73,7 @@ class LogTemplate:
         self.count = count
 
     def __iter__(self):
-        return self.ltw
+        return iter(self.ltw)
 
     def __str__(self):
         return self.restore_message(self.ltw)

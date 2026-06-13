@@ -97,6 +97,21 @@ class LTGenVA(lt_common.LTGen):
         tpl = self._label2tpl(l_w, l_label)
         return self.update_table(tpl)
 
+    def process_offline(self, d_pline: dict) -> dict:
+        # First pass: build the complete word statistics. Second pass: label
+        # each line against those statistics. Unlike the base implementation
+        # (preprocess + process_line), the labeling pass does NOT call
+        # _add_dict again, which would double-count every word (CR-29).
+        self.preprocess(d_pline.values())
+        ret = {}
+        for mid, pline in d_pline.items():
+            l_w = pline["words"]
+            l_label = self._label(l_w)
+            tpl = self._label2tpl(l_w, l_label)
+            tid, _state = self.update_table(tpl)
+            ret[mid] = tid
+        return ret
+
 
 def init_ltgen_va(conf, table, **_):
     method = conf.get("log_template_va", "method")
