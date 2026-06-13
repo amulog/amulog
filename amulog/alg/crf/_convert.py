@@ -63,7 +63,9 @@ class FeatureExtracter:
                     "Invalid syntax of feature template ({0})".format(
                         line))
             field = m.group("field")
-            offset = int(m.group("offset"))
+            # offset is optional in the template ("word", "bos", "eos" have no
+            # "[n]"); default to 0 (current position). bos/eos ignore offset.
+            offset = int(m.group("offset") or 0)
             l_rule.append(tuple([field, offset]))
         return feature_name, tuple(l_rule), weight
 

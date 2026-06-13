@@ -331,7 +331,8 @@ class LTManager(object):
         with open(self._filename, 'wb') as f:
             pickle.dump(obj, f)
 
-        if self._ltgen.has_external_dump:
+        # self._ltgen is None in parallel mode (ltgen lives in worker processes).
+        if self._ltgen is not None and self._ltgen.has_external_dump:
             self._ltgen.dump_external()
 
     def clean(self):

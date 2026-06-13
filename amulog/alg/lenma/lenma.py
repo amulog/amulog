@@ -8,6 +8,8 @@ K. Shima. Length Matters: Clustering System Log Messages using Length of Words. 
 This code is based on https://github.com/keiichishima/templateminer .
 """
 
+from __future__ import annotations
+
 import numpy as np
 from collections import defaultdict
 
@@ -16,27 +18,30 @@ from amulog import lt_common
 
 class Cluster:
 
-    def __init__(self, words):
-        self._words = words
-        self._nwords = words
+    def __init__(self, words: list[str]) -> None:
+        self._words: list[str] = words
+        self._nwords: int = len(words)
         self._wordlens = np.array([len(w) for w in words])
 
-    def _get_similarity_score_cosine(self, new_words):
+    def _get_similarity_score_cosine(self, new_words: list[str]) -> float:
         # cosine similarity
         from sklearn.metrics.pairwise import cosine_similarity
         wordlens = self._wordlens.reshape(1, -1)
         new_wordlens = np.asarray([len(w) for w in new_words]).reshape(1, -1)
         cos_score = cosine_similarity(wordlens, new_wordlens)
-        return cos_score
+        return float(cos_score[0][0])
 
-    def get_similarity_score(self, new_words, n_same_count=3, use_head_rule=True):
+    def get_similarity_score(self, new_words: list[str], n_same_count: int = 3,
+                             use_head_rule: bool = True) -> float:
         # heuristic judge: the first word (process name) must be equal
         if use_head_rule and not self._words[0] == new_words[0]:
             return 0.0
         cnt_wildcard = sum(1 for w in self._words if w == lt_common.REPLACER)
-        cnt_same = sum(1 for w1, w2 in zip(self._nwords, new_words)
+        # compare against the current template words (self._words), which the
+        # wildcards evolve into, NOT the initial word list.
+        cnt_same = sum(1 for w1, w2 in zip(self._words, new_words)
                        if w1 == w2)
-        # check exact match
+        # exact match: every position is a literal match or a wildcard
         if cnt_same + cnt_wildcard == self._nwords:
             return 1.0
         # heuristics?
@@ -45,7 +50,7 @@ class Cluster:
 
         return self._get_similarity_score_cosine(new_words)
 
-    def update(self, new_words):
+    def update(self, new_words: list[str]) -> None:
         self._wordlens = np.array([len(w) for w in new_words])
         self._words = [w1 if w1 == w2 else lt_common.REPLACER
                        for w1, w2 in zip(self._words, new_words)]
@@ -53,7 +58,8 @@ class Cluster:
 
 class LTGenLenMa(lt_common.LTGen):
 
-    def __init__(self, table, threshold=0.9, n_same_count=3, use_head_rule=True):
+    def __init__(self, table, threshold: float = 0.9, n_same_count: int = 3,
+                 use_head_rule: bool = True) -> None:
         super().__init__(table)
         self._threshold = threshold
         self._n_same_count = n_same_count

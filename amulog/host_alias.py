@@ -7,6 +7,18 @@ from collections import defaultdict
 from . import config
 
 
+def _normalize_host(token):
+    """Return the canonical string of an IP-address token, or the token
+    unchanged if it is not a valid IP address (hostname, CIDR notation, ...).
+    This lets equivalent IP notations (e.g. expanded IPv6) match by value.
+    Subnet/CIDR containment is intentionally not supported: a CIDR token is
+    kept as a plain literal string and only matches itself exactly."""
+    try:
+        return str(ipaddress.ip_address(token))
+    except ValueError:
+        return token
+
+
 class HostAlias(object):
     """
     Note:
@@ -21,7 +33,6 @@ class HostAlias(object):
         self._d_ralias = {}  # key = host, val = alias
         self._d_group = defaultdict(list)  # key = group, val = List[host]
         self._d_rgroup = {}  # key = host, val = group
-        self._l_net = []
         self._open(self._fn)
 
     def _open(self, fn):
@@ -63,23 +74,9 @@ class HostAlias(object):
                 self._d_rgroup[key] = group
 
         for name in l_name:
-            if "/" in name:
-                try:
-                    net = str(ipaddress.ip_network(name))
-                    add_alias(net, alias)
-                    add_groupdef(net, group)
-                    self._l_net.append(net)
-                except ValueError:
-                    add_alias(name, alias)
-                    add_groupdef(name, group)
-            else:
-                try:
-                    addr = str(ipaddress.ip_address(name))
-                    add_alias(addr, alias)
-                    add_groupdef(addr, group)
-                except ValueError:
-                    add_alias(name, alias)
-                    add_groupdef(name, group)
+            key = _normalize_host(name)
+            add_alias(key, alias)
+            add_groupdef(key, group)
 
     def keys(self):
         return self._d_alias.keys()
@@ -97,57 +94,33 @@ class HostAlias(object):
 
     def isknown(self, string):
         try:
+            # IP address: match by canonical form (no subnet containment).
             addr = str(ipaddress.ip_address(string))
-            for net in self._l_net:
-                if addr in net:
-                    return True
-            else:
-                if addr in self._d_ralias:
-                    return True
-                else:
-                    return False
+            return addr in self._d_ralias
         except ValueError:
-            name = string.lower()
-            return name in self._d_ralias
+            # hostname: case-insensitive match.
+            return string.lower() in self._d_ralias
 
     def resolve_host(self, string):
         try:
+            # IP address: match by canonical form (no subnet containment).
             addr = str(ipaddress.ip_address(string))
-            for net in self._l_net:
-                if addr in net:
-                    return self._d_ralias[net]
-            else:
-                if addr in self._d_ralias:
-                    return self._d_ralias[addr]
-                else:
-                    return None
+            return self._d_ralias.get(addr)
         except ValueError:
-            name = string.lower()
-            if name in self._d_ralias:
-                return self._d_ralias[name]
-            else:
-                return None
+            # hostname: case-insensitive match.
+            return self._d_ralias.get(string.lower())
 
     def group(self, group):
         return self._d_group[group]
 
     def get_group(self, string):
         try:
+            # IP address: match by canonical form (no subnet containment).
             addr = str(ipaddress.ip_address(string))
-            for net in self._l_net:
-                if addr in net:
-                    return self._d_rgroup[net]
-            else:
-                if addr in self._d_rgroup:
-                    return self._d_rgroup[addr]
-                else:
-                    return None
+            return self._d_rgroup.get(addr)
         except ValueError:
-            name = string.lower()
-            if name in self._d_rgroup:
-                return self._d_rgroup[name]
-            else:
-                return None
+            # hostname: case-insensitive match.
+            return self._d_rgroup.get(string.lower())
 
 
 def init_hostalias(conf):

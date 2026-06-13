@@ -196,27 +196,6 @@ def db_anonymize_mapping(ns):
     print("> " + fp)
 
 
-def train(ns):
-    conf_src = config.open_config(ns.config_src)
-    conf_dst = config.open_config(ns.config_dst)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf_dst, logger=_logger, lv=lv)
-
-    from . import supervise
-    supervise.train_model(conf_src, conf_dst)
-
-
-def train_and_test(ns):
-    conf_src = config.open_config(ns.config_src)
-    conf_dst = config.open_config(ns.config_dst)
-    lv = logging.DEBUG if ns.debug else logging.INFO
-    config.set_common_logging(conf_dst, logger=_logger, lv=lv)
-    targets = get_targets(ns, conf_dst)
-
-    from . import supervise
-    supervise.train_and_test_model(conf_src, conf_dst, targets)
-
-
 def clean(ns):
     conf = config.open_config(ns.conf_path)
     lv = logging.DEBUG if ns.debug else logging.INFO
@@ -497,12 +476,6 @@ ARG_DBSEARCH = [["conditions"],
 ARG_LID = [["lid"],
            {"metavar": "LID", "action": "store",
             "help": "log message identifier"}]
-ARG_CONFIG_SRC = [["config_src"],
-                   {"metavar": "CONFIG_SRC",
-                    "help": "Config for source db (for annotated data)"}]
-ARG_CONFIG_DST = [["config_dst"],
-                   {"metavar": "CONFIG_DST",
-                    "help": "Config for training model (for estimated data) "}]
 
 # argument settings for each modes
 # description, List[args, kwargs], func
@@ -570,17 +543,6 @@ DICT_ARGSET = {
     "db-anonymize-mapping": ["Generate anonymization mapping json.",
                              [OPT_CONFIG, OPT_DEBUG],
                              db_anonymize_mapping],
-    "train": ["Generate training model for supervised log template generation methods.",
-              [OPT_DEBUG, ARG_CONFIG_DST, ARG_CONFIG_SRC,
-               [["-l", "--limit"],
-                {"dest": "limit", "action": "store",
-                 "type": int, "default": -1,
-                 "help": "number of log lines for training (use top lines without shuffle option)"}],
-               [["-s", "--shuffle"],
-                {"dest": "shuffle", "action": "store_true",
-                 "help": "shuffle training data (random selection order)"}],
-               ],
-              train],
     "clean": ["Remove database and related files to initialize.",
               [OPT_CONFIG, OPT_DEBUG],
               clean],
