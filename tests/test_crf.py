@@ -60,6 +60,29 @@ class TestCRF(unittest.TestCase):
         self.assertTrue(lt_common.REPLACER in tpl)
 
 
+class TestRestoreNormalizedTpl(unittest.TestCase):
+    """_restore_normalized_tpl is a classmethod independent of the
+    (optional) log_normalizer package, so it can be unit-tested directly."""
+
+    def test_restore(self):
+        from amulog.alg.crf.lt_crf import LTGenCRF
+        D, V = LTGenCRF.LABEL_DESC, LTGenCRF.LABEL_VAR
+        # "beta" normalized into 2 tokens, both labeled V -> wildcard;
+        # "alpha"/"gamma" stay as description words.
+        org_words = ["alpha", "beta", "gamma"]
+        length_vec = [1, 2, 1]
+        labels = [D, V, V, D]
+        # regression (CR-06): labels[start, stop] (tuple index) -> TypeError
+        tpl = LTGenCRF._restore_normalized_tpl(org_words, labels, length_vec)
+        self.assertEqual(tpl, ["alpha", lt_common.REPLACER, "gamma"])
+
+    def test_restore_dummy_label_raises(self):
+        from amulog.alg.crf.lt_crf import LTGenCRF
+        D, N = LTGenCRF.LABEL_DESC, LTGenCRF.LABEL_DUMMY
+        with self.assertRaises(ValueError):
+            LTGenCRF._restore_normalized_tpl(["a", "b"], [D, N], [1, 1])
+
+
 if __name__ == "__main__":
     unittest.main()
 

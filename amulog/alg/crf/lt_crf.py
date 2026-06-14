@@ -49,16 +49,12 @@ class LTGenCRF(lt_common.LTGenStateless):
         words = []
         length_vec = []
         for w in l_w:
-            try:
-                if w == "" or w == lt_common.REPLACER:
-                    replaced = w
-                else:
-                    replaced = self._ln.replace_word(w, rule_name)
-            except IndexError:
-                import pdb; pdb.set_trace()
+            if w == "" or w == lt_common.REPLACER:
+                replaced = w
             else:
-                words.extend(replaced)
-                length_vec.append(len(replaced))
+                replaced = self._ln.replace_word(w, rule_name)
+            words.extend(replaced)
+            length_vec.append(len(replaced))
         return words, length_vec
 
     @classmethod
@@ -107,7 +103,7 @@ class LTGenCRF(lt_common.LTGenStateless):
         # slicer: iterate slice range of labels
         slicer = zip(np.cumsum([0] + length_vec[:-1]), np.cumsum(length_vec))
         for org_wid, (start, stop) in enumerate(slicer):
-            tmp_labels = labels[start, stop]
+            tmp_labels = labels[start:stop]
             if cls.LABEL_VAR in tmp_labels:
                 org_tpl.append(lt_common.REPLACER)
             elif cls.LABEL_DUMMY in tmp_labels:
