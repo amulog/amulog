@@ -54,17 +54,14 @@ class VariableRegex:
             self._re[rule] = tmp
 
     def match(self, word):
-        for key, func in self._ext.items():
-            if func(word):
-                return True
-
-        for key, l_reobj in self._re.items():
-            for reobj in l_reobj:
-                if reobj.match(word):
-                    return True
-        return False
+        # defined in terms of label() to avoid duplicating the scan logic
+        # (the two used to drift); a word matches iff it gets a known label.
+        return self.label(word) != self.label_unknown
 
     def label(self, word):
+        # The rules come from a user-provided config file (trust boundary):
+        # the regexes are compiled at load time (see _load_rule); there is no
+        # match timeout, so the rule file is assumed to be trusted input.
         for key, func in self._ext.items():
             if func(word):
                 return key

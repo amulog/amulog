@@ -27,6 +27,16 @@ def add_esc_external(tpl):
 
 
 def generate_regex(tpl):
+    """Build a regex that matches raw log messages against an external
+    template. Each variable placeholder becomes a ``[^*]*`` capture group.
+
+    Note:
+        ``tpl`` comes from an external template-definition file, which is a
+        trust boundary: the generated regex is not sandboxed and has no match
+        timeout. Adjacent variables share a greedy ``[^*]*`` boundary, so the
+        split between them is ambiguous. The template files are assumed to be
+        trusted, well-formed input.
+    """
     d_name = defaultdict(list)
 
     def _replace_wildcard(matchobj):
