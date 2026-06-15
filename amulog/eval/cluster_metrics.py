@@ -50,9 +50,14 @@ def rand_score(labels_true, labels_pred):
 
 def precision_recall_fscore(labels_true, labels_pred):
     tp, fp, fn, tn = confusion_matrix(labels_true, labels_pred).ravel()
-    precision = tp / (tp + fp)
-    recall = tp / (tp + fn)
-    fscore = (2. * precision * recall) / (precision + recall)
+    # guard degenerate inputs (e.g. all-singleton clusters have no pairs, so
+    # tp+fp == tp+fn == 0); undefined metrics are 0.0 (sklearn zero_division=0)
+    precision = float(tp / (tp + fp)) if (tp + fp) > 0 else 0.0
+    recall = float(tp / (tp + fn)) if (tp + fn) > 0 else 0.0
+    if precision + recall > 0:
+        fscore = (2. * precision * recall) / (precision + recall)
+    else:
+        fscore = 0.0
     return precision, recall, fscore
 
 
