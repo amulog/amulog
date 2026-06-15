@@ -2,9 +2,20 @@ import logging
 
 from . import strutil
 from . import lt_common
-from amsemantics import SemanticClassifier
 
 _logger = logging.getLogger(__package__)
+
+
+def _amsemantics():
+    """Import the optional amsemantics package (heavy ML dependencies, not
+    installed by default), raising an actionable error when it is missing."""
+    try:
+        import amsemantics
+    except ImportError:
+        raise ImportError(
+            "ltgroup algorithm <semantics> requires the amsemantics package "
+            "(optional, not installed by default; pip install amsemantics)")
+    return amsemantics
 
 
 class LTGroupSemantics(lt_common.LTGroupOffline):
@@ -14,17 +25,18 @@ class LTGroupSemantics(lt_common.LTGroupOffline):
                  **kwargs):
         super().__init__(lttable)
         self._lognorm = normalizer
-        self._sc_kwargs = kwargs
+        # snapshot the caller-provided kwargs; do not mutate the dict we keep
+        self._sc_kwargs = dict(kwargs)
+        self._use_input_as_training = "self" in lda_knowledge_sources
 
-        kwargs["normalizer"] = normalizer
-        kwargs["training_sources"] = [
+        sc_kwargs = dict(kwargs)
+        sc_kwargs["normalizer"] = normalizer
+        sc_kwargs["training_sources"] = [
             source_name for source_name in lda_knowledge_sources
             if source_name != "self"
         ]
-        kwargs["input_sources"] = None
-        self._use_input_as_training = "self" in lda_knowledge_sources
-
-        self._sc = SemanticClassifier(**kwargs)
+        sc_kwargs["input_sources"] = None
+        self._sc = _amsemantics().SemanticClassifier(**sc_kwargs)
 
     @property
     def classifier(self):
@@ -92,7 +104,7 @@ class LTGroupSemanticsMultiData(LTGroupSemantics):
 
 def init_nlp_normalizer(conf):
     from . import config
-    from amsemantics import Normalizer
+    Normalizer = _amsemantics().Normalizer
     filters = config.getlist(conf, "nlp_preprocess", "filters")
     mreplacer_sources = config.getlist(conf, "nlp_preprocess",
                                        "replacer_sources")
