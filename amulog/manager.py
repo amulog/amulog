@@ -361,8 +361,11 @@ class LTManager(object):
             self._ltgen.clean()
 
     def fail_dump(self, msg):
-        with open(self._fail_output, 'a') as f:
-            f.write(msg)
+        # encoding pinned to match iter_lines; ensure each failed line ends
+        # with exactly one newline so lines without a trailing newline
+        # (e.g. a file's last line) do not merge with the next.
+        with open(self._fail_output, 'a', encoding='utf-8') as f:
+            f.write(msg if msg.endswith("\n") else msg + "\n")
 
 
 def init_manager(ld):

@@ -158,6 +158,29 @@ class TestDB(unittest.TestCase):
                                       reset_db=True, parallel=True)
         self.assertEqual(log_db.LogData(self._conf).count_lines(), 6539)
 
+    def test_fail_dump_separates_lines(self):
+        # CR-13: fail_dump wrote msg verbatim, so a failing line without a
+        # trailing newline (e.g. a file's last line) merged with the next.
+        fd, fail_path = tempfile.mkstemp()
+        os.close(fd)
+        fd2, db_path = tempfile.mkstemp()
+        os.close(fd2)
+        conf = config.open_config(verbose=False)
+        conf['general']['logging'] = ""
+        conf['database']['sqlite3_filename'] = db_path
+        conf['manager']['fail_output'] = fail_path
+        try:
+            ld = log_db.LogData(conf, edit=True, reset_db=True)
+            ltm = manager.LTManager(conf, ld.db, ld.lttable, reset_db=True)
+            ltm.fail_dump("no trailing newline")
+            ltm.fail_dump("already has one\n")
+            with open(fail_path, encoding="utf-8") as f:
+                content = f.read()
+            self.assertEqual(content, "no trailing newline\nalready has one\n")
+        finally:
+            os.remove(fail_path)
+            os.remove(db_path)
+
     def test_data_from_data(self):
         # regression: data_from_data referenced [database].undefined_host
         # (NoOptionError, CR-38) and skipped add_esc before parse_line (CR-39).

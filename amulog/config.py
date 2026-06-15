@@ -219,15 +219,22 @@ def load_defaults(iterable_conf_path=None):
 
 
 def _load_imports(conf):
+    seen = set()
     while conf.has_option(IMPORT_SECTION, IMPORT_OPTION):
-        if conf[IMPORT_SECTION][IMPORT_OPTION] == "":
-            break
         import_fn = conf[IMPORT_SECTION][IMPORT_OPTION]
+        if import_fn == "":
+            break
         conf.remove_option(IMPORT_SECTION, IMPORT_OPTION)
+        real_fn = os.path.realpath(import_fn)
+        if real_fn in seen:
+            raise ValueError(
+                "circular config import detected ({0})".format(import_fn))
+        seen.add(real_fn)
         if not os.path.exists(import_fn):
             raise IOError("config load error ({0})".format(import_fn))
         import_conf = configparser.ConfigParser()
-        import_conf.read(import_fn)
+        if not import_conf.read(import_fn):
+            raise IOError("failed to read config import ({0})".format(import_fn))
         conf = merge_config(import_conf, conf)
 
     return conf
@@ -605,7 +612,7 @@ def release_common_logging(ch, logger=None, logger_name=None):
         raise TypeError
     if logger_name is None:
         pass
-    elif isinstance(logger, list):
+    elif isinstance(logger_name, list):
         temp_loggers += [logging.getLogger(ln) for ln in logger_name]
     elif isinstance(logger_name, str):
         temp_loggers.append(logging.getLogger(logger_name))
