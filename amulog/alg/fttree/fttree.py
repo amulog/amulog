@@ -113,7 +113,12 @@ class LTGenFTTree(lt_common.LTGen):
         tpl = self._add_line(pline)
         return self.update_table(tpl)
 
-    def generate_tpl(self, pline):
+    def _generate_tpl(self, pline):
+        # NOTE: this resembles the stateless LTGenStateless.generate_tpl()
+        # interface but it MUTATES the FT-tree (via process_line) and is
+        # order-dependent. fttree is stateful (is_stateful() is True); this
+        # is an internal convenience, not a stateless generator. Underscored
+        # to avoid being mistaken for the stateless batch-processing hook.
         tid, _ = self.process_line(pline)
         return self._table[tid]
 

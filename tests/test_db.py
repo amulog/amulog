@@ -130,6 +130,52 @@ class TestDB(unittest.TestCase):
         ltm.load()   # must not raise AttributeError
         ltm.clean()  # must not raise AttributeError
 
+    def test_split_into_batches(self):
+        # CR-37: offline_batchsize is the per-batch size, not the batch count.
+        batches = manager.split_into_batches(list(range(10)), 3)
+        self.assertEqual([len(b) for b in batches], [3, 3, 3, 1])
+        # all items are covered exactly once, in order
+        self.assertEqual([x for b in batches for x in b], list(range(10)))
+        # batchsize >= len -> a single batch (no empty/strided buckets)
+        self.assertEqual(manager.split_into_batches([1, 2, 3], 100), [[1, 2, 3]])
+        # non-positive size falls back to 1 (no step-0 ValueError)
+        self.assertEqual(manager.split_into_batches([1, 2], 0), [[1], [2]])
+
+    def test_makedb_parallel_multibatch(self):
+        # small batchsize -> many batches; chunking must cover all lines
+        # exactly (regression for CR-37's batch partitioning).
+        import copy
+        conf = copy.copy(self._conf)
+        conf["manager"]["n_process"] = "2"
+        conf["manager"]["offline_batchsize"] = "500"
+        conf["log_template"]["lt_methods"] = "re"
+        conf["log_template_re"]["variable_rule"] = \
+            common.filepath_local(__file__, "test_re.conf")
+
+        from amulog import __main__ as amulog_main
+        targets = amulog_main.get_targets_conf(conf)
+        manager.process_files_offline(conf, targets,
+                                      reset_db=True, parallel=True)
+        self.assertEqual(log_db.LogData(self._conf).count_lines(), 6539)
+
+    def test_data_from_data(self):
+        # regression: data_from_data referenced [database].undefined_host
+        # (NoOptionError, CR-38) and skipped add_esc before parse_line (CR-39).
+        import shutil
+        outdir = tempfile.mkdtemp()
+        try:
+            from amulog import __main__ as amulog_main
+            targets = amulog_main.get_targets_conf(self._conf)
+            manager.data_from_data(self._conf, targets, outdir,
+                                   method="commit", reset=False)
+            files = os.listdir(outdir)
+            self.assertTrue(len(files) > 0, "no restored data written")
+            total = sum(os.path.getsize(os.path.join(outdir, f))
+                        for f in files)
+            self.assertTrue(total > 0, "restored data is empty")
+        finally:
+            shutil.rmtree(outdir)
+
     def test_anonymize_overwrite(self):
         from amulog import __main__ as amulog_main
         targets = amulog_main.get_targets_conf(self._conf)

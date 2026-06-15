@@ -129,8 +129,10 @@ class LTManager(object):
 
         l_input = [(mid, line)
                    for mid, line in enumerate(iterable_lines)]
-        iter_batch = (l_input[i::self._offline_batchsize]
-                      for i in range(self._offline_batchsize))
+        # offline_batchsize is the number of lines per batch (a unit of work
+        # per worker task), NOT the number of batches. Splitting by size keeps
+        # task dispatch overhead bounded regardless of input size.
+        iter_batch = split_into_batches(l_input, self._offline_batchsize)
 
         try:
             d_pline = {}
@@ -365,6 +367,16 @@ class LTManager(object):
 
 def init_manager(ld):
     return LTManager(ld.conf, ld.db, ld.lttable)
+
+
+def split_into_batches(items, batchsize):
+    """Split items into consecutive batches of at most batchsize each.
+
+    batchsize is the number of items per batch (a unit of parallel work),
+    not the number of batches. A non-positive batchsize falls back to 1.
+    """
+    bs = max(1, batchsize)
+    return [items[i:i + bs] for i in range(0, len(items), bs)]
 
 
 def init_ltgen_methods(conf, table, lt_methods=None, shuffle=None):
@@ -632,9 +644,9 @@ def data_from_data(conf, targets, dirname, method, reset):
     rod = log_db.RestoreOriginalData(dirname, method=method, reset=reset)
     lp = load_log2seq(conf)
     ha = host_alias.init_hostalias(conf)
-    drop_undefhost = conf.getboolean("database", "undefined_host")
+    drop_undefhost = conf.getboolean("manager", "undefined_host")
     for line in iter_lines(targets):
-        pline = parse_line(line, lp)
+        pline = parse_line(strutil.add_esc(line), lp)
         pline = normalize_pline(pline, ha, drop_undefhost)
         if pline is None:
             continue
