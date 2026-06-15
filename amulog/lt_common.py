@@ -614,6 +614,13 @@ class LTPostProcess(object):
                 self._rules.append(VariableLabelRule())
             elif alg == "host":
                 self._rules.append(VariableLabelHost(conf))
+            elif alg == "regex":
+                from . import lt_regex
+                from . import host_alias
+                fn = conf.get("log_template_re", "variable_rule")
+                ha = host_alias.init_hostalias(conf)
+                self._rules.append(
+                    VariableLabelRegex(lt_regex.VariableRegex(fn, ha)))
             else:
                 raise NotImplementedError
 
@@ -638,22 +645,6 @@ class LTPostProcess(object):
                 ret.append(tpl_w)
         return ret
 
-    def search(self, tid, ltw):
-        """Search existing candidates of template derivation. Return None
-        if no possible candidates found."""
-        l_ltid = self._table.getcand(tid)
-        for ltid in l_ltid:
-            if self._lttable[ltid].ltw == ltw:
-                return ltid
-        else:
-            return None
-
-        # if len(self._table.getcand(tid)) == 0:
-        #    return None
-        # else:
-        #    return self._table.getcand(tid)[0]
-
-
 class VariableLabelRule(object):
 
     def __init__(self):
@@ -674,6 +665,25 @@ class VariableLabelHost(VariableLabelRule):
 
     def replace_word(self, w):
         return self.ha.get_group(w)
+
+
+class VariableLabelRegex(VariableLabelRule):
+    """Label a variable word by its type using VariableRegex rules
+    (e.g. an IPv4 address -> "IPv4ADDR", an interface name -> "ifname").
+    Returns None for unknown words so an unlabeled variable stays a plain
+    wildcard. This is the rule engine for variable-based template separation
+    (LTPostProcess): two messages of the same structure whose variable is a
+    different type yield distinct labeled templates."""
+
+    def __init__(self, vreobj):
+        super().__init__()
+        self._vre = vreobj
+
+    def replace_word(self, w):
+        label = self._vre.label(w)
+        if label == self._vre.label_unknown:
+            return None
+        return label
 
 
 def is_replacer(word):
