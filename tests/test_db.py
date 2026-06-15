@@ -93,6 +93,43 @@ class TestDB(unittest.TestCase):
                         ("log template generation fails? "
                          "(groups: {0})".format(ltg_num)))
 
+    def test_makedb_parallel_incremental(self):
+        # incremental parallel offline (reset_db=False) used to crash at
+        # manager.process_offline: in parallel mode self._ltgen is None, so
+        # the `self._ltgen.is_stateful()` guard raised AttributeError.
+        import copy
+        conf = copy.copy(self._conf)
+        conf["manager"]["n_process"] = "2"
+        conf["log_template"]["lt_methods"] = "re"
+        conf["log_template_re"]["variable_rule"] = \
+            common.filepath_local(__file__, "test_re.conf")
+
+        from amulog import __main__ as amulog_main
+        targets = amulog_main.get_targets_conf(conf)
+        manager.process_files_offline(conf, targets,
+                                      reset_db=True, parallel=True)
+        n1 = log_db.LogData(self._conf).count_lines()
+
+        # add the same lines again incrementally (re is stateless)
+        manager.process_files_offline(conf, targets,
+                                      reset_db=False, parallel=True)
+        n2 = log_db.LogData(self._conf).count_lines()
+        self.assertEqual(n2, 2 * n1)
+
+    def test_load_clean_tolerate_none_ltgen(self):
+        # In parallel mode the main manager keeps self._ltgen = None (the
+        # ltgen lives in workers). load()/clean() must tolerate that like
+        # dump() does, instead of dereferencing None.
+        from amulog import __main__ as amulog_main
+        targets = amulog_main.get_targets_conf(self._conf)
+        manager.process_files_online(self._conf, targets, reset_db=True)
+
+        ld = log_db.LogData(self._conf, edit=True, reset_db=False)
+        ltm = manager.LTManager(self._conf, ld.db, ld.lttable, reset_db=False)
+        ltm._ltgen = None  # simulate the parallel-mode main manager
+        ltm.load()   # must not raise AttributeError
+        ltm.clean()  # must not raise AttributeError
+
     def test_anonymize_overwrite(self):
         from amulog import __main__ as amulog_main
         targets = amulog_main.get_targets_conf(self._conf)

@@ -72,6 +72,16 @@ class LTManager(object):
     def ltgen(self):
         return self._ltgen
 
+    def _ltgen_is_stateful(self):
+        """Whether the configured ltgen is stateful. In parallel mode the
+        ltgen lives in worker processes (self._ltgen is None), so inspect a
+        throwaway instance built from the same config. This is evaluated at
+        runtime rather than assumed, so a future stateful method routed into
+        parallel processing is still detected here."""
+        if self._ltgen is not None:
+            return self._ltgen.is_stateful()
+        return init_ltgen_methods(self._conf, lt_common.TemplateTable()).is_stateful()
+
     @property
     def template_table(self):
         return self._table
@@ -158,7 +168,7 @@ class LTManager(object):
         if self._pool is None:
             d_pline, d_tid = self._process_offline_single(list_lines)
         else:
-            if (not self._reset_db) and self._ltgen.is_stateful():
+            if (not self._reset_db) and self._ltgen_is_stateful():
                 msg = ("offline additional change is limited "
                        "to stateless ltgen methods")
                 raise ValueError(msg)
@@ -307,13 +317,15 @@ class LTManager(object):
         with open(self._filename, 'rb') as f:
             obj = pickle.load(f)
         table_data, ltgen_data, ltgroup_data = obj
-        self._ltgen.load(ltgen_data)
+        # self._ltgen is None in parallel mode (ltgen lives in worker processes).
+        if self._ltgen is not None:
+            self._ltgen.load(ltgen_data)
         if not self._reset_db:
             self._table.load(table_data)
             if self._ltgroup is not None:
                 self._ltgroup.load(ltgroup_data)
-        
-        if self._ltgen.has_external_dump:
+
+        if self._ltgen is not None and self._ltgen.has_external_dump:
             # external loading must be later than standard loading (used in amulog-logdtl)
             self._ltgen.load_external()
 
@@ -342,7 +354,8 @@ class LTManager(object):
 
         self._db.drop_all()
 
-        if self._ltgen.has_external_dump:
+        # self._ltgen is None in parallel mode (ltgen lives in worker processes).
+        if self._ltgen is not None and self._ltgen.has_external_dump:
             self._ltgen.clean()
 
     def fail_dump(self, msg):
