@@ -211,7 +211,13 @@ def show_db_info(ns):
     config.set_common_logging(conf, logger=_logger, lv=lv)
 
     from . import log_db
-    log_db.info(conf)
+    if ns.dt_range is None:
+        log_db.info(conf)
+    else:
+        from dateutil import parser
+        dts = parser.parse(ns.dt_range[0])
+        dte = parser.parse(ns.dt_range[1])
+        log_db.info_term(conf, dts, dte)
 
 
 def show_lt(ns):
@@ -452,11 +458,11 @@ OPT_RESET = [["--reset"],
 OPT_DRY = [["-d", "--dry"],
            {"dest": "dry", "action": "store_true",
             "help": "do not store data into db"}]
-# OPT_TERM = [["-t", "--term"],
-#             {"dest": "dt_range",
-#              "metavar": "DATE1 DATE2", "nargs": 2,
-#              "help": ("datetime range, start and end in YY-MM-dd style. "
-#                       "(optional; defaultly use all data)")}]
+OPT_TERM = [["-t", "--term"],
+            {"dest": "dt_range", "default": None,
+             "metavar": "DATE", "nargs": 2,
+             "help": ("datetime range (start end), e.g. -t 2012-10-10 "
+                      "2012-10-20. Optional; without it, use all data.")}]
 ARG_FILE = [["file"],
             {"metavar": "PATH", "action": "store",
              "help": "filepath to output"}]
@@ -547,7 +553,7 @@ DICT_ARGSET = {
               [OPT_CONFIG, OPT_DEBUG],
               clean],
     "show-db-info": ["Show abstruction of database status.",
-                     [OPT_CONFIG, OPT_DEBUG],
+                     [OPT_CONFIG, OPT_DEBUG, OPT_TERM],
                      show_db_info],
     "show-lt": ["Show all log templates in database.",
                 [OPT_CONFIG, OPT_DEBUG,

@@ -672,33 +672,32 @@ class LogDB:
                 d_line["l_w"] = strutil.split_igesc(row[4], self._splitter)
             yield d_line
 
-    def iter_lines(self, conditions, limit=None):
+    @staticmethod
+    def _prepare_conditions(conditions):
+        """Drop None-valued conditions and normalize the legacy datetime keys.
+
+        `dts`/`dte` (datetime start/end) are the canonical keys; `top_dt`/
+        `end_dt` are accepted as deprecated aliases. Centralizing this here
+        keeps the alias handling in one place (it used to be duplicated in
+        every conditions-based query method)."""
         d_cond = {k: v for k, v in conditions.items()
                   if v is not None}
         if len(d_cond) == 0:
             raise ValueError("Use iter_all to get all lines")
 
-        # for compatibility
         if "top_dt" in d_cond and "dts" not in d_cond:
             d_cond["dts"] = d_cond.pop("top_dt")
         if "end_dt" in d_cond and "dte" not in d_cond:
             d_cond["dte"] = d_cond.pop("end_dt")
+        return d_cond
 
+    def iter_lines(self, conditions, limit=None):
+        d_cond = self._prepare_conditions(conditions)
         for row in self._select_log(d_cond, limit=limit):
             yield self._parse_row(row)
 
     def iter_words(self, conditions):
-        d_cond = {k: v for k, v in conditions.items()
-                  if v is not None}
-        if len(d_cond) == 0:
-            raise ValueError("Use iter_all to get all lines")
-
-        # for compatibility
-        if "top_dt" in d_cond and "dts" not in d_cond:
-            d_cond["dts"] = d_cond.pop("top_dt")
-        if "end_dt" in d_cond and "dte" not in d_cond:
-            d_cond["dte"] = d_cond.pop("end_dt")
-
+        d_cond = self._prepare_conditions(conditions)
         for row in self._select_log(d_cond):
             if row[4] == "":
                 yield []
@@ -1110,20 +1109,23 @@ def info(conf):
     print("Hosts : {0}".format(len(ld.whole_host())))
 
 
-def info_term(conf, top_dt, end_dt):
+def info_term(conf, dts, dte):
+    """Show DB status (counts of lines, templates, groups, hosts) restricted
+    to the time range [dts, dte). This is the term-limited counterpart of
+    info()."""
     cnt_line = 0
     s_ltid = set()
     s_gid = set()
     s_host = set()
 
     ld = LogData(conf)
-    for line in ld.iter_lines(top_dt=top_dt, end_dt=end_dt):
+    for line in ld.iter_lines(dts=dts, dte=dte):
         cnt_line += 1
         s_ltid.add(line.lt.ltid)
         s_gid.add(line.lt.ltgid)
         s_host.add(line.host)
 
-    print("[DB status] in {0} - {1}".format(top_dt, end_dt))
+    print("[DB status] in {0} - {1}".format(dts, dte))
     print("Registered log lines : {0}".format(cnt_line))
     print("Log templates : {0}".format(len(s_ltid)))
     print("Log template groups : {0}".format(len(s_gid)))
@@ -1195,7 +1197,7 @@ def show_all_host(conf, dts=None, dte=None):
 def data_from_db(conf, dirname, method, reset):
     rod = RestoreOriginalData(dirname, method=method, reset=reset)
     ld = LogData(conf)
-    top_dt, end_dt = ld.whole_term()
-    for lm in ld.iter_lines(top_dt=top_dt, end_dt=end_dt):
+    dts, dte = ld.whole_term()
+    for lm in ld.iter_lines(dts=dts, dte=dte):
         rod.add(lm)
     rod.commit()

@@ -199,6 +199,25 @@ class TestDB(unittest.TestCase):
         finally:
             shutil.rmtree(outdir)
 
+    def test_datetime_key_compat_and_info_term(self):
+        # CR-14: dts/dte are canonical; top_dt/end_dt are accepted as legacy
+        # aliases (compat shim now centralized). Both must select the same set.
+        import datetime
+        from amulog import __main__ as amulog_main
+        targets = amulog_main.get_targets_conf(self._conf)
+        manager.process_files_online(self._conf, targets, reset_db=True)
+
+        ld = log_db.LogData(self._conf)
+        dts = datetime.datetime(2000, 1, 1)
+        dte = datetime.datetime(2200, 1, 1)
+        n_canonical = sum(1 for _ in ld.iter_lines(dts=dts, dte=dte))
+        n_legacy = sum(1 for _ in ld.iter_lines(top_dt=dts, end_dt=dte))
+        self.assertEqual(n_canonical, n_legacy)
+        self.assertEqual(n_canonical, 6539)
+
+        # info_term (term-restricted DB status) runs without error
+        log_db.info_term(self._conf, dts, dte)
+
     def test_anonymize_overwrite(self):
         from amulog import __main__ as amulog_main
         targets = amulog_main.get_targets_conf(self._conf)
