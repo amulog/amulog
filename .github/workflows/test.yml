@@ -2,6 +2,7 @@ name: test
 
 on:
   push:
+    branches: ['**']  # all branches, not tags (tag pushes are handled by publish.yml)
   pull_request:
   workflow_dispatch:
 
@@ -24,6 +25,4 @@ jobs:
           pip install -e .
           pip install pytest
       - name: Run tests
-        # Optional backends (ssdeep, amsemantics, log_normalizer) are not
-        # installed in CI; tests for them skip automatically.
         run: pytest tests/
