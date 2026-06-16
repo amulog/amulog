@@ -121,6 +121,30 @@ def cluster_accuracy(labels_true, labels_pred):
 
 
 def over_division_cluster_ratio(labels_true, labels_pred):
+    """Ratio of ground-truth clusters that are over-divided.
+
+    A ground-truth (answer) cluster is over-divided when its members are
+    split across more than one estimated cluster. The ratio is that count
+    divided by the number of ground-truth clusters.
+
+    over-division / over-aggregation vs homogeneity (Ho) / completeness (Co):
+        Both pairs describe the same two failure modes, but from different
+        angles:
+
+        - Ho/Co (V-measure support metrics; computed with sklearn) are
+          *entropy-based and instance-weighted*: a large cluster mixing many
+          log lines moves the score more than a small one. Use them for an
+          overall, instance-level accuracy score (Co reflects over-division,
+          Ho reflects over-aggregation).
+        - These ratios are *cluster-counting and size-agnostic*: every
+          cluster counts equally regardless of how many log lines it holds.
+          They answer "what fraction of clusters (templates) are broken",
+          which is a better proxy for the manual effort of fixing templates
+          (one template is one unit of work irrespective of its size).
+
+        They are complementary, not redundant, and generally yield different
+        values. See also over_aggregation_cluster_ratio (the dual).
+    """
     from sklearn.metrics.cluster import contingency_matrix
     a_true = np.array(labels_true)
     a_pred = np.array(labels_pred)
@@ -139,20 +163,37 @@ def over_division_cluster_ratio(labels_true, labels_pred):
 
 
 def over_aggregation_cluster_ratio(labels_true, labels_pred):
+    """Ratio of estimated clusters that are over-aggregated.
+
+    This is the dual of over_division_cluster_ratio: an estimated cluster is
+    over-aggregated when it contains members of more than one ground-truth
+    cluster. The ratio is that count divided by the number of estimated
+    clusters. See over_division_cluster_ratio for how these cluster-counting
+    ratios complement the entropy-based Ho/Co metrics.
+
+    Note:
+        The earlier implementation inspected only the first estimated cluster
+        per ground-truth cluster and was not invariant to cluster relabeling
+        (the same clustering could yield different values depending on label
+        names); it counted per ground-truth cluster, asymmetric with the dual
+        above. This was a genuine defect, not a published metric (the paper
+        measures over-division/over-aggregation via Ho/Co), so it was
+        corrected to the label-invariant per-estimated-cluster definition.
+    """
     from sklearn.metrics.cluster import contingency_matrix
     a_true = np.array(labels_true)
     a_pred = np.array(labels_pred)
-    n_cluster = np.unique(a_true).shape[0]
+    # denominator: number of estimated clusters (dual of over_division)
+    n_cluster = np.unique(a_pred).shape[0]
     cm = contingency_matrix(a_true, a_pred, sparse=True)
 
     nz_true, nz_pred = cm.nonzero()
 
     n_fail_cluster = 0
-    for uniq_label_true in np.unique(nz_true):
-        index_uniq_true = (nz_true == uniq_label_true)
-        index_uniq_pred = (nz_pred == nz_pred[index_uniq_true][0])
-        # multiple answer cluster for 1 estimated cluster?
-        if nz_true[index_uniq_pred].shape[0] > 1:
+    for uniq_label_pred, uniq_cnt_pred in zip(
+            *np.unique(nz_pred, return_counts=True)):
+        # 1 estimated cluster holding members of multiple answer clusters?
+        if uniq_cnt_pred > 1:
             n_fail_cluster += 1
 
     return 1. * n_fail_cluster / n_cluster

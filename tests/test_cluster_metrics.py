@@ -33,5 +33,37 @@ class TestPrecisionRecallFscore(unittest.TestCase):
         self.assertEqual((p, r, f), (0.0, 0.0, 0.0))
 
 
+class TestOverDivisionAggregation(unittest.TestCase):
+
+    def test_over_division(self):
+        # true cluster 0 is split across pred {0,1}; true cluster 1 intact.
+        r = cluster_metrics.over_division_cluster_ratio(
+            [0, 0, 1, 1], [0, 1, 2, 2])
+        self.assertAlmostEqual(r, 0.5)
+
+    def test_over_aggregation(self):
+        # pred cluster 11 aggregates true {0,1,2}; pred 10 holds only true 0.
+        r = cluster_metrics.over_aggregation_cluster_ratio(
+            [0, 0, 1, 2], [10, 11, 11, 11])
+        self.assertAlmostEqual(r, 0.5)
+
+    def test_over_aggregation_label_invariant(self):
+        # CR-61: a clustering metric must be invariant to cluster relabeling.
+        # The old implementation depended on which pred label sorted first.
+        r1 = cluster_metrics.over_aggregation_cluster_ratio(
+            [0, 0, 1, 2], [10, 11, 11, 11])
+        r2 = cluster_metrics.over_aggregation_cluster_ratio(
+            [0, 0, 1, 2], [11, 10, 10, 10])
+        self.assertAlmostEqual(r1, r2)
+
+    def test_perfect_clustering_no_failures(self):
+        self.assertAlmostEqual(
+            cluster_metrics.over_division_cluster_ratio(
+                [0, 0, 1, 1], [5, 5, 6, 6]), 0.0)
+        self.assertAlmostEqual(
+            cluster_metrics.over_aggregation_cluster_ratio(
+                [0, 0, 1, 1], [5, 5, 6, 6]), 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()
