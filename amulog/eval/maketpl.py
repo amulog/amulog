@@ -258,6 +258,32 @@ class MeasureLTGen:
             else:
                 yield self.restore_tpl(labels, l_w)
 
+    def iter_tpl_pair(self, fill_wildcard=False):
+        """Yield (tid_answer, tpl_answer, tpl_trial) for each line where BOTH
+        the answer and trial template are present.
+
+        Iterating answer and trial separately with pass_none=True filters them
+        independently, so when their None positions differ the two sequences
+        misalign once zipped (CR-62/CR-64). This keeps answer, trial and the
+        answer tid aligned by skipping a line only when either side is None.
+        """
+        restore = self.restore_result if fill_wildcard else self.restore_tpl
+        for tid_a, l_w, la, lt in zip(self._d_answer["l_tid"],
+                                      self.iter_org(),
+                                      self.iter_label_answer(),
+                                      self.iter_label_trial()):
+            if la is None or lt is None:
+                continue
+            yield tid_a, restore(la, l_w), restore(lt, l_w)
+
+    def _aligned_tpl_lists(self, fill_wildcard=False):
+        tids, l_answer, l_trial = [], [], []
+        for tid_a, tpl_a, tpl_t in self.iter_tpl_pair(fill_wildcard):
+            tids.append(tid_a)
+            l_answer.append(tpl_a)
+            l_trial.append(tpl_t)
+        return tids, l_answer, l_trial
+
     def tid_list_answer(self, pass_none=False):
         if pass_none:
             return [tid for tid in self._d_answer["l_tid"]
@@ -272,11 +298,22 @@ class MeasureLTGen:
         else:
             return self._d_trial["l_tid"]
 
+    def _valid_indices(self):
+        # positions where BOTH answer and trial tid are non-None, so the two
+        # label arrays stay aligned and equal-length for pairwise metrics
+        # (CR-62: filtering each independently misaligns / length-mismatches
+        # them when answer and trial have None at different positions).
+        return [i for i, (a, t) in enumerate(
+                    zip(self._d_answer["l_tid"], self._d_trial["l_tid"]))
+                if a is not None and t is not None]
+
     def valid_tid_list_answer(self):
-        return self.tid_list_answer(pass_none=True)
+        l_tid = self._d_answer["l_tid"]
+        return [l_tid[i] for i in self._valid_indices()]
 
     def valid_tid_list_trial(self):
-        return self.tid_list_trial(pass_none=True)
+        l_tid = self._d_trial["l_tid"]
+        return [l_tid[i] for i in self._valid_indices()]
 
     def iter_cluster_answer(self):
         return self._d_answer["n_lines"].keys().__iter__()
@@ -304,67 +341,41 @@ class MeasureLTGen:
         return np.unique(self.valid_tid_list_trial()).shape[0]
 
     # accuracy methods
-    def word_accuracy(self, recalculation=False):
-        if recalculation:
-            iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
-            iterable_tpl_trial = self.iter_tpl_trial(pass_none=True)
-            return structure_metrics.word_accuracy(
-                iterable_tpl_answer, iterable_tpl_trial)
-        else:
-            # n_words: Number of all words in dataset
-            n_words = self._d_answer["n_words"]
-            # n_c_words: Number of words correctly labeled in dataset
-            n_c_words = self._d_trial["n_c_words"]
-            return 1.0 * n_c_words / n_words
+    def word_accuracy(self):
+        # n_words: Number of all words in dataset
+        n_words = self._d_answer["n_words"]
+        # n_c_words: Number of words correctly labeled in dataset
+        n_c_words = self._d_trial["n_c_words"]
+        return 1.0 * n_c_words / n_words
 
-    def line_accuracy(self, recalculation=False):
-        if recalculation:
-            iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
-            iterable_tpl_trial = self.iter_tpl_trial(pass_none=True)
-            return structure_metrics.line_accuracy(
-                iterable_tpl_answer, iterable_tpl_trial)
-        else:
-            # n_lines: Number of all lines in dataset
-            n_lines = self._d_answer["n_lines"]
-            # n_c_lines: Number of lines correctly labeled in dataset
-            n_c_lines = self._d_trial["n_c_lines"]
-            return 1.0 * n_c_lines / n_lines
+    def line_accuracy(self):
+        # n_lines: Number of all lines in dataset
+        n_lines = self._d_answer["n_lines"]
+        # n_c_lines: Number of lines correctly labeled in dataset
+        n_c_lines = self._d_trial["n_c_lines"]
+        return 1.0 * n_c_lines / n_lines
 
-    def tpl_word_accuracy(self, recalculation=False):
-        if recalculation:
-            iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
-            iterable_tpl_trial = self.iter_tpl_trial(pass_none=True)
-            l_tid_answer = self.tid_list_answer(pass_none=True)
-            return structure_metrics.tpl_word_accuracy(
-                iterable_tpl_answer, iterable_tpl_trial, l_tid_answer)
-        else:
-            # d_n_words: Number of words in a template cluster
-            d_n_words = self._d_answer["d_n_words"]
-            # d_n_c_words: Number of words correctly labeled in a template cluster
-            d_n_c_words = self._d_trial["d_n_c_words"]
+    def tpl_word_accuracy(self):
+        # d_n_words: Number of words in a template cluster
+        d_n_words = self._d_answer["d_n_words"]
+        # d_n_c_words: Number of words correctly labeled in a template cluster
+        d_n_c_words = self._d_trial["d_n_c_words"]
 
-            l_acc = []
-            for key in d_n_words:  # key: str(tid)
-                l_acc.append(d_n_c_words.get(key, 0) / d_n_words.get(key, 0))
-            return np.average(l_acc)
+        l_acc = []
+        for key in d_n_words:  # key: str(tid)
+            l_acc.append(d_n_c_words.get(key, 0) / d_n_words.get(key, 0))
+        return np.average(l_acc)
 
-    def tpl_accuracy(self, recalculation=False):
-        if recalculation:
-            iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
-            iterable_tpl_trial = self.iter_tpl_trial(pass_none=True)
-            l_tid_answer = self.tid_list_answer(pass_none=True)
-            return structure_metrics.tpl_accuracy(
-                iterable_tpl_answer, iterable_tpl_trial, l_tid_answer)
-        else:
-            # d_n_lines: Number of lines in a template cluster
-            d_n_lines = self._d_answer["d_n_lines"]
-            # d_n_c_lines: Number of lines correctly labeled in a template cluster
-            d_n_c_lines = self._d_trial["d_n_c_lines"]
+    def tpl_accuracy(self):
+        # d_n_lines: Number of lines in a template cluster
+        d_n_lines = self._d_answer["d_n_lines"]
+        # d_n_c_lines: Number of lines correctly labeled in a template cluster
+        d_n_c_lines = self._d_trial["d_n_c_lines"]
 
-            l_acc = []
-            for key in d_n_lines:
-                l_acc.append(d_n_c_lines.get(key, 0) / d_n_lines.get(key, 0))
-            return np.average(l_acc)
+        l_acc = []
+        for key in d_n_lines:
+            l_acc.append(d_n_c_lines.get(key, 0) / d_n_lines.get(key, 0))
+        return np.average(l_acc)
 
     def tpl_word_accuracy_dist(self):
         # d_n_words: Number of words in a template cluster
@@ -391,18 +402,15 @@ class MeasureLTGen:
         return ret
 
     def tpl_description_accuracy(self):
-        iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
-        iterable_tpl_trial = self.iter_tpl_trial(pass_none=True)
-        l_tid_answer = self.tid_list_answer(pass_none=True)
+        # joint-aligned answer/trial templates (CR-64)
+        l_tid_answer, l_answer, l_trial = self._aligned_tpl_lists()
         return structure_metrics.tpl_desc_accuracy(
-            iterable_tpl_answer, iterable_tpl_trial, l_tid_answer)
+            l_answer, l_trial, l_tid_answer)
 
     def tpl_variable_accuracy(self):
-        iterable_tpl_answer = self.iter_tpl_answer(pass_none=True)
-        iterable_tpl_trial = self.iter_tpl_trial(pass_none=True)
-        l_tid_answer = self.tid_list_answer(pass_none=True)
+        l_tid_answer, l_answer, l_trial = self._aligned_tpl_lists()
         return structure_metrics.tpl_var_accuracy(
-            iterable_tpl_answer, iterable_tpl_trial, l_tid_answer)
+            l_answer, l_trial, l_tid_answer)
 
     def rand_score(self):
         l_tid_answer = self.valid_tid_list_answer()
@@ -618,27 +626,31 @@ def offline_structure_metrics(conf, n_trial, trial_id=0, partial=False):
     mlt.load(trial_id)
 
     d_tpl = get_templates(conf, n_trial, trial_id, mlt=mlt)
-    tids = mlt.tid_list_trial(pass_none=True)
-    word_acc = structure_metrics.word_accuracy(
-        mlt.iter_tpl_answer(pass_none=True),
-        map(lambda x: d_tpl[x], tids))
-    line_acc = structure_metrics.line_accuracy(
-        mlt.iter_tpl_answer(pass_none=True),
-        map(lambda x: d_tpl[x], tids))
-    tpl_acc = structure_metrics.tpl_accuracy(
-        mlt.iter_tpl_answer(pass_none=True),
-        map(lambda x: d_tpl[x], tids), tids)
-    tpl_word_acc = structure_metrics.tpl_word_accuracy(
-        mlt.iter_tpl_answer(pass_none=True),
-        map(lambda x: d_tpl[x], tids), tids)
+
+    # joint-aligned answer/trial: skip a line when either the answer label or
+    # the trial tid is None, so the two sequences stay aligned (CR-64). The
+    # trial template is taken from the final template structure (d_tpl), and
+    # the cluster label is the trial tid (offline semantics, unchanged).
+    l_answer, l_trial, l_tid = [], [], []
+    for l_w, la, tid_t in zip(mlt.iter_org(),
+                              mlt.iter_label_answer(),
+                              mlt.tid_list_trial()):
+        if la is None or tid_t is None:
+            continue
+        l_answer.append(mlt.restore_tpl(la, l_w))
+        l_trial.append(d_tpl[tid_t])
+        l_tid.append(tid_t)
+
+    word_acc = structure_metrics.word_accuracy(l_answer, l_trial)
+    line_acc = structure_metrics.line_accuracy(l_answer, l_trial)
+    tpl_acc = structure_metrics.tpl_accuracy(l_answer, l_trial, l_tid)
+    tpl_word_acc = structure_metrics.tpl_word_accuracy(l_answer, l_trial, l_tid)
 
     if partial:
         tpl_desc_fail = structure_metrics.tpl_desc_accuracy(
-            mlt.iter_tpl_answer(pass_none=True),
-            map(lambda x: d_tpl[x], tids), tids)
+            l_answer, l_trial, l_tid)
         tpl_var_fail = structure_metrics.tpl_var_accuracy(
-            mlt.iter_tpl_answer(pass_none=True),
-            map(lambda x: d_tpl[x], tids), tids)
+            l_answer, l_trial, l_tid)
         ret = (word_acc, line_acc, tpl_acc, tpl_word_acc,
                tpl_desc_fail, tpl_var_fail)
         return ret
