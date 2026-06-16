@@ -33,8 +33,8 @@ setup(name=package_name,
       description='A system log management tool with automatically generated log templates.',
       long_description=load_readme(),
       author='Satoru Kobayashi',
-      author_email='sat@nii.ac.jp',
-      url='https://github.com/cpflat/amulog/',
+      author_email='sat@3at.work',
+      url='https://github.com/amulog/amulog/',
       install_requires=load_requirements(),
       # optional features whose dependencies are published on PyPI; install
       # with e.g. `pip install amulog[ssdeep]`. ltgroup_alg=ssdeep needs
