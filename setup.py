@@ -36,6 +36,15 @@ setup(name=package_name,
       author_email='sat@nii.ac.jp',
       url='https://github.com/cpflat/amulog/',
       install_requires=load_requirements(),
+      # optional features whose dependencies are published on PyPI; install
+      # with e.g. `pip install amulog[ssdeep]`. ltgroup_alg=ssdeep needs
+      # ssdeep, database=mysql needs pymysql. (The semantics ltgroup and the
+      # crf normalizer rely on packages that are not published, so they are
+      # intentionally not listed here.)
+      extras_require={
+          "ssdeep": ["ssdeep"],
+          "mysql": ["pymysql"],
+      },
       classifiers=[
           'Development Status :: 4 - Beta',
           'Environment :: Console',
