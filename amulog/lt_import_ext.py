@@ -14,12 +14,14 @@ _logger = logging.getLogger(__package__)
 
 class LTGenImportExternal(lt_common.LTGenStateless):
 
-    def __init__(self, table, filename, mode, mode_esc, ltmap, head, shuffle=False):
+    def __init__(self, table, filename, mode, mode_esc, ltmap, head,
+                 shuffle=False, replacers=None):
         super(LTGenImportExternal, self).__init__(table)
         self._table = table
         self._fp = filename
-        self._l_tpl = self._load_tpl(self._fp, mode, mode_esc)
-        self._l_regex = [tpl_match.generate_regex(tpl)
+        self._replacers = replacers if replacers else None
+        self._l_tpl = self._load_tpl(self._fp, mode, mode_esc, self._replacers)
+        self._l_regex = [tpl_match.generate_regex(tpl, self._replacers)
                          for tpl in self._l_tpl]
         if ltmap == "hash":
             self._rtable = regexhash.RegexHashTable(self._l_tpl, self._l_regex,
@@ -33,7 +35,7 @@ class LTGenImportExternal(lt_common.LTGenStateless):
             self._rtable.shuffle()
 
     @staticmethod
-    def _load_tpl(fp, mode, mode_esc):
+    def _load_tpl(fp, mode, mode_esc, replacers=None):
         l_tpl = []
         if not os.path.exists(fp):
             errmes = ("log_template_import.def_path"
@@ -50,7 +52,10 @@ class LTGenImportExternal(lt_common.LTGenStateless):
                     raise ValueError("invalid import_mode {0}".format(mode))
                 if len(mes) == 0:
                     continue
-                if mode_esc:
+                # With configured replacers the placeholders (e.g. <*>) are used
+                # verbatim and literal escaping is handled in generate_regex, so
+                # add_esc_external (which assumes the ** wildcard form) is skipped.
+                if mode_esc or replacers:
                     l_tpl.append(mes)
                 else:
                     l_tpl.append(tpl_match.add_esc_external(mes))
@@ -98,5 +103,8 @@ def init_ltgen_import_ext(conf, table, shuffle, **kwargs):
     mode_esc = conf.getboolean("log_template_import", "import_format_ext_esc")
     ltmap = conf.get("log_template_import", "ext_search_method")
     head = conf.getint("log_template_import", "hash_strlen")
+    from amulog import config
+    replacers = config.getlist(conf, "log_template_import", "ext_replacer")
 
-    return LTGenImportExternal(table, fn, mode, mode_esc, ltmap, head, shuffle)
+    return LTGenImportExternal(table, fn, mode, mode_esc, ltmap, head,
+                               shuffle, replacers)

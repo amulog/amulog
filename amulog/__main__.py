@@ -83,11 +83,10 @@ def data_parse(ns):
     config.set_common_logging(conf, logger=_logger, lv=lv)
     targets = get_targets(ns, conf)
 
-    from . import strutil
     from . import manager
     lp = manager.load_log2seq(conf)
     for line in manager.iter_lines(targets):
-        pline = manager.parse_line(strutil.add_esc(line), lp)
+        pline = manager.parse_line(line, lp)
         if pline is None:
             pass
         elif ns.words:
@@ -355,6 +354,34 @@ def show_line(ns):
     print(lm.restore_line())
 
 
+def show_algorithms(ns):
+    from . import manager
+    info = manager.get_algorithm_info()
+
+    if ns.format == "json":
+        import json
+        print(json.dumps(info, indent=2))
+        return
+
+    header = ["name", "class", "stateful", "processing", "parallel"]
+    rows = [header]
+    for d in info:
+        rows.append([
+            d["name"],
+            d["classname"],
+            "yes" if d["stateful"] else "no",
+            d["processing"],
+            "yes" if d["parallel"] else "no",
+        ])
+    widths = [max(len(row[i]) for row in rows) for i in range(len(header))]
+    for index, row in enumerate(rows):
+        line = "  ".join(cell.ljust(widths[i])
+                         for i, cell in enumerate(row)).rstrip()
+        print(line)
+        if index == 0:
+            print("  ".join("-" * widths[i] for i in range(len(header))))
+
+
 def conf_defaults(_):
     config.show_default_config()
 
@@ -596,6 +623,14 @@ DICT_ARGSET = {
     "show-line": ["Show log line with given log message identifier",
                   [OPT_CONFIG, OPT_DEBUG, ARG_LID],
                   show_line],
+    "show-algorithms": ["Show registered log template generation "
+                        "algorithms and their classification (derived "
+                        "from code).",
+                        [[["--format"],
+                          {"dest": "format", "action": "store",
+                           "choices": ["table", "json"], "default": "table",
+                           "help": "output format (default: table)"}]],
+                        show_algorithms],
     "conf-defaults": ["Show default configurations.",
                       [],
                       conf_defaults],

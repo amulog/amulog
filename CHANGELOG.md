@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `log_template_import.ext_replacer`: configure the variable placeholder(s)
+  used in an import-ext template-definition file (comma-separated, e.g.
+  `<*>, <NUM>` for loghub). The placeholders are matched verbatim and each
+  captures a non-greedy span, so a literal `*` in a template or matched value
+  (`****`, `tag="*launch*"`, `******* GOODBYE`) is no longer confused with
+  amulog's `**` wildcard. Empty (default) keeps the existing `**`/`*NAME*`
+  behavior.
+- `example/loghub_*`: ready-to-run amulog setups for the loghub open log
+  datasets (2k samples). Each directory builds an SQLite DB with a drain
+  baseline and, where the log2seq parser output aligns with the loghub ground
+  truth, measures template accuracy against it. Includes maintainer tooling
+  (`build.py`, `make_answer.py`, `diagnose.py`).
+- `show-algorithms`: list the registered log template generation algorithms
+  with their classification (stateful, online/offline, parallel safety)
+  derived from code — the online/offline mode from the `alg/meta.py`
+  registration lists and stateful/parallel from the `lt_common.py` class
+  hierarchy. Use `--format json` for machine-readable output. This replaces
+  hand-maintained algorithm tables that tend to drift.
+
+### Changed
+- **Breaking:** amulog now escapes its template-special characters (`\`, `*`,
+  `@`) on the parsed statement (words and message) *after* the log2seq header is
+  parsed, instead of escaping the whole raw line *before* parsing. Header fields
+  (host, timestamp) keep their raw value. Previously a header containing `@`/`*`
+  (e.g. a `user@host` location) was escaped, which made log2seq fail to parse
+  the line and amulog silently dropped it (e.g. ~1384/2000 loghub Thunderbird
+  lines); such lines are now parsed and stored, and host values with those
+  characters are stored raw rather than backslash-escaped. Statement `words` are
+  byte-identical for lines that previously parsed, so template/eval outputs do
+  not change for clean-header data. Because stored data can differ, this warrants
+  a minor version bump (→ 0.4.0); keep old log2seq-parser/config assets on the
+  old amulog version.
+- Tests are split into the core suite under `tests/` (run by CI) and external
+  tests under `tests-ext/` that require optional backends and live servers (e.g.
+  the MySQL backend needs `pymysql` and a running MySQL). `pytest.ini` sets
+  `testpaths = tests`, so a bare `pytest` runs only the core suite; the external
+  tests are opt-in via `pytest tests-ext/`.
+
+### Fixed
+- `manager.normalize_pline`: a log2seq parser with an optional host field can
+  emit `host = None`; this reached `host_alias.resolve_host(None)` and crashed
+  with `AttributeError`. A `None` host is now treated like a missing host and
+  falls back to `dummy_host`.
+
 ## [0.3.14] - 2026-06-16
 
 This is a maintenance release: mostly bug fixes, with a few minor additions.

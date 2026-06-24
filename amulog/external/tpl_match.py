@@ -26,17 +26,32 @@ def add_esc_external(tpl):
     return "".join([other + wild for other, wild in zip(l_others, l_wild + [""])])
 
 
-def generate_regex(tpl):
+def generate_regex(tpl, replacers=None):
     """Build a regex that matches raw log messages against an external
-    template. Each variable placeholder becomes a ``[^*]*`` capture group.
+    template. Each variable placeholder becomes a capture group.
+
+    Args:
+        tpl: external template string.
+        replacers: list of variable placeholders used by the external tool. If
+            empty/None, amulog's own ``**`` / ``*NAME*`` wildcard form is
+            expected (literal ``*`` must be escaped) and each placeholder
+            captures ``[^*]*``. If given (e.g. ``["<*>", "<NUM>"]`` for loghub)
+            those placeholders are used verbatim and each captures a non-greedy
+            ``.*?`` anchored by the surrounding literals, so any character
+            (including a literal ``*`` or ``<``) in the template or in a matched
+            value is handled correctly. Only the listed tokens are treated as
+            placeholders, so literal text like ``<ok>`` is kept as-is.
 
     Note:
         ``tpl`` comes from an external template-definition file, which is a
         trust boundary: the generated regex is not sandboxed and has no match
-        timeout. Adjacent variables share a greedy ``[^*]*`` boundary, so the
+        timeout. Adjacent variables share a greedy capture boundary, so the
         split between them is ambiguous. The template files are assumed to be
         trusted, well-formed input.
     """
+    if replacers:
+        return _generate_regex_replacer(tpl, replacers)
+
     d_name = defaultdict(list)
 
     def _replace_wildcard(matchobj):
@@ -51,6 +66,31 @@ def generate_regex(tpl):
     regex_base = r"^" + re.escape(tpl) + r"$"
     tmp = REPLACER_REGEX_ESCAPED.sub(_replace_wildcard, regex_base, count=0)
     return re.compile(tmp)
+
+
+def _generate_regex_replacer(tpl, replacers):
+    """generate_regex for configured literal placeholders (e.g. ``<*>``,
+    ``<NUM>``).
+
+    The template is split on any of the placeholders; each literal segment is
+    escaped the way amulog escapes a raw message (so it matches
+    ``pline["message"]``, which is escaped) and then regex-escaped. Each
+    placeholder captures a non-greedy ``.*?`` anchored by the surrounding
+    literals, so it does not depend on the matched value avoiding any particular
+    character. Longer placeholders are tried first so that, e.g., ``<NUM>`` is
+    not partially matched as ``<*>``.
+    """
+    from amulog import strutil
+
+    capture = r".*?"
+    alt = re.compile("|".join(re.escape(r)
+                              for r in sorted(replacers, key=len, reverse=True)))
+    segments = alt.split(tpl)
+    pieces = [re.escape(strutil.add_esc(segments[0]))]
+    for i, seg in enumerate(segments[1:]):
+        pieces.append(r"(?P<v" + str(i) + r">" + capture + r")")
+        pieces.append(re.escape(strutil.add_esc(seg)))
+    return re.compile(r"^" + "".join(pieces) + r"$")
 
 
 def match_line(parsed_line, l_regex):

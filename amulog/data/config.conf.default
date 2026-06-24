@@ -150,6 +150,15 @@ import_format_ext = plain
 # escape them (\* or \@) and use import_format_ext_esc = true
 import_format_ext_esc = false
 
+# Variable placeholder used in the import-ext definition file.
+# If empty, amulog's own wildcard form (** or *NAME*) is expected, and literal
+# * / @ in the templates must be escaped (see import_format_ext_esc).
+# Set this to the external tool's placeholder (e.g. <*> for loghub) to use the
+# templates verbatim; then a literal * in a template or in a matched value is
+# handled correctly (it is not confused with the wildcard). Each placeholder
+# captures any run of characters other than the placeholder's first character.
+ext_replacer =
+
 # Log template matching algorithm
 # [hash, table]
 ext_search_method = table

@@ -111,7 +111,7 @@ class LTManager(object):
 
         ret = []
         for message_id, line in batch:
-            pline = parse_line(strutil.add_esc(line), lp)
+            pline = parse_line(line, lp)
             pline = normalize_pline(pline, ha, drop_undefhost)
             if pline is None:
                 ret.append([message_id, None, None])
@@ -157,7 +157,7 @@ class LTManager(object):
     def _process_offline_single(self, iterable_lines):
         d_pline = {}
         for mid, line in enumerate(iterable_lines):
-            pline = parse_line(strutil.add_esc(line), self._lp)
+            pline = parse_line(line, self._lp)
             pline = normalize_pline(pline, self._ha, self._drop_undefhost)
             d_pline[mid] = pline
 
@@ -201,7 +201,7 @@ class LTManager(object):
         self.dump()
 
     def get_parsed_line(self, line):
-        pline = parse_line(strutil.add_esc(line), self._lp)
+        pline = parse_line(line, self._lp)
         if pline is not None:
             pline = normalize_pline(pline, self._ha, self._drop_undefhost)
         return pline
@@ -428,6 +428,85 @@ def init_ltgen(conf, table, method, shuffle=False):
         return alg_module.init_ltgen(**kwargs)
 
 
+def get_ltgen_class(method):
+    """Resolve an lt_methods name to its LTGen implementation class
+    without instantiating it.
+
+    This mirrors the dispatch in init_ltgen(); keep the two in sync.
+    Resolving the class (instead of building an instance) lets callers
+    inspect the algorithm classification (see get_algorithm_info) even
+    when no usable config or trained model is available.
+    """
+    if method == "import":
+        from . import lt_import
+        return lt_import.LTGenImport
+    elif method == "import-ext":
+        from . import lt_import_ext
+        return lt_import_ext.LTGenImportExternal
+    elif method == "crf":
+        from amulog.alg.crf import lt_crf
+        return lt_crf.LTGenCRF
+    elif method == "re":
+        from amulog import lt_regex
+        return lt_regex.LTGenRegularExpression
+    elif method == "va":
+        from . import lt_va
+        return lt_va.LTGenVA
+    else:
+        modname = "amulog.alg." + method
+        alg_module = import_module(modname)
+        return alg_module.LTGen
+
+
+def get_algorithm_info():
+    """Derive the registered LTGen algorithms and their classification
+    from code, so that documentation never has to hand-maintain (and
+    drift from) the list.
+
+    Two independent sources of truth are combined:
+      - online/offline mode comes from the alg.meta registration lists
+        (it is *not* reliably derivable from the class hierarchy; e.g.
+        "va" is offline but its class derives directly from LTGen, not
+        LTGenOffline).
+      - stateful/parallel come from the LTGen subclass
+        (see LTGen.is_stateful and the LTGenStateless docstring).
+
+    Returns a list of dicts (ordered online, offline, then any-mode):
+      name        algorithm identifier used in lt_methods
+      classname   implementation class name
+      stateful    keeps state across inputs (LTGen.is_stateful)
+      processing  "online", "offline" or "any"
+      parallel    safe for offline multiprocessing (== stateless)
+
+    Note: a "supervised" flag is intentionally not reported. It is not
+    reliably encoded in the class hierarchy today -- LTGenSupervised has
+    no subclasses, and CRF (which does require a pretrained model) derives
+    from LTGenStateless. Deriving it would therefore be misleading, so the
+    field is omitted rather than hand-maintained.
+    """
+    from .alg import meta
+    sections = [("online", meta.ONLINE_ALG),
+                ("offline", meta.OFFLINE_ALG),
+                ("any", meta.ANY_ALG)]
+    result = []
+    for processing, names in sections:
+        for name in names:
+            cls = get_ltgen_class(name)
+            # A generator is stateless iff it derives from one of the
+            # stateless base classes; everything else (incl. LTGenOffline)
+            # keeps state. This matches LTGen.is_stateful() class by class.
+            stateless = issubclass(cls, (lt_common.LTGenStateless,
+                                         lt_common.LTGenSupervised))
+            result.append({
+                "name": name,
+                "classname": cls.__name__,
+                "stateful": not stateless,
+                "processing": processing,
+                "parallel": stateless,
+            })
+    return result
+
+
 def init_ltgroup(conf, lttable):
     ltg_alg = conf.get("log_template", "ltgroup_alg")
     if ltg_alg == "shiso":
@@ -494,17 +573,28 @@ def parse_line(line, lp):
         parsed_line = lp.process_line(line)
     except log2seq.LogParseFailure:
         return None
-    else:
-        if parsed_line is None:
-            return None
-        elif log2seq.KEY_WORDS not in parsed_line:
-            return None
-        elif len(parsed_line[log2seq.KEY_WORDS]) == 0:
-            msg = "pass empty message {0}".format(line.strip("\n"))
-            _logger.debug(msg)
-            return None
-        else:
-            return parsed_line
+    if parsed_line is None:
+        return None
+    elif log2seq.KEY_WORDS not in parsed_line:
+        return None
+    elif len(parsed_line[log2seq.KEY_WORDS]) == 0:
+        msg = "pass empty message {0}".format(line.strip("\n"))
+        _logger.debug(msg)
+        return None
+
+    # Escape amulog template-special characters (\\, *, @) in the statement
+    # only -- after the header is parsed -- so header fields (host, timestamp)
+    # keep their raw value. Escaping the whole raw line instead would corrupt a
+    # header containing those characters (e.g. a "user@host" location) and make
+    # log2seq fail to parse it. The escaped words are what gets stored, and the
+    # escaped message is what import-ext matches against (it expects literal
+    # */@ in templates to be escaped too).
+    parsed_line[log2seq.KEY_WORDS] = [strutil.add_esc(w)
+                                      for w in parsed_line[log2seq.KEY_WORDS]]
+    if log2seq.KEY_STATEMENT in parsed_line:
+        parsed_line[log2seq.KEY_STATEMENT] = strutil.add_esc(
+            parsed_line[log2seq.KEY_STATEMENT])
+    return parsed_line
 
 
 def normalize_pline(pline, ha, drop_undefhost=False, dummy_host="dummy"):
@@ -515,7 +605,9 @@ def normalize_pline(pline, ha, drop_undefhost=False, dummy_host="dummy"):
         if "lid" in pline:
             pline["lid"] = int(pline["lid"])
 
-        if "host" in pline:
+        # An optional host field in the parser may be present but None;
+        # treat that the same as a missing host (fall back to dummy_host).
+        if pline.get("host") is not None:
             org_host = pline["host"]
 
             host = ha.resolve_host(org_host)
@@ -571,7 +663,7 @@ def iter_plines(conf, targets, pass_none=True):
     dummy_host = conf.get("manager", "dummy_host")
 
     for line in iter_lines(targets):
-        pline = parse_line(strutil.add_esc(line), lp)
+        pline = parse_line(line, lp)
         pline = normalize_pline(pline, ha, drop_undefhost, dummy_host)
         if pline is None and pass_none:
             pass
@@ -649,7 +741,7 @@ def data_from_data(conf, targets, dirname, method, reset):
     ha = host_alias.init_hostalias(conf)
     drop_undefhost = conf.getboolean("manager", "undefined_host")
     for line in iter_lines(targets):
-        pline = parse_line(strutil.add_esc(line), lp)
+        pline = parse_line(line, lp)
         pline = normalize_pline(pline, ha, drop_undefhost)
         if pline is None:
             continue
