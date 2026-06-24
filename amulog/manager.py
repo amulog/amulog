@@ -261,7 +261,7 @@ class LTManager(object):
                   "dt": dt,
                   "host": host,
                   "l_w": l_w}
-        if "lid" in pline:
+        if pline.get("lid") is not None:
             kwargs["lid"] = pline["lid"]
         new_lid = self._db.add_line(**kwargs)
         return log_db.LogMessage(new_lid, ltline,
@@ -602,7 +602,9 @@ def normalize_pline(pline, ha, drop_undefhost=False, dummy_host="dummy"):
         return None
 
     try:
-        if "lid" in pline:
+        # tolerate either log2seq convention for an absent optional lid
+        # (key omitted, or present with value None) -- int(None) would raise.
+        if pline.get("lid") is not None:
             pline["lid"] = int(pline["lid"])
 
         # An optional host field in the parser may be present but None;

@@ -5,7 +5,7 @@ import datetime
 import logging
 import configparser
 from collections import defaultdict
-from dateutil.tz import tzlocal
+from dateutil.tz import tzlocal, tzutc, gettz
 from typing import Tuple, Dict, List
 
 CONFIG_ENV = "AMULOG_CONFIG"
@@ -113,13 +113,37 @@ def getdict(conf, section, name) -> Dict[str, str]:
     return ret
 
 
+def get_timezone(conf):
+    """Return the tzinfo used to interpret stored (naive) log timestamps.
+
+    Log timestamps are stored as the device's naive wall-clock time. This
+    option only labels the datetimes amulog returns and how query bounds are
+    interpreted; it does not change stored values.
+
+    [general] timezone: empty or "local" -> system local timezone (default,
+    current behavior); "utc"; or an IANA zone name (e.g. "Asia/Tokyo").
+    """
+    if conf.has_option("general", "timezone"):
+        name = conf.get("general", "timezone").strip()
+    else:
+        name = ""
+    if name == "" or name.lower() == "local":
+        return tzlocal()
+    if name.lower() == "utc":
+        return tzutc()
+    tz = gettz(name)
+    if tz is None:
+        raise ValueError("invalid [general] timezone: {0}".format(name))
+    return tz
+
+
 def getdt(conf, section, name):
     ret = conf.get(section, name)
     if ret == "":
         return None
     else:
         dt = datetime.datetime.strptime(ret.strip(), "%Y-%m-%d %H:%M:%S")
-        dt = dt.replace(tzinfo=tzlocal())
+        dt = dt.replace(tzinfo=get_timezone(conf))
         return dt
 
 
@@ -131,7 +155,7 @@ def getterm(conf, section, name):
         ret = []
         for e in val.split(","):
             dt = datetime.datetime.strptime(e.strip(), "%Y-%m-%d %H:%M:%S")
-            dt = dt.replace(tzinfo=tzlocal())
+            dt = dt.replace(tzinfo=get_timezone(conf))
             ret.append(dt)
         return ret
 

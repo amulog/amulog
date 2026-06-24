@@ -21,6 +21,13 @@ cache_dir = /tmp
 # If empty, output log on stderr
 logging = auto.log
 
+# Timezone used to interpret log timestamps. Timestamps are stored as the
+# device's naive wall-clock time; this only labels the datetimes amulog returns
+# and how datetime query bounds are interpreted (stored values are unchanged).
+# Empty or "local" = system local timezone (default, current behavior); "utc";
+# or an IANA zone name (e.g. Asia/Tokyo).
+timezone =
+
 # Another configparser filename, to add any options without warnings
 # Use this to define new options for private use
 # In imported configparser file, existing options in defaults will be ignored

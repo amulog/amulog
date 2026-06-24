@@ -93,5 +93,60 @@ class TestReleaseCommonLogging(unittest.TestCase):
             self.assertNotIn(ch, lg.handlers)
 
 
+class TestTimezone(unittest.TestCase):
+    """[general] timezone selection (CR-1). Default = system local; the option
+    only labels returned datetimes and query bounds, never the wall-clock."""
+
+    @staticmethod
+    def _conf(tz):
+        import configparser
+        c = configparser.ConfigParser()
+        c.read_dict({"general": {"timezone": tz},
+                     "t": {"dt": "2020-01-01 00:00:00",
+                           "term": "2020-01-01 00:00:00, 2020-01-02 03:00:00"}})
+        return c
+
+    def test_default_and_local_are_system_local(self):
+        from dateutil.tz import tzlocal
+        ref = datetime.datetime(2020, 1, 1)
+        for tz in ("", "local", "LOCAL"):
+            self.assertEqual(config.get_timezone(self._conf(tz)).utcoffset(ref),
+                             tzlocal().utcoffset(ref))
+
+    def test_missing_option_defaults_local(self):
+        import configparser
+        from dateutil.tz import tzlocal
+        c = configparser.ConfigParser()
+        c.read_dict({"general": {}})
+        ref = datetime.datetime(2020, 1, 1)
+        self.assertEqual(config.get_timezone(c).utcoffset(ref),
+                         tzlocal().utcoffset(ref))
+
+    def test_utc_and_named_zone(self):
+        ref = datetime.datetime(2020, 6, 1)
+        self.assertEqual(
+            config.get_timezone(self._conf("utc")).utcoffset(ref),
+            datetime.timedelta(0))
+        self.assertEqual(
+            config.get_timezone(self._conf("Asia/Tokyo")).utcoffset(ref),
+            datetime.timedelta(hours=9))
+
+    def test_invalid_zone_rejected(self):
+        with self.assertRaises(ValueError):
+            config.get_timezone(self._conf("Not/AZone"))
+
+    def test_getdt_labels_without_shifting_wallclock(self):
+        dt = config.getdt(self._conf("utc"), "t", "dt")
+        # wall-clock is exactly the stored string; only the label is UTC
+        self.assertEqual((dt.year, dt.month, dt.day, dt.hour, dt.minute),
+                         (2020, 1, 1, 0, 0))
+        self.assertEqual(dt.utcoffset(), datetime.timedelta(0))
+
+    def test_getterm_uses_timezone(self):
+        dts, dte = config.getterm(self._conf("Asia/Tokyo"), "t", "term")
+        self.assertEqual(dts.utcoffset(), datetime.timedelta(hours=9))
+        self.assertEqual((dte.day, dte.hour), (2, 3))  # wall-clock preserved
+
+
 if __name__ == "__main__":
     unittest.main()

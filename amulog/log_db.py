@@ -9,9 +9,9 @@ and grouping definitions.
 import datetime
 import logging
 from collections import defaultdict
-from dateutil.tz import tzlocal
 
 from . import common
+from . import config
 from . import strutil
 from . import db_common
 from . import lt_common
@@ -347,6 +347,7 @@ class LogDB:
     _tablename_tmp_footer = "_tmp"
 
     def __init__(self, conf, edit, reset_db):
+        self._conf = conf
         self._line_cnt = 0
         self._splitter = conf.get("database", "split_symbol")
         self._table_switch = {}
@@ -637,7 +638,7 @@ class LogDB:
 
     def _str2datetime(self, dtstr):
         dt = self._db.datetime(dtstr)
-        dt = dt.replace(tzinfo=tzlocal())
+        dt = dt.replace(tzinfo=config.get_timezone(self._conf))
         return dt
 
     # def add_line(self, ltid, dt, host, l_w, lid=None):

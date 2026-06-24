@@ -16,10 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   amulog's `**` wildcard. Empty (default) keeps the existing `**`/`*NAME*`
   behavior.
 - `example/loghub_*`: ready-to-run amulog setups for the loghub open log
-  datasets (2k samples). Each directory builds an SQLite DB with a drain
-  baseline and, where the log2seq parser output aligns with the loghub ground
-  truth, measures template accuracy against it. Includes maintainer tooling
-  (`build.py`, `make_answer.py`, `diagnose.py`).
+  datasets (2k samples). Each directory has the log2seq parser, the 2k sample,
+  amulog-form template definitions (`<Name>.tpl`, derived from the loghub ground
+  truth), and two configs: `config.conf` (generate templates with drain) and
+  `config_import.conf` (classify the logs with `<Name>.tpl`).
+- `general.timezone`: select the timezone amulog uses to interpret stored log
+  timestamps. Timestamps are stored as the device's naive wall-clock time; this
+  option only labels the datetimes amulog returns and how datetime query bounds
+  are interpreted (stored values are unchanged). Empty (default) or `local` =
+  system local timezone (current behavior); `utc` or an IANA zone name are also
+  accepted. Replaces the previously hardcoded `tzlocal()` in `_str2datetime`,
+  `config.getdt` and `config.getterm`.
 - `show-algorithms`: list the registered log template generation algorithms
   with their classification (stateful, online/offline, parallel safety)
   derived from code — the online/offline mode from the `alg/meta.py`
@@ -51,6 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   emit `host = None`; this reached `host_alias.resolve_host(None)` and crashed
   with `AttributeError`. A `None` host is now treated like a missing host and
   falls back to `dummy_host`.
+- `manager`: the optional `lid` field is now read with `pline.get("lid") is not
+  None` instead of `"lid" in pline`, so a parser emitting `lid = None` (present
+  but null) no longer raises `int(None)`.
 
 ## [0.3.14] - 2026-06-16
 
