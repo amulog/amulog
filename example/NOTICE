@@ -1,0 +1,47 @@
+amulog/example — third-party data and code attribution
+=======================================================
+
+This directory bundles small (2,000-line) log samples from the loghub
+collection and amulog template definitions derived from its ground truth,
+together with parser scripts from log2seq, so that amulog can be tried on open
+log data out of the box.
+
+loghub log samples and derived templates (CC BY 4.0)
+----------------------------------------------------
+The `<Name>_2k.log` samples are taken from the loghub collection / logparser
+benchmark and redistributed here under the Creative Commons Attribution 4.0
+International License (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
+
+The `<Name>.tpl` files are amulog template definitions *derived from* loghub's
+ground-truth templates (`<Name>_2k.log_templates.csv`), re-expressed in amulog's
+own segmented lt-import format; the original CSVs are not redistributed here.
+The same CC BY 4.0 attribution applies to these derivatives.
+
+  - loghub: A Large Collection of System Log Datasets for AI-driven Log
+    Analytics. Jieming Zhu, Shilin He, Pinjia He, Jinyang Liu, Michael R. Lyu.
+    ISSRE 2023.  https://github.com/logpai/loghub
+  - Tools and Benchmarks for Automated Log Parsing (the 2k ground truth).
+    Jieming Zhu, Shilin He, Jinyang Liu, Pinjia He, Qi Xie, Zibin Zheng,
+    Michael R. Lyu. ICSE-SEIP 2019.  https://github.com/logpai/logparser
+
+Several datasets originate from earlier publications; please cite the original
+source when using them, in particular:
+
+  - BGL, Thunderbird: Alert Detection in System Logs. Adam Oliner, Jon Stearley.
+    DSN 2007. (Supercomputer RAS logs.)
+  - HDFS: Detecting Large-Scale System Problems by Mining Console Logs.
+    Wei Xu, Ling Huang, Armando Fox, David Patterson, Michael I. Jordan.
+    SOSP 2009.
+
+log2seq parser scripts
+----------------------
+Each `parser.py` is copied from the corresponding log2seq example
+(`log2seq/example/loghub_<Name>/parser.py`) and defines the header/statement
+parsing rules amulog uses via `manager.parser_script`.
+log2seq: https://github.com/amulog/log2seq
+
+Notes
+-----
+- Only the 2k samples are bundled. Full datasets (multi-GB) are obtained from
+  loghub and are never committed here.
+- See README.md for the build/verification status of each dataset.

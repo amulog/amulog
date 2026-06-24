@@ -1,0 +1,10 @@
+# amulog-generated artifacts (not version-controlled).
+# The committed files are parser.py, <Name>_2k.log, <Name>.tpl and the two
+# config.conf files; everything below is produced by running db-make.
+loghub_*/log.db
+loghub_*/*.db
+loghub_*/.amulog.dump
+loghub_*/lt_fail
+loghub_*/auto.log
+__pycache__/
+loghub_*/__pycache__/
