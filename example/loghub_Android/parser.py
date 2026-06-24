@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import datetime
+
 from log2seq import LogParser
 from log2seq import preset
 from log2seq.header import *

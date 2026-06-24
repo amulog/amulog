@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import datetime
+
 from log2seq import LogParser
 from log2seq import preset
 from log2seq.header import *
