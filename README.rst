@@ -14,9 +14,13 @@ AMULOG (A Manager for Unstructured LOGs)
    :alt: BSD 3-Clause License
    :target: https://opensource.org/licenses/BSD-3-Clause
 
-.. image:: https://api.travis-ci.com/amulog/amulog.svg?branch=master
-   :alt: Travis CI
-   :target: https://travis-ci.com/github/amulog/amulog
+.. image:: https://github.com/amulog/amulog/actions/workflows/test.yml/badge.svg?branch=master
+   :alt: Test
+   :target: https://github.com/amulog/amulog/actions/workflows/test.yml
+
+.. image:: https://img.shields.io/badge/docs-wiki-blue.svg
+   :alt: Documentation
+   :target: https://github.com/amulog/amulog/wiki
 
 
 Amulog is a tool to support system log management.
@@ -41,6 +45,7 @@ Main features
 - Import and Export log templates if you need
 - Edit log templates manually if you need
 - Search API with datetime, hostname and log template IDs
+- Ready-to-run examples for `loghub <https://github.com/logpai/loghub>`_ open datasets (see ``example/loghub_*``)
 
 
 Tutorial

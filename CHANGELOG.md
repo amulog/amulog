@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-25
+
+This is a minor release. It is coordinated with a log2seq release and contains a
+behavior change to how parsed log lines are escaped (see "Changed"), so stored
+data can differ from 0.3.x for lines whose header contains `*`/`@`.
+
 ### Added
 - `log_template_import.ext_replacer`: configure the variable placeholder(s)
   used in an import-ext template-definition file (comma-separated, e.g.
