@@ -74,6 +74,100 @@ class TestLoadImports(unittest.TestCase):
         self.assertEqual(conf["general"]["src_recur"], "true")
 
 
+class TestHostGroupConfigWiring(unittest.TestCase):
+    """[manager] host_group_filename default + main-config -> HostGroup path.
+
+    The key is declared in amulog/data/config.conf.default next to
+    host_alias_filename; its default is empty (host stratification disabled).
+    A real config that points the key at a host_group ini must load into a
+    HostGroup with the expected tiers()/resolve().
+    """
+
+    def setUp(self):
+        import tempfile
+        self._dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self._dir)
+
+    def _write(self, name, body):
+        import os
+        path = os.path.join(self._dir, name)
+        with open(path, "w") as f:
+            f.write(body)
+        return path
+
+    def test_default_is_empty_and_disabled(self):
+        # default config: key present, empty -> stratification disabled
+        from amulog import host_group
+        conf = config.open_config(None, base_default=True, verbose=False)
+        self.assertTrue(conf.has_option("manager", "host_group_filename"))
+        self.assertEqual(conf["manager"]["host_group_filename"], "")
+        hg = host_group.init_hostgroup(conf)
+        self.assertEqual(hg.tiers(), [])
+        self.assertIsNone(hg.label_tier())
+
+    def test_ini_loads_into_hostgroup(self):
+        from amulog import host_group
+        ini = self._write("hg.ini", """\
+[tiers]
+order = default, midplane, rack
+label_tier = default
+
+[tier_default]
+schemes = ipaddr
+ipaddr.type = builtin
+ipaddr.name = ipaddr
+
+[tier_midplane]
+schemes = bgl
+bgl.regex = ^(R\\d+-M\\d)
+
+[tier_rack]
+schemes = bgl
+bgl.regex = ^(R\\d+)
+""")
+        main = self._write("amulog.conf", """\
+[general]
+
+[manager]
+host_group_filename = {0}
+""".format(ini))
+        conf = config.open_config(main, base_default=True, verbose=False)
+        # the explicit value overrides the empty default
+        self.assertEqual(conf["manager"]["host_group_filename"], ini)
+        hg = host_group.init_hostgroup(conf)
+        self.assertEqual(hg.tiers(), ["default", "midplane", "rack"])
+        self.assertEqual(hg.label_tier(), "default")
+        self.assertEqual(hg.resolve("R00-M0-N0-C:J02-U01", "midplane"),
+                         "R00-M0")
+        self.assertEqual(hg.resolve("R00-M0-N0-C:J02-U01", "rack"), "R00")
+        # default tier (builtin ipaddr): IP canonicalized, non-IP kept
+        self.assertEqual(hg.resolve("10.0.0.5", "default"), "10.0.0.5")
+
+    def test_shipped_sample_parses(self):
+        # the shipped sample (sans the s4 hostalias file, which is private)
+        # must parse and resolve the BGL tiers.
+        import os
+        from amulog import host_group
+        sample = os.path.join(os.path.dirname(config.DEFAULT_CONFIG),
+                              "host_group.conf.sample")
+        self.assertTrue(os.path.exists(sample))
+        body = open(sample).read()
+        # drop the hostalias scheme: its file (def_s4_host_alias.txt) is a
+        # private companion artifact, not shipped in the public tree.
+        body = body.replace("schemes = ipaddr, s4", "schemes = ipaddr")
+        ini = self._write("hg_sample.ini", body)
+        conf = {"manager": {"host_group_filename": ini}}
+        hg = host_group.HostGroup(conf)
+        self.assertEqual(hg.tiers(), ["default", "midplane", "rack"])
+        self.assertEqual(hg.label_tier(), "default")
+        self.assertEqual(hg.resolve("R02-M1-N0-C:J12-U11", "midplane"),
+                         "R02-M1")
+        self.assertEqual(hg.resolve("R02-M1-N0-C:J12-U11", "rack"), "R02")
+
+
 class TestReleaseCommonLogging(unittest.TestCase):
 
     def test_logger_name_list(self):

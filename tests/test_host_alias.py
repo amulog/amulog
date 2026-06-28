@@ -149,5 +149,68 @@ class TestHostAliasEmpty(unittest.TestCase):
         self.assertIsNone(ha.resolve_host("10.0.0.1"))
 
 
+class TestLegacyHostAliasNormalize(unittest.TestCase):
+    """Characterization of the LEGACY host_alias build path.
+
+    When only [manager] host_alias_filename is set (host_group disabled),
+    amulog must keep burning the alias into the host column at build time,
+    exactly as before. This pins manager.normalize_pline (manager.py:600-627),
+    the resolve_host / dummy_host / undefined_host-drop behaviour, so the
+    host_group work does not regress the legacy-only case.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        from amulog import manager
+        cls.manager = manager
+        fd, cls.fn = tempfile.mkstemp(suffix=".txt")
+        with os.fdopen(fd, "w") as f:
+            f.write(FIXTURE)
+        cls.ha = host_alias.HostAlias(cls.fn)
+
+    @classmethod
+    def tearDownClass(cls):
+        os.remove(cls.fn)
+
+    def test_alias_is_burned_into_host_column(self):
+        # legacy behaviour: the host column stores the alias (default), not
+        # the original member token.
+        pline = {"host": "rt0.example.com", "words": []}
+        out = self.manager.normalize_pline(pline, self.ha)
+        self.assertEqual(out["host"], "rt0")
+
+    def test_ip_member_resolves_to_alias(self):
+        pline = {"host": "150.99.112.10", "words": []}
+        out = self.manager.normalize_pline(pline, self.ha)
+        self.assertEqual(out["host"], "gw")
+
+    def test_undefined_host_kept_by_default(self):
+        # drop_undefhost=False (default): unknown host kept verbatim
+        pline = {"host": "unknown.example.com", "words": []}
+        out = self.manager.normalize_pline(pline, self.ha, drop_undefhost=False)
+        self.assertEqual(out["host"], "unknown.example.com")
+
+    def test_undefined_host_dropped_when_requested(self):
+        # drop_undefhost=True: unknown host -> the whole line is dropped
+        pline = {"host": "unknown.example.com", "words": []}
+        out = self.manager.normalize_pline(pline, self.ha, drop_undefhost=True)
+        self.assertIsNone(out)
+
+    def test_missing_host_falls_back_to_dummy(self):
+        pline = {"host": None, "words": []}
+        out = self.manager.normalize_pline(
+            pline, self.ha, dummy_host="dummy")
+        self.assertEqual(out["host"], "dummy")
+
+    def test_none_lid_tolerated(self):
+        # an absent optional lid (present with value None) must not raise
+        pline = {"host": "sw0", "lid": None, "words": []}
+        out = self.manager.normalize_pline(pline, self.ha)
+        self.assertEqual(out["host"], "sw0")
+
+    def test_none_pline_passthrough(self):
+        self.assertIsNone(self.manager.normalize_pline(None, self.ha))
+
+
 if __name__ == "__main__":
     unittest.main()

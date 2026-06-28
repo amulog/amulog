@@ -79,6 +79,12 @@ parser_script =
 # If empty, no host will be replaced
 host_alias_filename =
 
+# Host group (host stratification) definition file
+# A dedicated ini file describing tiers and resolution schemes
+# (Prometheus relabel_configs style). See amulog.host_group.
+# If empty, host stratification is disabled.
+host_group_filename =
+
 # Number of processes for multiprocessing
 # if None, use os.cpu_count()
 n_process =

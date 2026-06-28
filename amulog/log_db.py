@@ -160,11 +160,18 @@ class LogData:
                 Messages after 'dts' will be yield.
             dte (datetime.datetime): Condition for timestamp.
                 Messages before 'dte' will be yield.
-            host (str): A source hostname of the message.
+            host (str): A source hostname of the message (raw original host).
             host_like (str): A patttern to find host.
                 The pattern follows that of SQL LIKE operator.
             host_regexp (str): A pattern to find host.
                 The pattern follows that of SQL REGEXP operator.
+            host_in (Iterable[str]): A set of hostnames; matches messages
+                whose host is in the set (host IN (...), via the host index).
+            hg (Tuple[str, str]): A (tier, hgid) host group. Expanded to its
+                member hosts and queried like host_in. Non-identity tiers
+                require this pair because the host column is the original
+                host (hgid alone is not queryable); host= remains the raw
+                original-host axis.
 
         Yields:
             LogMessage: An annotated log message instance
@@ -177,6 +184,14 @@ class LogData:
         limit = None
         if "limit" in kwargs:
             limit = kwargs.pop("limit")
+        if "hg" in kwargs:
+            # Convenience axis: hg=(tier, hgid). Expand the host group to its
+            # member hosts and query through the existing host index
+            # (host_in). Non-identity tiers REQUIRE the (tier, hgid) pair
+            # because the host column stores the original host (hgid alone is
+            # not queryable). The plain host= axis is unchanged.
+            tier, hgid = kwargs.pop("hg")
+            kwargs["host_in"] = self.members(tier, hgid)
         assert len(kwargs) >= 1, "empty arguments"
         for d_line in self.db.iter_lines(kwargs, limit=limit):
             yield self._row_to_lm(d_line)
@@ -238,6 +253,80 @@ class LogData:
     def whole_host(self, dts=None, dte=None):
         """List[str]: Sequence of all source hostname in DB."""
         return self.db.whole_host(dts=dts, dte=dte)
+
+    # host group (host stratification) API -------------------------------
+    # Parallel to the ltg API. amulog is the source of truth for host
+    # classification; consumers select a tier name to switch aggregation
+    # granularity. The host column of the log table is the original host;
+    # coarse tiers are materialized into the hg auxiliary table.
+
+    def update_hg(self, hostgroup, hosts=None):
+        """Materialize host groups into the hg table for every tier.
+
+        Resolves each host (the whole DB host set, or the provided ``hosts``)
+        through ``hostgroup`` (a host_group.HostGroup) for each of its tiers
+        and writes the result into the hg table. Regeneration is per-tier
+        (DELETE WHERE tier=? then re-INSERT, like reset_ltg), so log re-parse
+        is never needed and existing data is untouched.
+
+        Args:
+            hostgroup (host_group.HostGroup): resolver.
+            hosts (Optional[Iterable[str]]): hosts to (re)classify. Defaults
+                to the whole DB host set.
+
+        A host whose resolve() returns None (unmatched + drop policy) is
+        omitted from that tier (it is simply absent from the hg table).
+        """
+        if hosts is None:
+            hosts = self.whole_host()
+        hosts = list(hosts)
+        for tier in hostgroup.tiers():
+            self.db.reset_hg(tier=tier)
+            for host in hosts:
+                hgid = hostgroup.resolve(host, tier)
+                if hgid is None:
+                    continue
+                self.db.add_hg(tier, host, hgid)
+        self.db.commit()
+
+    def members(self, tier, hgid):
+        """list[str]: member hosts of a host group (tier, hgid).
+
+        For an identity ``default`` tier with no materialized rows the hgid
+        is the host itself, so a single-host list is synthesized when the
+        host exists in the DB (keeps identity tiers queryable without
+        materialization)."""
+        hosts = self.db.get_hg_members(tier, hgid)
+        if len(hosts) == 0:
+            # identity fallback: hgid == host for an unmaterialized tier
+            if hgid in set(self.whole_host()):
+                return [hgid]
+        return hosts
+
+    def iter_hg(self, tier):
+        """dict[str, list[str]]: {hgid: [hosts]} for a tier.
+
+        For a tier with no materialized rows (e.g. an identity ``default``
+        tier of a legacy DB), synthesize identity groups from the whole DB
+        host set (hgid == host)."""
+        ret = defaultdict(list)
+        any_row = False
+        for host, hgid in self.db.iter_hg_def(tier):
+            any_row = True
+            ret[hgid].append(host)
+        if not any_row:
+            for host in self.whole_host():
+                ret[host].append(host)
+        return dict(ret)
+
+    def reset_hg(self, tier=None):
+        """Clear materialized host groups (whole table, or one tier)."""
+        self.db.reset_hg(tier=tier)
+        self.db.commit()
+
+    def hg_tiers(self):
+        """list[str]: tiers materialized in the hg table."""
+        return self.db.hg_tiers()
 
     def count_lt(self):
         """int: Number of all log templates."""
@@ -339,11 +428,14 @@ class LogDB:
     tablename_lt = "lt"
     tablename_ltg = "ltg"
     tablename_tag = "tag"
-    table_names = (tablename_log, tablename_lt, tablename_ltg, tablename_tag)
+    tablename_hg = "hg"
+    table_names = (tablename_log, tablename_lt, tablename_ltg, tablename_tag,
+                   tablename_hg)
     indexnames_log = ["log_index_lid", "log_index_ltid", "log_index_dt", "log_index_host"]
     indexnames_ltg = ["ltg_index"]
     indexnames_tag = ["tag_index"]
-    index_names = indexnames_log + indexnames_ltg + indexnames_tag
+    indexnames_hg = ["hg_index_members"]
+    index_names = indexnames_log + indexnames_ltg + indexnames_tag + indexnames_hg
     _tablename_tmp_footer = "_tmp"
 
     def __init__(self, conf, edit, reset_db):
@@ -392,6 +484,7 @@ class LogDB:
         self._init_table_lt()
         self._init_table_ltg()
         self._init_table_tag()
+        self._init_table_hg()
         self._init_index()
 
     def _init_table_log(self, table_name=None):
@@ -434,10 +527,30 @@ class LogDB:
         sql = self._db.create_table_sql(table_name, l_key)
         self._db.execute(sql)
 
+    def _init_table_hg(self, table_name=None):
+        # Auxiliary table for host stratification (host group). Parallel to
+        # the ltg table: hg(tier, host) -> hgid, with an extra tier dimension.
+        # log table schema is untouched; host column here mirrors log.host
+        # (the original host). hgid is a derived string key (unlike int ltgid).
+        #
+        # The spec PK is (tier, host); the db_common abstraction does not emit
+        # composite PRIMARY KEY (per-column primary_key would yield two PK
+        # clauses), so the columns are NOT NULL and (tier, host) uniqueness is
+        # maintained by the per-tier DELETE+re-INSERT update path (update_hg /
+        # reset_hg), each host resolving to exactly one hgid per tier.
+        if table_name is None:
+            table_name = self.tablename_hg
+        l_key = [db_common.TableKey("tier", "text", ("not_null",)),
+                 db_common.TableKey("host", "text", ("not_null",)),
+                 db_common.TableKey("hgid", "text", ("not_null",))]
+        sql = self._db.create_table_sql(table_name, l_key)
+        self._db.execute(sql)
+
     def _init_index(self):
         self._init_index_log()
         self._init_index_ltg()
         self._init_index_tag()
+        self._init_index_hg()
 
     def _init_index_log(self):
         # index_name = self.indexname_log
@@ -484,6 +597,16 @@ class LogDB:
         sql = self._db.create_index_sql(table_name, index_name, l_key)
         self._db.execute(sql)
 
+    def _init_index_hg(self):
+        # members(tier, hgid): WHERE tier=? AND hgid=?
+        index_name = self.indexnames_hg[0]  # hg_index_members
+        table_name = self.tablename_hg
+        # text index keys carry a width (used by the mysql backend)
+        l_key = [db_common.TableKey("tier", "text", (100,)),
+                 db_common.TableKey("hgid", "text", (100,))]
+        sql = self._db.create_index_sql(table_name, index_name, l_key)
+        self._db.execute(sql)
+
     def repair_tables(self):
         current_table_names = self._db.get_table_names()
 
@@ -520,6 +643,13 @@ class LogDB:
                     print("no tag table, init table")
                     self._init_table_tag()
                     print("NOTE: try \"db-tag\" if you need afterward")
+                elif name == self.tablename_hg:
+                    # additive: existing DBs predate the hg table; create it
+                    # without forcing any rebuild (host stratification is
+                    # materialized later by host-group-update / update_hg).
+                    print("no hg table, init table")
+                    self._init_table_hg()
+                    print("NOTE: try \"host-group-update\" if you need afterward")
 
         current_table_names = self._db.get_table_names()
 
@@ -534,6 +664,9 @@ class LogDB:
                 elif name in self.indexnames_tag:
                     print("no tag index, init")
                     self._init_index_tag()
+                elif name in self.indexnames_hg:
+                    print("no hg index, init")
+                    self._init_index_hg()
         if not log_index_filled:
             print("not enough log index, remake")
             for name in self.indexnames_log:
@@ -560,6 +693,8 @@ class LogDB:
             self._init_table_ltg(tmp_table_name)
         elif table_name == self.tablename_tag:
             self._init_table_tag(tmp_table_name)
+        elif table_name == self.tablename_hg:
+            self._init_table_hg(tmp_table_name)
         else:
             raise ValueError("invalid table name {0}".format(table_name))
 
@@ -582,6 +717,9 @@ class LogDB:
         elif table_name == self.tablename_tag:
             index_names = self.indexnames_tag
             index_func = self._init_index_tag
+        elif table_name == self.tablename_hg:
+            index_names = self.indexnames_hg
+            index_func = self._init_index_hg
         else:
             index_names = None
             index_func = None
@@ -728,6 +866,24 @@ class LogDB:
                 l_cond.append(db_common.Condition("host", "like", c, True))
             elif c == "host_regexp":
                 l_cond.append(db_common.Condition("host", "regexp", c, True))
+            elif c == "host_in":
+                # host IN (...) over the existing host index. Used by the
+                # hg=(tier, hgid) convenience to expand a host group to its
+                # member hosts (all original hosts; host column is original).
+                hosts = list(d_cond[c])
+                del args[c]
+                if len(hosts) == 0:
+                    # empty membership -> match nothing (host in (NULL))
+                    l_cond.append(db_common.Condition(
+                        "host", "in", "NULL", False))
+                else:
+                    placeholders = []
+                    for i, h in enumerate(hosts):
+                        key = "host_in_{0}".format(i)
+                        placeholders.append(self._db._ph(key))
+                        args[key] = h
+                    l_cond.append(db_common.Condition(
+                        "host", "in", ", ".join(placeholders), False))
             else:
                 l_cond.append(db_common.Condition(c, "=", c, True))
         sql = self._db.select_sql(table_name, l_key, l_cond, l_order, limit)
@@ -1019,6 +1175,79 @@ class LogDB:
     def reset_ltg(self):
         sql = self._db.delete_sql("ltg")
         self._db.execute(sql)
+
+    # host group (hg) auxiliary table ------------------------------------
+    # Parallel to the ltg API. The hg table materializes host stratification
+    # (host -> hgid per tier), so consumers can query the classification
+    # independently of (and consistently with) ltg/tag. See host_group.py.
+
+    def _ensure_hg_table(self):
+        # additive compatibility: an older DB may lack the hg table.
+        if self.tablename_hg not in self._db.get_table_names():
+            self._init_table_hg()
+            self._init_index_hg()
+
+    def add_hg(self, tier, host, hgid):
+        table_name = self._valid_table_name(self.tablename_hg)
+        l_ss = [
+            db_common.StateSet("tier", "tier"),
+            db_common.StateSet("host", "host"),
+            db_common.StateSet("hgid", "hgid"),
+        ]
+        args = {"tier": tier, "host": host, "hgid": hgid}
+        sql = self._db.insert_sql(table_name, l_ss)
+        self._db.execute(sql, args)
+
+    def reset_hg(self, tier=None):
+        """Clear materialized host groups.
+
+        If tier is None, clear the whole hg table; otherwise clear only the
+        rows of the given tier (per-tier regeneration, like reset_ltg)."""
+        self._ensure_hg_table()
+        table_name = self._valid_table_name(self.tablename_hg)
+        if tier is None:
+            sql = self._db.delete_sql(table_name)
+            self._db.execute(sql)
+        else:
+            l_cond = [db_common.Condition("tier", "=", "tier", True)]
+            sql = self._db.delete_sql(table_name, l_cond)
+            self._db.execute(sql, {"tier": tier})
+
+    def get_hg_members(self, tier, hgid):
+        """list[str]: hosts of a host group (SELECT host WHERE tier, hgid)."""
+        if self.tablename_hg not in self._db.get_table_names():
+            return []
+        table_name = self.tablename_hg
+        l_key = ["host"]
+        l_cond = [db_common.Condition("tier", "=", "tier", True),
+                  db_common.Condition("hgid", "=", "hgid", True)]
+        args = {"tier": tier, "hgid": hgid}
+        sql = self._db.select_sql(table_name, l_key, l_cond)
+        cursor = self._db.execute(sql, args)
+        return [row[0] for row in cursor]
+
+    def iter_hg_def(self, tier):
+        """Yield (host, hgid) rows of a tier."""
+        if self.tablename_hg not in self._db.get_table_names():
+            return
+        table_name = self.tablename_hg
+        l_key = ["host", "hgid"]
+        l_cond = [db_common.Condition("tier", "=", "tier", True)]
+        args = {"tier": tier}
+        sql = self._db.select_sql(table_name, l_key, l_cond)
+        cursor = self._db.execute(sql, args)
+        for row in cursor:
+            yield row[0], row[1]
+
+    def hg_tiers(self):
+        """list[str]: distinct tiers present in the hg table."""
+        if self.tablename_hg not in self._db.get_table_names():
+            return []
+        table_name = self.tablename_hg
+        l_key = ["tier"]
+        sql = self._db.select_sql(table_name, l_key, opt=["distinct"])
+        cursor = self._db.execute(sql)
+        return [row[0] for row in cursor]
 
     def reset_tag(self):
         # compatibility

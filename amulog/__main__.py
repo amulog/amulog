@@ -7,6 +7,7 @@ Interface to use some functions about Log DB from CLI.
 
 import datetime
 import logging
+from collections import defaultdict
 
 from . import cli
 from . import common
@@ -279,6 +280,144 @@ def show_host(ns):
     from . import log_db
 
     log_db.show_all_host(conf)
+
+
+def host_group_update(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+    from . import log_db
+    from . import host_group
+
+    hostgroup = host_group.init_hostgroup(conf)
+    if len(hostgroup.tiers()) == 0:
+        print("no tiers defined "
+              "([manager] host_group_filename is empty or has no tiers)")
+        return
+
+    ld = log_db.LogData(conf, edit=True, reset_db=False)
+    ld.update_hg(hostgroup)
+    for tier in hostgroup.tiers():
+        groups = ld.iter_hg(tier)
+        n_hosts = sum(len(v) for v in groups.values())
+        print("tier {0}: {1} host group(s), {2} host(s)".format(
+            tier, len(groups), n_hosts))
+
+
+def show_host_group(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+    from . import log_db
+    from . import host_group
+
+    hostgroup = host_group.init_hostgroup(conf)
+    ld = log_db.LogData(conf)
+
+    if ns.tier is not None:
+        tiers = [ns.tier]
+    elif len(hostgroup.tiers()) > 0:
+        tiers = hostgroup.tiers()
+    else:
+        # no host_group config: report the materialized tiers, otherwise the
+        # implicit identity default tier (backward compatible inspect).
+        tiers = ld.hg_tiers() or ["default"]
+
+    # events count per host: number of (host, ltid) pairs (whole_host_lt
+    # aggregation), so a host group's events count is the sum over members.
+    events_of_host = defaultdict(int)
+    for host, _ltid in ld.whole_host_lt():
+        events_of_host[host] += 1
+
+    for tier in tiers:
+        groups = ld.iter_hg(tier)
+        print("tier {0}: {1} host group(s)".format(tier, len(groups)))
+        for hgid in sorted(groups.keys()):
+            hosts = groups[hgid]
+            n_events = sum(events_of_host[h] for h in hosts)
+            print("  {0}: {1} host(s), {2} event(s)".format(
+                hgid, len(hosts), n_events))
+
+
+def host_group_check(ns):
+    conf = config.open_config(ns.conf_path)
+    lv = logging.DEBUG if ns.debug else logging.INFO
+    config.set_common_logging(conf, logger=_logger, lv=lv)
+    from . import log_db
+    from . import host_group
+
+    hostgroup = host_group.init_hostgroup(conf)
+    tiers = hostgroup.tiers()
+    if len(tiers) == 0:
+        print("no tiers defined "
+              "([manager] host_group_filename is empty or has no tiers)")
+        return
+
+    ld = log_db.LogData(conf)
+    hosts = sorted(ld.whole_host())
+
+    # resolve every host for every tier once (None = dropped by policy)
+    resolved = {}  # tier -> {host: hgid or None}
+    for tier in tiers:
+        resolved[tier] = {h: hostgroup.resolve(h, tier) for h in hosts}
+
+    ok = True
+
+    # 1. nesting check: the fine tier must refine the coarse tier, i.e. each
+    # coarse host group is the union of whole fine host groups over the host
+    # set. A violation is a fine host group whose hosts fall into more than
+    # one coarse host group (a fine group straddling a coarse boundary).
+    # Ordering breakage (a host matched in the coarse tier but unmatched =
+    # dropped in the fine tier) is detected the same way: the dropped host
+    # is absent from the fine partition that should cover the coarse group.
+    for i in range(len(tiers) - 1):
+        fine, coarse = tiers[i], tiers[i + 1]
+        # group hosts by their fine hgid (skip hosts dropped by the fine tier)
+        fine_groups = defaultdict(list)
+        for h in hosts:
+            fhg = resolved[fine][h]
+            if fhg is not None:
+                fine_groups[fhg].append(h)
+        for fhg, members in fine_groups.items():
+            coarse_ids = {resolved[coarse][h] for h in members}
+            if len(coarse_ids) > 1:
+                ok = False
+                print("nesting violation: fine {0} host group {1!r} spans "
+                      "coarse {2} host groups {3}".format(
+                          fine, fhg, coarse,
+                          sorted(str(c) for c in coarse_ids)))
+                for h in sorted(members):
+                    print("    {0} -> {1}={2!r} / {3}={4!r}".format(
+                        h, fine, fhg, coarse, resolved[coarse][h]))
+
+        # ordering breakage: host matched (kept) by coarse but dropped by fine
+        for h in hosts:
+            if resolved[fine][h] is None and resolved[coarse][h] is not None:
+                ok = False
+                print("ordering breakage: host {0!r} unmatched in fine {1} "
+                      "but matched in coarse {2} ({3})".format(
+                          h, fine, coarse, resolved[coarse][h]))
+
+    # 2. hosts unmatched in any tier (dropped, or kept-as-self under the keep
+    # policy meaning no scheme actually matched).
+    keep = hostgroup.unmatched_policy() == host_group.UNMATCHED_KEEP
+    for tier in tiers:
+        unmatched = []
+        for h in hosts:
+            hgid = resolved[tier][h]
+            if hgid is None:
+                unmatched.append(h)
+            elif keep and hgid == h:
+                # keep policy returns the host itself when no scheme matched
+                unmatched.append(h)
+        if len(unmatched) > 0:
+            print("tier {0}: {1} host(s) unmatched by any scheme:".format(
+                tier, len(unmatched)))
+            for h in unmatched:
+                print("    {0}".format(h))
+
+    if ok:
+        print("nesting check passed for tiers {0}".format(tiers))
 
 
 def show_log(ns):
@@ -613,6 +752,28 @@ DICT_ARGSET = {
     "show-host": ["Show all hostnames in database.",
                   [OPT_CONFIG, OPT_DEBUG],
                   show_host],
+    "host-group-update": ["(Re)generate the host group (hg) table from the "
+                          "host_group config and the DB hosts. No log "
+                          "re-parse; applies to an existing DB and reflects "
+                          "rule changes after the fact.",
+                          [OPT_CONFIG, OPT_DEBUG],
+                          host_group_update],
+    "show-host-group": ["Show host groups per tier: number of host groups, "
+                        "member host count and events count (whole_host_lt "
+                        "aggregation) per host group.",
+                        [OPT_CONFIG, OPT_DEBUG,
+                         [["tier"],
+                          {"metavar": "TIER", "action": "store",
+                           "nargs": "?", "default": None,
+                           "help": ("tier to inspect "
+                                    "(if not given, show all tiers)")}]],
+                        show_host_group],
+    "host-group-check": ["Check host group nesting (each coarse-tier host "
+                         "group is the union of fine-tier host groups over "
+                         "the host set; report offending hosts on violation) "
+                         "and list hosts unmatched in any tier.",
+                         [OPT_CONFIG, OPT_DEBUG],
+                         host_group_check],
     "show-log": ["Search and show log messages.",
                  [OPT_CONFIG, OPT_DEBUG,
                   [["--lid"],

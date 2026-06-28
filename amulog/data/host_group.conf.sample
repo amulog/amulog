@@ -1,0 +1,68 @@
+# Host group (host stratification) definition (sample).
+#
+# Point [manager] host_group_filename in the main config at a copy of this
+# file to enable host stratification. amulog then becomes the source of truth
+# for host classification: consumers pick a *tier* name to switch aggregation
+# granularity. The log table schema is unchanged (the host column stays the
+# *original* host); coarser tiers are derived by the schemes below.
+#
+# Grammar follows Prometheus relabel_configs: regex / replacement / type are
+# separate fields (no in-value separator). Parsed by amulog.host_group.
+
+[tiers]
+# Tier names, fine -> coarse. The nesting check uses this order.
+order = default, midplane, rack
+
+# Policy for a host that no scheme in a tier matches:
+#   keep       : hg = host itself (lossless, nesting preserved; default)
+#   drop       : exclude the host (like the legacy undefined_host = true)
+#   drop_alert : drop but emit a warning (avoids silent footguns)
+unmatched = keep
+
+# Tier used for template variable labeling (empty = disabled). This is the
+# new-mechanism counterpart of the legacy host_alias group.
+label_tier = default
+
+
+# default tier: the normalization layer (legacy host_alias role). Schemes are
+# tried in order; the first matching scheme's output is the hg.
+[tier_default]
+schemes = ipaddr, s4
+
+# builtin "ipaddr": canonicalize an IP token (IPv6 expansion / CIDR literal,
+# host_alias compatible). Only valid IP addresses match.
+ipaddr.type = builtin
+ipaddr.name = ipaddr
+
+# hostalias: read an existing host_alias-format file as a literal,
+# multi-to-one lookup (needed for the s4-style aliases regex cannot express).
+# Reuses amulog.host_alias, so IP canonicalization / case-insensitive
+# hostnames / CIDR-literal / IPv6-expansion / no-substring-mismatch are
+# identical to the legacy host_alias path. The file path is resolved relative
+# to the current working directory (same convention as host_alias_filename).
+s4.type = hostalias
+s4.file = def_s4_host_alias.txt
+s4.ignorecase = true
+
+
+# midplane tier: BGL chip name R00-M0-N0-C:J02-U01 -> midplane R00-M0.
+# type defaults to regex; replacement defaults to \1 (the first capture group,
+# Python re.sub backref syntax, not Prometheus $1).
+[tier_midplane]
+schemes = bgl
+bgl.regex = ^(R\d+-M\d)
+
+
+# rack tier: R00-M0-N0-C:J02-U01 -> rack R00.
+[tier_rack]
+schemes = bgl
+bgl.regex = ^(R\d+)
+
+
+# Example of replacement formatting (not part of the BGL tiers above):
+# fold an IPv4 address into its /24 network label.
+#   [tier_subnet]
+#   schemes = ip
+#   ip.type = regex
+#   ip.regex = ^(\d+\.\d+\.\d+)\.\d+$
+#   ip.replacement = \1.0/24
