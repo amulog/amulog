@@ -35,6 +35,8 @@ default and existing databases need no rebuild.
   is unchanged. Disabled by default and fully backward compatible (no rebuild;
   an existing DB treats the host column as identity). See the wiki "Host
   Grouping" page.
+- Official support for Python 3.13 and 3.14 (added to the CI test matrix and the
+  PyPI classifiers).
 
 ### Changed
 - `python-crfsuite` is now an optional extra instead of a core dependency.
