@@ -1,6 +1,5 @@
 import os
 import logging
-import pycrfsuite
 
 from amulog import lt_common
 from amulog.alg.crf import _items, _convert
@@ -125,6 +124,7 @@ class LTGenCRF(lt_common.LTGenStateless):
         return list(zip(words, mlabels, labels))
 
     def init_trainer(self, alg="lbfgs", verbose=False):
+        pycrfsuite = _convert._require_pycrfsuite()
         self._trainer = pycrfsuite.Trainer(verbose=verbose)
         self._trainer.select(alg, "crf1d")
         d = {}  # for parameter tuning, edit this
@@ -155,6 +155,7 @@ class LTGenCRF(lt_common.LTGenStateless):
         return output
 
     def init_tagger(self):
+        pycrfsuite = _convert._require_pycrfsuite()
         if not os.path.exists(self._model):
             raise IOError("No trained CRF model for LTGenCRF")
         self._tagger = pycrfsuite.Tagger()

@@ -8,7 +8,15 @@ import tempfile
 from amulog import config
 from amulog import lt_common
 
+try:
+    import pycrfsuite  # noqa: F401
+    _HAS_PYCRFSUITE = True
+except ImportError:
+    _HAS_PYCRFSUITE = False
 
+
+@unittest.skipUnless(
+    _HAS_PYCRFSUITE, "python-crfsuite (amulog[crf]) is not installed")
 class TestCRF(unittest.TestCase):
 
     _path_trainfile = None

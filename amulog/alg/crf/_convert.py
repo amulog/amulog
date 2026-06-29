@@ -12,7 +12,21 @@ The features are defined by 3 components.
 import os
 import re
 
-import pycrfsuite
+
+def _require_pycrfsuite():
+    """Lazy import of the optional python-crfsuite dependency.
+
+    CRF is an optional template-generation algorithm; python-crfsuite is an
+    extra (``pip install amulog[crf]``), not a core dependency. Importing this
+    module (e.g. for algorithm enumeration) therefore must not require it.
+    """
+    try:
+        import pycrfsuite
+    except ImportError:
+        raise ImportError(
+            "template generation algorithm <crf> needs python package "
+            "python-crfsuite (install with: pip install amulog[crf])")
+    return pycrfsuite
 
 
 class FeatureExtracter:
@@ -123,7 +137,7 @@ class FeatureExtracter:
                     d_feature[key] = weight
             ret.append(d_feature)
 
-        return pycrfsuite.ItemSequence(ret)
+        return _require_pycrfsuite().ItemSequence(ret)
 
     @staticmethod
     def label(l_items):

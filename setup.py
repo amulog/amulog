@@ -38,11 +38,12 @@ setup(name=package_name,
       python_requires='>=3.8',
       install_requires=load_requirements(),
       # optional features whose dependencies are published on PyPI; install
-      # with e.g. `pip install amulog[ssdeep]`. ltgroup_alg=ssdeep needs
-      # ssdeep, database=mysql needs pymysql. (The semantics ltgroup and the
-      # crf normalizer rely on packages that are not published, so they are
-      # intentionally not listed here.)
+      # with e.g. `pip install amulog[crf]`. lt_methods=crf needs
+      # python-crfsuite, ltgroup_alg=ssdeep needs ssdeep, database=mysql needs
+      # pymysql. (The semantics ltgroup relies on packages that are not
+      # published, so it is intentionally not listed here.)
       extras_require={
+          "crf": ["python-crfsuite"],
           "ssdeep": ["ssdeep"],
           "mysql": ["pymysql"],
       },

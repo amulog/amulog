@@ -36,6 +36,13 @@ default and existing databases need no rebuild.
   an existing DB treats the host column as identity). See the wiki "Host
   Grouping" page.
 
+### Changed
+- `python-crfsuite` is now an optional extra instead of a core dependency.
+  Install it with `pip install amulog[crf]`; the CRF template-generation
+  algorithm (`log_template.lt_methods = crf`) raises an actionable error when it
+  is missing. This keeps the core package installable on Python versions for
+  which python-crfsuite has no binary wheel yet.
+
 ### Fixed
 - `[manager] parser_script` is now loaded by file path instead of by module
   name, so a script whose filename shadows a standard-library module works on
