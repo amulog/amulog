@@ -4,8 +4,37 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+While in 0.x: a MINOR bump (`0.x.0`) marks a notable or coordinated change (and
+may not be fully backward compatible); a PATCH bump (`0.x.y`) is for smaller,
+safe increments.
 
 ## [Unreleased]
+
+## [0.5.0] - 2026-06-29
+
+This is a minor release coordinated with logdag, which consumes the new
+host-grouping axis. It is backward compatible: the feature is disabled by
+default and existing databases need no rebuild.
+
+### Added
+- Host grouping (host stratification): amulog can classify hosts into named,
+  ordered *tiers* (aggregation levels) defined as rewrite rules over the
+  original hostname, so consumers select a tier name to switch aggregation
+  granularity (e.g. BGL chip `R00-M0-N0-C:J02-U01` -> midplane `R00-M0` ->
+  rack `R00`). New `amulog/host_group.py` (`HostGroup`, `init_hostgroup`) and
+  config key `[manager] host_group_filename` pointing at a definition file
+  whose grammar follows Prometheus `relabel_configs` (separate
+  `regex`/`replacement`/`type` fields; `regex` / `hostalias` / builtin
+  `ipaddr` schemes; `keep`/`drop`/`drop_alert` unmatched policy). The log
+  table schema is unchanged (the `host` column stays the *original* host);
+  coarser tiers are materialized into an additive `hg` table via
+  `LogData.update_hg` / `iter_hg` / `members` and queried with
+  `iter_lines(hg=(tier, hgid))`. New CLI: `host-group-update`,
+  `show-host-group`, `host-group-check` (inspect + nesting check). host_alias
+  is subsumed as the optional `default` tier; the legacy host_alias build path
+  is unchanged. Disabled by default and fully backward compatible (no rebuild;
+  an existing DB treats the host column as identity). See the wiki "Host
+  Grouping" page.
 
 ## [0.4.0] - 2026-06-25
 
