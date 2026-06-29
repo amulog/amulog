@@ -559,11 +559,20 @@ def load_log2seq(conf):
         return log2seq.init_parser()
     else:
         import sys
-        from importlib import import_module
+        import importlib.util
         path = os.path.dirname(fp)
+        # keep the script's directory importable for any sibling modules it imports
         sys.path.append(os.path.abspath(path))
         libname = os.path.splitext(os.path.basename(fp))[0]
-        script_mod = import_module(libname)
+        # Load the script by its file path instead of import_module(libname):
+        # a script whose filename shadows a standard-library module (e.g. the
+        # loghub example parser.py shadows the stdlib `parser` module, which
+        # still exists on Python <= 3.9) must be loaded from the file, not from
+        # the standard library or an unrelated module already on sys.path.
+        spec = importlib.util.spec_from_file_location(
+            "_amulog_parser_script_" + libname, os.path.abspath(fp))
+        script_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(script_mod)
         lp = script_mod.parser
         return lp
 

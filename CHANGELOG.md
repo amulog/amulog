@@ -36,6 +36,13 @@ default and existing databases need no rebuild.
   an existing DB treats the host column as identity). See the wiki "Host
   Grouping" page.
 
+### Fixed
+- `[manager] parser_script` is now loaded by file path instead of by module
+  name, so a script whose filename shadows a standard-library module works on
+  all supported Python versions. The loghub example parsers (`parser.py`)
+  shadowed the stdlib `parser` module, which still exists on Python <= 3.9, and
+  raised `AttributeError: module 'parser' has no attribute 'parser'` there.
+
 ## [0.4.0] - 2026-06-25
 
 This is a minor release. It is coordinated with a log2seq release and contains a
