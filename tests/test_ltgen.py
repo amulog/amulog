@@ -102,6 +102,23 @@ class TestLTGen(unittest.TestCase):
             # must be retrievable from the table (fails for a tuple key)
             table.get_template(tid)
 
+    def test_supervised_process_offline_keys(self):
+        # process_offline must key its result by the input mids, not by the
+        # position in the batch (regression: the keys were unpacked from
+        # d_pline and then discarded in favor of enumerate())
+        class _StubSupervised(lt_common.LTGenSupervised):
+            def generate_tpl(self, pline):
+                return pline["words"]
+
+        ltgen = _StubSupervised(lt_common.TemplateTable())
+        d_pline = {10: {"words": ["a", "b"]},
+                   20: {"words": ["c", "d"]}}
+        d_tpl = ltgen.process_offline(d_pline)
+
+        self.assertEqual(sorted(d_tpl.keys()), [10, 20])
+        self.assertEqual(d_tpl[10], ["a", "b"])
+        self.assertEqual(d_tpl[20], ["c", "d"])
+
     def test_va(self):
         conf = config.open_config(verbose=False)
         conf['log_template']['lt_methods'] = "va"

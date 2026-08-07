@@ -121,7 +121,7 @@ class LTManager(object):
         return ret
 
     def _process_offline_parallel(self, iterable_lines):
-        def _sigterm_handler():
+        def _sigterm_handler(signum, frame):
             raise KeyboardInterrupt
 
         import signal
@@ -693,7 +693,7 @@ def process_files_online(conf, targets, reset_db):
     Raises:
         IOError: If a file in targets not found.
     """
-    def _sigterm_handler():
+    def _sigterm_handler(signum, frame):
         raise KeyboardInterrupt
 
     import signal

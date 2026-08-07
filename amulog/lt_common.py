@@ -393,7 +393,7 @@ class LTGenSupervised(LTGen, ABC):
         keys, plines = zip(*d_pline.items())
         self.preprocess(plines)
         tpls = self.generate_tpls(plines)
-        return {mid: tpl for mid, tpl in enumerate(tpls)}
+        return {mid: tpl for mid, tpl in zip(keys, tpls)}
 
     def load(self, loadobj):
         raise NotImplementedError

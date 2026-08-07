@@ -10,6 +10,15 @@ safe increments.
 
 ## [Unreleased]
 
+### Fixed
+- The `SIGTERM` handlers in `manager` (the online path and the parallel offline
+  path) were defined without the `(signum, frame)` arguments that Python passes
+  to a signal handler, so terminating a run raised `TypeError` instead of the
+  intended `KeyboardInterrupt` that triggers the clean shutdown.
+- `LTGenSupervised.process_offline` keyed its result by the position in the
+  batch instead of the input message ids, so the mapping was wrong whenever the
+  given `d_pline` was not keyed by a plain `0..n-1` sequence.
+
 ## [0.5.0] - 2026-06-29
 
 This is a minor release coordinated with logdag, which consumes the new
