@@ -4,8 +4,6 @@
 import ipaddress
 from collections import defaultdict
 
-from . import config
-
 
 def _normalize_host(token):
     """Return the canonical string of an IP-address token, or the token
@@ -127,39 +125,3 @@ def init_hostalias(conf):
     ha_fn = conf["manager"]["host_alias_filename"]
     ha = HostAlias(ha_fn)
     return ha
-
-
-def test_hostalias(conf):
-    names = ["192.168.0.1",
-             "www.TEST.localdomain",
-             "localhost",
-             "www",
-             "www3",
-             "hoge",
-             "10.100.1.254",
-             "8.8.6.0"]
-    # conf.set("database", "host_alias_filename", "host_alias_test.txt")
-    ha = init_hostalias(conf)
-    # ha = HostAlias(conf)
-    ha.print_definitions()
-    print()
-    print("[test aliasing]")
-    for name in names:
-        print(name)
-        print(ha.isknown(name))
-        print(ha.resolve_host(name))
-        print(ha.get_group(name))
-        print()
-
-
-#if __name__ == "__main__":
-#    usage = ""
-#    import optparse
-#
-#    op = optparse.OptionParser(usage)
-#    op.add_option("-c", "--config", action="store",
-#                  dest="conf", type="string", default=config.DEFAULT_CONFIG_NAME,
-#                  help="configuration file path")
-#    options, args = op.parse_args()
-#    conf = config.open_config(options._conf)
-#    test_hostalias(conf)
