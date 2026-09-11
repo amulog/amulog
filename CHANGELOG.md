@@ -8,7 +8,7 @@ While in 0.x: a MINOR bump (`0.x.0`) marks a notable or coordinated change (and
 may not be fully backward compatible); a PATCH bump (`0.x.y`) is for smaller,
 safe increments.
 
-## [Unreleased]
+## [0.5.1] - 2026-09-11
 
 ### Fixed
 - The `SIGTERM` handlers in `manager` (the online path and the parallel offline
