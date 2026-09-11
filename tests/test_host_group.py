@@ -56,7 +56,7 @@ sw1
 <db> 10.0.0.5
 
 [mixed]
-<gw> 150.99.112.10 gw.example.com
+<gw> 203.0.113.10 gw.example.com
 
 [v6]
 <v6host> 2001:db8::1
@@ -129,7 +129,7 @@ s4.ignorecase = true
         self.assertEqual(self.r("10.0.0.5"), "db")
 
     def test_alias_with_ip_and_hostname_members(self):
-        self.assertEqual(self.r("150.99.112.10"), "gw")
+        self.assertEqual(self.r("203.0.113.10"), "gw")
         self.assertEqual(self.r("gw.example.com"), "gw")
 
     def test_ipv6_canonicalization(self):

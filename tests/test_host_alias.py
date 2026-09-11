@@ -37,7 +37,7 @@ sw1
 <db> 10.0.0.5
 
 [mixed]
-<gw> 150.99.112.10 gw.example.com
+<gw> 203.0.113.10 gw.example.com
 
 [v6]
 <v6host> 2001:db8::1
@@ -115,11 +115,10 @@ class TestHostAlias(unittest.TestCase):
         self.assertEqual(self.ha.get_group("10.0.0.5"), "servers")
 
     def test_alias_with_ip_and_hostname_members(self):
-        # mirrors real configs (amulog-config def_s4_host_alias.txt):
         # `<alias> <exact-ip> <hostname>` -- both members resolve to the alias.
-        self.assertEqual(self.ha.resolve_host("150.99.112.10"), "gw")
+        self.assertEqual(self.ha.resolve_host("203.0.113.10"), "gw")
         self.assertEqual(self.ha.resolve_host("gw.example.com"), "gw")
-        self.assertEqual(self.ha.get_group("150.99.112.10"), "mixed")
+        self.assertEqual(self.ha.get_group("203.0.113.10"), "mixed")
 
     def test_ipv6_canonicalization(self):
         # an expanded IPv6 form matches the canonical definition
@@ -180,7 +179,7 @@ class TestLegacyHostAliasNormalize(unittest.TestCase):
         self.assertEqual(out["host"], "rt0")
 
     def test_ip_member_resolves_to_alias(self):
-        pline = {"host": "150.99.112.10", "words": []}
+        pline = {"host": "203.0.113.10", "words": []}
         out = self.manager.normalize_pline(pline, self.ha)
         self.assertEqual(out["host"], "gw")
 
