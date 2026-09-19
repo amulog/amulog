@@ -8,6 +8,11 @@ While in 0.x: a MINOR bump (`0.x.0`) marks a notable or coordinated change (and
 may not be fully backward compatible); a PATCH bump (`0.x.y`) is for smaller,
 safe increments.
 
+## [Unreleased]
+
+### Changed
+- Packaging configuration aligned with the policy used by the sibling projects.
+
 ## [0.5.1] - 2026-09-11
 
 ### Fixed

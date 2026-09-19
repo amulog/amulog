@@ -66,7 +66,8 @@ setup(name=package_name,
           'Topic :: Software Development :: Libraries :: Python Modules'],
       license='The 3-Clause BSD License',
 
-      packages=find_packages(),
+      packages=find_packages(exclude=['tests', 'tests.*',
+                                      'tests-ext', 'tests-ext.*']),
       package_data={'amulog': data_files},
       include_package_data=True,
       entry_points={
