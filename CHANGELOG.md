@@ -8,7 +8,17 @@ While in 0.x: a MINOR bump (`0.x.0`) marks a notable or coordinated change (and
 may not be fully backward compatible); a PATCH bump (`0.x.y`) is for smaller,
 safe increments.
 
-## [Unreleased]
+## [0.5.2] - 2026-09-24
+
+### Fixed
+- `LogData.whole_host_ltg` returned `list(set(...))` of `(host, ltgid)` pairs,
+  so the order followed the randomized hash of the host strings and changed
+  from process to process. Consumers that assign sequential ids by arrival
+  order (such as the DAG node ids in logdag) therefore got a different
+  assignment on every run over the same data. It is now ordered by
+  `(host, ltgid)`.
+- `LogData.whole_host_lt` relied on the order the database happened to return
+  rows in; the query now orders by `(host, ltid)`.
 
 ### Changed
 - Packaging configuration aligned with the policy used by the sibling projects.
