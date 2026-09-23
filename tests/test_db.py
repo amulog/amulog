@@ -235,6 +235,35 @@ class TestDB(unittest.TestCase):
             message = lm.restore_message()
             self.assertTrue(reobj_message.match(message))
             self.assertTrue(reobj_host.match(lm.host))
+    def test_whole_host_lt_ltg_ordered(self):
+        # Both are part of the public API and are consumed as a sequence
+        # (callers assign sequential ids by arrival order), so the order
+        # must not depend on the process. whole_host_ltg used to return
+        # list(set(...)) of (host: str, ltgid: int), whose iteration order
+        # follows the randomized hash of the host strings.
+        from amulog import __main__ as amulog_main
+        targets = amulog_main.get_targets_conf(self._conf)
+        manager.process_files_offline(self._conf, targets, reset_db=True)
+
+        ld = log_db.LogData(self._conf)
+
+        l_hostlt = ld.whole_host_lt()
+        self.assertTrue(len(l_hostlt) > 0)
+        self.assertEqual(l_hostlt, sorted(l_hostlt))
+
+        l_hostltg = ld.whole_host_ltg()
+        self.assertTrue(len(l_hostltg) > 0)
+        self.assertEqual(l_hostltg, sorted(l_hostltg))
+
+        # ltgid is derived from ltid, so the ltg view is a deduplicated
+        # projection of the lt view, never larger.
+        self.assertTrue(len(l_hostltg) <= len(l_hostlt))
+        self.assertEqual(len(l_hostltg), len(set(l_hostltg)))
+        self.assertEqual({host for host, _ in l_hostltg},
+                         {host for host, _ in l_hostlt})
+
+        # repeated calls within a process are consistent, too
+        self.assertEqual(l_hostltg, ld.whole_host_ltg())
 
 
 if __name__ == "__main__":

@@ -238,17 +238,18 @@ class LogData:
         return top_dt, end_dt
 
     def whole_host_lt(self, dts=None, dte=None):
-        """List[str, str]: Sequence of all combinations of
-        hostname and ltids in DB."""
+        """List[Tuple[str, int]]: All combinations of hostname and ltids
+        in DB, ordered by (host, ltid)."""
         return self.db.whole_host_lt(dts=dts, dte=dte)
 
     def whole_host_ltg(self, dts=None, dte=None):
-        """List[str, str]: Sequence of all combinations of
-        hostname and ltgids in DB."""
+        """List[Tuple[str, int]]: All combinations of hostname and ltgids
+        in DB, ordered by (host, ltgid). Deduplicated, because multiple
+        ltids can belong to one ltgid."""
         ret = set()
         for host, ltid in self.whole_host_lt(dts=dts, dte=dte):
             ret.add((host, self.ltgid_from_ltid(ltid)))
-        return list(set(ret))
+        return sorted(ret)
 
     def whole_host(self, dts=None, dte=None):
         """List[str]: Sequence of all source hostname in DB."""
@@ -965,7 +966,9 @@ class LogDB:
             l_cond.append(db_common.Condition("dt", "<", "dte", True))
             args["dte"] = self._db.strftime(dte)
 
-        sql = self._db.select_sql(table_name, l_key, l_cond, opt=["distinct"])
+        l_order = [("host", "asc"), ("ltid", "asc")]
+        sql = self._db.select_sql(table_name, l_key, l_cond,
+                                  l_order=l_order, opt=["distinct"])
         cursor = self._db.execute(sql, args)
         return [(row[0], row[1]) for row in cursor]
 
